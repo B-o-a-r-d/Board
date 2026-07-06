@@ -31,6 +31,13 @@ class Show extends Component
 
     public string $filterDue = '';
 
+    public bool $showTrash = false;
+
+    public function toggleTrash(): void
+    {
+        $this->showTrash = ! $this->showTrash;
+    }
+
     public function mount(Board $board): void
     {
         $this->authorize('view', $board);
@@ -96,11 +103,27 @@ class Show extends Component
         $this->broadcastActivity('list.renamed');
     }
 
-    public function deleteList(int $listId): void
+    public function archiveList(int $listId): void
     {
         $this->authorize('view', $this->board);
 
-        $this->listForBoard($listId)->delete();
+        $this->listForBoard($listId)->update(['archived_at' => now()]);
+        $this->broadcastActivity('list.archived');
+    }
+
+    public function restoreList(int $listId): void
+    {
+        $this->authorize('view', $this->board);
+
+        $this->board->lists()->whereKey($listId)->update(['archived_at' => null]);
+        $this->broadcastActivity('list.restored');
+    }
+
+    public function deleteListPermanently(int $listId): void
+    {
+        $this->authorize('view', $this->board);
+
+        $this->board->lists()->whereKey($listId)->delete();
         $this->broadcastActivity('list.deleted');
     }
 
@@ -149,11 +172,28 @@ class Show extends Component
         $this->broadcastActivity('card.created');
     }
 
-    public function deleteCard(int $cardId): void
+    public function archiveCard(int $cardId): void
     {
         $this->authorize('view', $this->board);
 
-        $this->cardForBoard($cardId)->delete();
+        $this->cardForBoard($cardId)->update(['archived_at' => now()]);
+        $this->logActivity('card.archived', $cardId);
+        $this->broadcastActivity('card.archived');
+    }
+
+    public function restoreCard(int $cardId): void
+    {
+        $this->authorize('view', $this->board);
+
+        $this->board->cards()->whereKey($cardId)->update(['archived_at' => null]);
+        $this->broadcastActivity('card.restored');
+    }
+
+    public function deleteCardPermanently(int $cardId): void
+    {
+        $this->authorize('view', $this->board);
+
+        $this->board->cards()->whereKey($cardId)->delete();
         $this->broadcastActivity('card.deleted');
     }
 
@@ -232,9 +272,10 @@ class Show extends Component
     public function render(): View
     {
         $lists = $this->board->lists()
+            ->whereNull('archived_at')
             ->with([
                 'cards' => function ($query) {
-                    $query->orderBy('position')->withCount('attachments');
+                    $query->whereNull('archived_at')->orderBy('position')->withCount('attachments');
                     $this->applyCardFilters($query);
                 },
                 'cards.members',
@@ -248,6 +289,8 @@ class Show extends Component
             'lists' => $lists,
             'labels' => $this->board->labels,
             'members' => $this->board->members,
+            'archivedLists' => $this->showTrash ? $this->board->lists()->whereNotNull('archived_at')->orderBy('name')->get() : collect(),
+            'archivedCards' => $this->showTrash ? $this->board->cards()->whereNotNull('archived_at')->with('list')->latest('archived_at')->get() : collect(),
         ]);
     }
 

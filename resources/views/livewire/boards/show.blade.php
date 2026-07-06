@@ -7,25 +7,31 @@
             <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ $board->workspace->name }}</p>
         </div>
 
-        {{-- Presence: who is currently viewing this board --}}
-        <div
-            class="flex items-center -space-x-2"
-            x-data='{
-                users: [],
-                init() {
-                    if (! window.Echo) return;
-                    const channel = "board-presence.{{ $board->id }}";
-                    window.Echo.join(channel)
-                        .here((u) => { this.users = u; })
-                        .joining((u) => { this.users = [...this.users, u]; })
-                        .leaving((u) => { this.users = this.users.filter((x) => x.id !== u.id); });
-                    document.addEventListener("livewire:navigating", () => window.Echo.leave(channel), { once: true });
-                }
-            }'
-        >
-            <template x-for="u in users" :key="u.id">
-                <span class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700 ring-2 ring-white dark:bg-indigo-500/20 dark:text-indigo-300 dark:ring-neutral-950" :title="u.name" x-text="u.name.charAt(0).toUpperCase()"></span>
-            </template>
+        <div class="flex items-center gap-3">
+            {{-- Presence: who is currently viewing this board --}}
+            <div
+                class="flex items-center -space-x-2"
+                x-data='{
+                    users: [],
+                    init() {
+                        if (! window.Echo) return;
+                        const channel = "board-presence.{{ $board->id }}";
+                        window.Echo.join(channel)
+                            .here((u) => { this.users = u; })
+                            .joining((u) => { this.users = [...this.users, u]; })
+                            .leaving((u) => { this.users = this.users.filter((x) => x.id !== u.id); });
+                        document.addEventListener("livewire:navigating", () => window.Echo.leave(channel), { once: true });
+                    }
+                }'
+            >
+                <template x-for="u in users" :key="u.id">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700 ring-2 ring-white dark:bg-indigo-500/20 dark:text-indigo-300 dark:ring-neutral-950" :title="u.name" x-text="u.name.charAt(0).toUpperCase()"></span>
+                </template>
+            </div>
+
+            <button type="button" wire:click="toggleTrash" class="flex items-center gap-1 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800" title="Corbeille du board">
+                <x-phosphor-trash class="h-4 w-4" /> Corbeille
+            </button>
         </div>
     </div>
 
@@ -89,10 +95,10 @@
                         class="w-full truncate rounded bg-transparent px-1 py-0.5 text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:focus:bg-neutral-800"
                     >
                     <div wire:sort:ignore x-data="{ confirming: false }" class="relative">
-                        <button type="button" @click="confirming = true" class="rounded p-1 text-neutral-400 hover:bg-neutral-300 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200" title="Supprimer la liste">✕</button>
-                        <div x-show="confirming" x-cloak @click.outside="confirming = false" class="absolute right-0 z-10 mt-1 w-40 rounded-lg border border-neutral-200 bg-white p-2 text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-800">
-                            <p class="mb-2">Supprimer cette liste et ses cartes ?</p>
-                            <button type="button" wire:click="deleteList({{ $list->id }})" class="w-full rounded bg-red-600 px-2 py-1 font-medium text-white hover:bg-red-500">Supprimer</button>
+                        <button type="button" @click="confirming = true" class="rounded p-1 text-neutral-400 hover:bg-neutral-300 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200" title="Archiver la liste">✕</button>
+                        <div x-show="confirming" x-cloak @click.outside="confirming = false" class="absolute right-0 z-10 mt-1 w-44 rounded-lg border border-neutral-200 bg-white p-2 text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-800">
+                            <p class="mb-2">Archiver cette liste et ses cartes ?</p>
+                            <button type="button" wire:click="archiveList({{ $list->id }})" @click="confirming = false" class="w-full rounded bg-amber-600 px-2 py-1 font-medium text-white hover:bg-amber-500">Archiver</button>
                         </div>
                     </div>
                 </div>
@@ -134,7 +140,7 @@
                                         {{ $card->title }}
                                     </button>
                                     <div wire:sort:ignore>
-                                        <button type="button" wire:click="deleteCard({{ $card->id }})" class="text-neutral-400 opacity-0 transition hover:text-red-500 group-hover:opacity-100" title="Supprimer la carte">✕</button>
+                                        <button type="button" wire:click="archiveCard({{ $card->id }})" class="text-neutral-400 opacity-0 transition hover:text-red-500 group-hover:opacity-100" title="Archiver la carte">✕</button>
                                     </div>
                                 </div>
 
@@ -195,6 +201,55 @@
             @error('newListName') <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
         </form>
     </div>
+
+    {{-- Trash / archive panel --}}
+    @if ($showTrash)
+        <div class="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:p-8">
+            <div class="w-full max-w-2xl rounded-2xl bg-white shadow-xl dark:bg-neutral-900">
+                <div class="flex items-center justify-between border-b border-neutral-100 px-5 py-3 dark:border-neutral-800">
+                    <h2 class="text-base font-semibold">Corbeille</h2>
+                    <button type="button" wire:click="toggleTrash" class="rounded-full p-1.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800">✕</button>
+                </div>
+
+                <div class="max-h-[70vh] space-y-6 overflow-y-auto p-5">
+                    {{-- Archived lists --}}
+                    <div>
+                        <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Listes archivées</h3>
+                        @forelse ($archivedLists as $list)
+                            <div wire:key="arch-list-{{ $list->id }}" class="flex items-center justify-between gap-2 border-b border-neutral-50 py-2 text-sm dark:border-neutral-800/50">
+                                <span class="font-medium">{{ $list->name }}</span>
+                                <div class="flex shrink-0 gap-3">
+                                    <button type="button" wire:click="restoreList({{ $list->id }})" class="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">Restaurer</button>
+                                    <button type="button" wire:click="deleteListPermanently({{ $list->id }})" wire:confirm="Supprimer définitivement cette liste et ses cartes ?" class="text-xs text-neutral-400 hover:text-red-500">Supprimer définitivement</button>
+                                </div>
+                            </div>
+                        @empty
+                            <p class="text-sm text-neutral-400">Aucune liste archivée.</p>
+                        @endforelse
+                    </div>
+
+                    {{-- Archived cards --}}
+                    <div>
+                        <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Cartes archivées</h3>
+                        @forelse ($archivedCards as $card)
+                            <div wire:key="arch-card-{{ $card->id }}" class="flex items-center justify-between gap-2 border-b border-neutral-50 py-2 text-sm dark:border-neutral-800/50">
+                                <div class="min-w-0">
+                                    <p class="truncate">{{ $card->title }}</p>
+                                    <p class="truncate text-xs text-neutral-400">{{ $card->list?->name }}</p>
+                                </div>
+                                <div class="flex shrink-0 gap-3">
+                                    <button type="button" wire:click="restoreCard({{ $card->id }})" class="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">Restaurer</button>
+                                    <button type="button" wire:click="deleteCardPermanently({{ $card->id }})" wire:confirm="Supprimer définitivement cette carte ?" class="text-xs text-neutral-400 hover:text-red-500">Supprimer définitivement</button>
+                                </div>
+                            </div>
+                        @empty
+                            <p class="text-sm text-neutral-400">Aucune carte archivée.</p>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 
     <livewire:cards.card-detail :board="$board" wire:key="card-detail-{{ $board->id }}" />
 </div>

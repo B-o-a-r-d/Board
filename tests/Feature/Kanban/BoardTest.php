@@ -46,11 +46,12 @@ test('a member can add, rename and delete a list', function () {
     $component->call('renameList', $list->id, 'En cours');
     expect($list->fresh()->name)->toBe('En cours');
 
-    $component->call('deleteList', $list->id);
-    expect($board->lists()->count())->toBe(0);
+    $component->call('archiveList', $list->id);
+    expect($list->fresh()->archived_at)->not->toBeNull()
+        ->and($board->lists()->whereNull('archived_at')->count())->toBe(0);
 });
 
-test('a member can add and delete cards', function () {
+test('a member can add and archive cards', function () {
     ['board' => $board, 'owner' => $owner] = makeBoard();
     $list = BoardList::factory()->create(['board_id' => $board->id]);
 
@@ -63,8 +64,9 @@ test('a member can add and delete cards', function () {
         ->and($card->created_by)->toBe($owner->id)
         ->and($card->board_id)->toBe($board->id);
 
-    $component->call('deleteCard', $card->id);
-    expect($list->cards()->count())->toBe(0);
+    $component->call('archiveCard', $card->id);
+    expect($card->fresh()->archived_at)->not->toBeNull()
+        ->and($list->cards()->whereNull('archived_at')->count())->toBe(0);
 });
 
 test('reordering cards within a list updates positions', function () {
