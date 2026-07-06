@@ -3,6 +3,7 @@
 use App\Enums\Role;
 use App\Livewire\Invitations\AcceptInvitation;
 use App\Livewire\Workspaces\WorkspaceSettings;
+use App\Models\Board;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceInvitation;
@@ -127,6 +128,32 @@ test('an admin can change a member role and remove them', function () {
 
     $component->call('removeMember', $member->id);
     expect($workspace->fresh()->hasMember($member))->toBeFalse();
+});
+
+test('the owner can delete the workspace and its boards', function () {
+    [$workspace, $owner] = workspaceWithOwner();
+    $board = Board::factory()->create(['workspace_id' => $workspace->id]);
+
+    Livewire::actingAs($owner)
+        ->test(WorkspaceSettings::class, ['workspace' => $workspace])
+        ->call('deleteWorkspace')
+        ->assertRedirect(route('dashboard'));
+
+    expect(Workspace::whereKey($workspace->id)->exists())->toBeFalse()
+        ->and(Board::whereKey($board->id)->exists())->toBeFalse();
+});
+
+test('an admin who is not the owner cannot delete the workspace', function () {
+    [$workspace] = workspaceWithOwner();
+    $admin = User::factory()->create();
+    $workspace->members()->attach($admin, ['role' => Role::Admin->value]);
+
+    Livewire::actingAs($admin)
+        ->test(WorkspaceSettings::class, ['workspace' => $workspace])
+        ->call('deleteWorkspace')
+        ->assertForbidden();
+
+    expect(Workspace::whereKey($workspace->id)->exists())->toBeTrue();
 });
 
 test('the owner cannot be demoted or removed', function () {

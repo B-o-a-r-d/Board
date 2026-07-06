@@ -88,4 +88,24 @@
             @endforeach
         </ul>
     </section>
+
+    {{-- Danger zone --}}
+    @can('delete', $workspace)
+        <section class="rounded-2xl border border-red-200 bg-red-50/50 p-6 dark:border-red-500/30 dark:bg-red-500/5">
+            <h2 class="text-base font-semibold text-red-700 dark:text-red-400">Zone de danger</h2>
+            <div class="mt-3 flex items-center justify-between gap-4">
+                <p class="text-sm text-neutral-600 dark:text-neutral-400">
+                    Supprimer ce workspace efface définitivement tous ses boards, listes et cartes.
+                </p>
+                <button
+                    type="button"
+                    wire:click="deleteWorkspace"
+                    wire:confirm="Supprimer définitivement « {{ $workspace->name }} » et tout son contenu ? Cette action est irréversible."
+                    class="shrink-0 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500"
+                >
+                    Supprimer le workspace
+                </button>
+            </div>
+        </section>
+    @endcan
 </div>

@@ -124,6 +124,34 @@ test('reordering lists updates their positions', function () {
     expect($ordered)->toBe([$lists[2]->id, $lists[0]->id, $lists[1]->id]);
 });
 
+test('a board admin can delete the board and its content', function () {
+    ['board' => $board, 'owner' => $owner] = makeBoard();
+    $list = BoardList::factory()->create(['board_id' => $board->id]);
+    $card = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id]);
+
+    Livewire::actingAs($owner)
+        ->test(Show::class, ['board' => $board])
+        ->call('deleteBoard')
+        ->assertRedirect(route('dashboard'));
+
+    expect(Board::whereKey($board->id)->exists())->toBeFalse()
+        ->and(BoardList::whereKey($list->id)->exists())->toBeFalse()
+        ->and(Card::whereKey($card->id)->exists())->toBeFalse();
+});
+
+test('a plain board member cannot delete the board', function () {
+    ['board' => $board] = makeBoard();
+    $member = User::factory()->create();
+    $board->members()->attach($member, ['role' => Role::Member->value]);
+
+    Livewire::actingAs($member)
+        ->test(Show::class, ['board' => $board])
+        ->call('deleteBoard')
+        ->assertForbidden();
+
+    expect(Board::whereKey($board->id)->exists())->toBeTrue();
+});
+
 test('outsiders are forbidden from the board component', function () {
     ['board' => $board, 'outsider' => $outsider] = makeBoard();
 

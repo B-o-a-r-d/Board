@@ -94,6 +94,15 @@ class WorkspaceSettings extends Component
         $this->workspace->members()->detach($userId);
     }
 
+    public function deleteWorkspace(): mixed
+    {
+        $this->authorize('delete', $this->workspace);
+
+        $this->workspace->delete();
+
+        return $this->redirectRoute('dashboard', navigate: true);
+    }
+
     public function render(): View
     {
         return view('livewire.workspaces.workspace-settings', [

@@ -55,6 +55,15 @@ class Show extends Component
         return $this->search !== '' || $this->filterLabel !== null || $this->filterMember !== null || $this->filterDue !== '';
     }
 
+    public function deleteBoard(): mixed
+    {
+        $this->authorize('delete', $this->board);
+
+        $this->board->delete();
+
+        return $this->redirectRoute('dashboard', navigate: true);
+    }
+
     /**
      * @return array<string, string>
      */

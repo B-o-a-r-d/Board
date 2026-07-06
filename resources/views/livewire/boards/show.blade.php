@@ -34,6 +34,19 @@
             <button type="button" wire:click="toggleTrash" class="flex items-center gap-1 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800" title="Corbeille du board">
                 <x-phosphor-trash class="h-4 w-4" /> Corbeille
             </button>
+
+            @can('delete', $board)
+                <div x-data="{ menu: false }" class="relative">
+                    <button type="button" @click="menu = ! menu" @click.outside="menu = false" class="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800" title="Options du board">
+                        <x-phosphor-dots-three-vertical class="h-4 w-4" />
+                    </button>
+                    <div x-show="menu" x-transition x-cloak class="absolute right-0 z-30 mt-2 w-48 rounded-xl border border-neutral-200 bg-white py-1 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
+                        <button type="button" wire:click="deleteBoard" wire:confirm="Supprimer définitivement ce board et tout son contenu ? Cette action est irréversible." class="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-neutral-100 dark:text-red-400 dark:hover:bg-neutral-800">
+                            Supprimer le board
+                        </button>
+                    </div>
+                </div>
+            @endcan
         </div>
     </div>
 
