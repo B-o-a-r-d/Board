@@ -8,6 +8,7 @@ use App\Models\Board;
 use App\Models\BoardList;
 use App\Models\Card;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -22,11 +23,29 @@ class Show extends Component
     /** @var array<int, string> */
     public array $newCardTitle = [];
 
+    public string $search = '';
+
+    public ?int $filterLabel = null;
+
+    public ?int $filterMember = null;
+
+    public string $filterDue = '';
+
     public function mount(Board $board): void
     {
         $this->authorize('view', $board);
 
         $this->board = $board;
+    }
+
+    public function resetFilters(): void
+    {
+        $this->reset('search', 'filterLabel', 'filterMember', 'filterDue');
+    }
+
+    public function hasActiveFilters(): bool
+    {
+        return $this->search !== '' || $this->filterLabel !== null || $this->filterMember !== null || $this->filterDue !== '';
     }
 
     /**
@@ -214,7 +233,10 @@ class Show extends Component
     {
         $lists = $this->board->lists()
             ->with([
-                'cards' => fn ($query) => $query->orderBy('position')->withCount('attachments'),
+                'cards' => function ($query) {
+                    $query->orderBy('position')->withCount('attachments');
+                    $this->applyCardFilters($query);
+                },
                 'cards.members',
                 'cards.labels',
                 'cards.checklists.items',
@@ -222,6 +244,41 @@ class Show extends Component
             ->orderBy('position')
             ->get();
 
-        return view('livewire.boards.show', ['lists' => $lists]);
+        return view('livewire.boards.show', [
+            'lists' => $lists,
+            'labels' => $this->board->labels,
+            'members' => $this->board->members,
+        ]);
+    }
+
+    /**
+     * Apply the board's card filters (text, label, member, due state).
+     *
+     * @param  HasMany<Card, BoardList>  $query
+     */
+    private function applyCardFilters($query): void
+    {
+        if ($this->search !== '') {
+            $term = '%'.mb_strtolower(trim($this->search)).'%';
+            $query->where(function ($scoped) use ($term) {
+                $scoped->whereRaw('LOWER(title) LIKE ?', [$term])
+                    ->orWhereRaw('LOWER(description) LIKE ?', [$term]);
+            });
+        }
+
+        if ($this->filterLabel !== null) {
+            $query->whereHas('labels', fn ($labels) => $labels->whereKey($this->filterLabel));
+        }
+
+        if ($this->filterMember !== null) {
+            $query->whereHas('members', fn ($members) => $members->whereKey($this->filterMember));
+        }
+
+        match ($this->filterDue) {
+            'overdue' => $query->whereNotNull('due_at')->whereNull('completed_at')->where('due_at', '<', now()),
+            'due' => $query->whereNotNull('due_at'),
+            'none' => $query->whereNull('due_at'),
+            default => null,
+        };
     }
 }

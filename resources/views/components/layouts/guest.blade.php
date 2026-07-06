@@ -9,6 +9,14 @@
 
     <title>{{ $title ? $title . ' — ' . config('app.name') : config('app.name') }}</title>
 
+    <script>
+        (function () {
+            const stored = localStorage.getItem('theme');
+            const dark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.classList.toggle('dark', dark);
+        })();
+    </script>
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="h-full bg-neutral-100 text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">

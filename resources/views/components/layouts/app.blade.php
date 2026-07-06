@@ -9,6 +9,14 @@
 
     <title>{{ $title ? $title . ' — ' . config('app.name') : config('app.name') }}</title>
 
+    <script>
+        (function () {
+            const stored = localStorage.getItem('theme');
+            const dark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.classList.toggle('dark', dark);
+        })();
+    </script>
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="h-full bg-neutral-100 text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
@@ -21,6 +29,19 @@
                 </a>
 
                 <div class="flex items-center gap-2">
+                    <livewire:global-search wire:key="nav-search" />
+
+                    <button
+                        type="button"
+                        x-data="{ dark: document.documentElement.classList.contains('dark') }"
+                        @click="dark = ! dark; document.documentElement.classList.toggle('dark', dark); localStorage.setItem('theme', dark ? 'dark' : 'light')"
+                        class="flex h-9 w-9 items-center justify-center rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                        title="Basculer le thème"
+                    >
+                        <x-phosphor-moon class="h-5 w-5 text-neutral-600" x-show="! dark" />
+                        <x-phosphor-sun class="h-5 w-5 text-neutral-300" x-show="dark" x-cloak />
+                    </button>
+
                     <livewire:notifications-bell wire:key="nav-notifications" />
 
                     <div x-data="{ open: false }" class="relative">

@@ -29,6 +29,46 @@
         </div>
     </div>
 
+    {{-- Filters --}}
+    <div class="mb-3 flex flex-wrap items-center gap-2">
+        <div class="relative">
+            <input
+                type="search"
+                wire:model.live.debounce.300ms="search"
+                placeholder="Rechercher une carte…"
+                class="w-56 rounded-lg border border-neutral-300 bg-white py-1.5 pl-3 pr-8 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800"
+            >
+            <span wire:loading wire:target="search" class="absolute right-2 top-1.5 text-xs text-neutral-400">…</span>
+        </div>
+
+        <select wire:model.live="filterLabel" class="rounded-lg border border-neutral-300 bg-white py-1.5 pl-3 pr-8 text-sm shadow-sm focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+            <option value="">Tous les labels</option>
+            @foreach ($labels as $label)
+                <option value="{{ $label->id }}">{{ $label->name ?? 'Sans nom' }}</option>
+            @endforeach
+        </select>
+
+        <select wire:model.live="filterMember" class="rounded-lg border border-neutral-300 bg-white py-1.5 pl-3 pr-8 text-sm shadow-sm focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+            <option value="">Tous les membres</option>
+            @foreach ($members as $member)
+                <option value="{{ $member->id }}">{{ $member->name }}</option>
+            @endforeach
+        </select>
+
+        <select wire:model.live="filterDue" class="rounded-lg border border-neutral-300 bg-white py-1.5 pl-3 pr-8 text-sm shadow-sm focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+            <option value="">Échéance : toutes</option>
+            <option value="overdue">En retard</option>
+            <option value="due">Avec échéance</option>
+            <option value="none">Sans échéance</option>
+        </select>
+
+        @if ($this->hasActiveFilters())
+            <button type="button" wire:click="resetFilters" class="rounded-lg px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-500/10">
+                Réinitialiser
+            </button>
+        @endif
+    </div>
+
     {{-- Lists (columns) --}}
     <div
         wire:sort="reorderLists"
