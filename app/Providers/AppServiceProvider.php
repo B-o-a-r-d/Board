@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Automations\Actions;
+use App\Automations\AutomationRegistry;
+use App\Automations\Triggers;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -17,7 +20,30 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(AutomationRegistry::class, function (): AutomationRegistry {
+            $registry = new AutomationRegistry;
+
+            foreach ([
+                Triggers\CardCreatedTrigger::class,
+                Triggers\CardMovedToListTrigger::class,
+                Triggers\CardDueSoonTrigger::class,
+                Triggers\ManualTrigger::class,
+            ] as $trigger) {
+                $registry->registerTrigger(new $trigger);
+            }
+
+            foreach ([
+                Actions\MarkCompleteAction::class,
+                Actions\ArchiveCardAction::class,
+                Actions\AssignLabelAction::class,
+                Actions\AssignMemberAction::class,
+                Actions\MoveToListAction::class,
+            ] as $action) {
+                $registry->registerAction(new $action);
+            }
+
+            return $registry;
+        });
     }
 
     /**

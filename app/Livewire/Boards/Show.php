@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Boards;
 
+use App\Automations\AutomationEngine;
 use App\Events\BoardActivity;
 use App\Models\Activity;
 use App\Models\Board;
@@ -292,6 +293,8 @@ class Show extends Component
 
         $this->logActivity('card.created', $card->id, ['title' => $card->title]);
 
+        app(AutomationEngine::class)->fire('card.created', $card, ['list_id' => $list->id]);
+
         $this->newCardTitle[$listId] = '';
         $this->broadcastActivity('card.created');
     }
@@ -391,17 +394,27 @@ class Show extends Component
 
         $this->resequence($targetList->id, $id, $position);
 
+        $ranAutomations = 0;
+
         if ($sourceListId !== $targetList->id) {
             $this->resequence($sourceListId);
             $this->logActivity('card.moved', $card->id, ['to_list' => $targetList->name]);
+
+            $ranAutomations = app(AutomationEngine::class)->fire('card.moved', $card->fresh(), [
+                'to_list_id' => $targetList->id,
+                'from_list_id' => $sourceListId,
+            ]);
         }
 
         $this->broadcastActivity('card.moved');
 
-        // Optimistic UI: the card is already in place client-side; skip the
+        // Optimistic UI: the card is already in place client-side, so skip the
         // acting user's re-render to avoid a morph flicker (others re-render
-        // from the broadcast).
-        $this->skipRender();
+        // from the broadcast). But if an automation mutated the card, re-render
+        // so the actor sees the result.
+        if ($ranAutomations === 0) {
+            $this->skipRender();
+        }
     }
 
     /**

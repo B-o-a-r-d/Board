@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Cards;
 
+use App\Automations\AutomationEngine;
 use App\Events\BoardActivity;
 use App\Models\Activity;
 use App\Models\Board;
@@ -551,6 +552,24 @@ class CardDetail extends Component
     }
 
     /**
+     * Run a manual automation (a card button) against the open card.
+     */
+    public function runAutomation(int $automationId): void
+    {
+        $card = $this->guardedCard();
+
+        $automation = $this->board->automations()
+            ->where('trigger_type', 'manual')
+            ->where('is_active', true)
+            ->findOrFail($automationId);
+
+        app(AutomationEngine::class)->runManual($automation, $card);
+
+        $this->touched('automation.run');
+        $this->dispatch('toast', message: 'Action « '.$automation->name.' » exécutée', type: 'success');
+    }
+
+    /**
      * @param  array<string, mixed>  $properties
      */
     private function logActivity(Card $card, string $type, array $properties = []): void
@@ -589,6 +608,7 @@ class CardDetail extends Component
             'card' => $card,
             'boardMembers' => $this->board->members,
             'boardLabels' => $this->board->labels,
+            'cardButtons' => $this->board->automations()->where('trigger_type', 'manual')->where('is_active', true)->get(),
         ]);
     }
 }

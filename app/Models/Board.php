@@ -94,6 +94,11 @@ class Board extends Model
         return $this->hasMany(Activity::class);
     }
 
+    public function automations(): HasMany
+    {
+        return $this->hasMany(Automation::class);
+    }
+
     /**
      * @param  Builder<Board>  $query
      */

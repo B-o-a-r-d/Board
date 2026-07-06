@@ -357,6 +357,18 @@
                             </button>
                         @endcan
 
+                        {{-- Manual automation buttons --}}
+                        @if ($cardButtons->isNotEmpty())
+                            <div class="space-y-1.5">
+                                <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Actions rapides</h3>
+                                @foreach ($cardButtons as $button)
+                                    <button type="button" wire:click="runAutomation({{ $button->id }})" wire:key="cardbtn-{{ $button->id }}" class="flex w-full items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">
+                                        <x-phosphor-lightning class="h-4 w-4 text-amber-500" /> {{ $button->name }}
+                                    </button>
+                                @endforeach
+                            </div>
+                        @endif
+
                         {{-- Cover (solid color — an image cover is set from the attachments list) --}}
                         @php $coverPalette = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b']; @endphp
                         <div>
