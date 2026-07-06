@@ -71,7 +71,7 @@
                                             <li wire:key="item-{{ $item->id }}" class="group flex items-center gap-2 text-sm">
                                                 <input type="checkbox" @checked($item->is_completed) wire:click="toggleChecklistItem({{ $item->id }})" class="rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500 dark:border-neutral-600 dark:bg-neutral-800">
                                                 <span class="{{ $item->is_completed ? 'text-neutral-400 line-through' : '' }}">{{ $item->content }}</span>
-                                                <button type="button" wire:click="deleteChecklistItem({{ $item->id }})" class="ml-auto text-xs text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-red-500">✕</button>
+                                                <button type="button" wire:click="deleteChecklistItem({{ $item->id }})" class="ml-auto text-xs text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-red-500"><x-phosphor-x class="h-3.5 w-3.5" /></button>
                                             </li>
                                         @endforeach
                                     </ul>
@@ -102,9 +102,9 @@
                                             <span class="truncate text-xs" title="{{ $attachment->name }}">{{ $attachment->name }}</span>
                                             <div class="flex shrink-0 gap-1">
                                                 @if ($attachment->isImage())
-                                                    <button type="button" wire:click="setCover({{ $attachment->id }})" class="text-xs text-neutral-400 hover:text-indigo-500" title="Définir comme couverture">★</button>
+                                                    <button type="button" wire:click="setCover({{ $attachment->id }})" class="text-neutral-400 hover:text-amber-500" title="Définir comme couverture"><x-phosphor-star class="h-4 w-4" /></button>
                                                 @endif
-                                                <button type="button" wire:click="deleteAttachment({{ $attachment->id }})" class="text-xs text-neutral-400 hover:text-red-500">✕</button>
+                                                <button type="button" wire:click="deleteAttachment({{ $attachment->id }})" class="text-xs text-neutral-400 hover:text-red-500"><x-phosphor-x class="h-3.5 w-3.5" /></button>
                                             </div>
                                         </div>
                                     </div>
@@ -315,7 +315,7 @@
                                             {{ Str::of($member->name)->substr(0, 1)->upper() }}
                                         </span>
                                         <span class="truncate">{{ $member->name }}</span>
-                                        @if ($assigned) <span class="ml-auto text-indigo-600 dark:text-indigo-400">✓</span> @endif
+                                        @if ($assigned) <x-phosphor-check class="ml-auto h-4 w-4 text-indigo-600 dark:text-indigo-400" /> @endif
                                     </button>
                                 @endforeach
                             </div>

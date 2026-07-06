@@ -32,5 +32,9 @@
             </div>
         </div>
     </div>
+
+    {{-- Auth pages have no Livewire component, so Alpine (bundled with Livewire) is
+         not auto-injected. Load it explicitly so x-data toggles work here. --}}
+    @livewireScripts
 </body>
 </html>

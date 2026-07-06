@@ -1,12 +1,13 @@
 <div x-data="{ focused: false }" @click.outside="focused = false" class="relative hidden w-64 sm:block">
+    <x-phosphor-magnifying-glass class="pointer-events-none absolute left-2.5 top-2 h-4 w-4 text-neutral-400" />
     <input
         type="search"
         wire:model.live.debounce.300ms="query"
         @focus="focused = true"
         placeholder="Rechercher boards & cartes…"
-        class="w-full rounded-lg border border-neutral-300 bg-white py-1.5 pl-3 pr-8 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800"
+        class="w-full rounded-lg border border-neutral-300 bg-white py-1.5 pl-8 pr-8 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800"
     >
-    <span wire:loading wire:target="query" class="absolute right-2 top-1.5 text-xs text-neutral-400">…</span>
+    <x-phosphor-spinner-gap wire:loading wire:target="query" class="absolute right-2 top-2 h-4 w-4 animate-spin text-neutral-400" />
 
     <div
         x-show="focused && $wire.query.trim().length >= 2"

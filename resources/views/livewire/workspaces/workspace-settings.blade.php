@@ -1,6 +1,8 @@
 <div class="mx-auto max-w-2xl space-y-8">
     <div>
-        <a href="{{ route('dashboard') }}" wire:navigate class="text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200">← Tableau de bord</a>
+        <a href="{{ route('dashboard') }}" wire:navigate class="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200">
+            <x-phosphor-arrow-left class="h-4 w-4" /> Tableau de bord
+        </a>
         <h1 class="mt-1 text-2xl font-semibold tracking-tight">{{ $workspace->name }}</h1>
         <p class="text-sm text-neutral-500 dark:text-neutral-400">Membres & invitations</p>
     </div>
