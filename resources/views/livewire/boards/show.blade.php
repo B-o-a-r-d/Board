@@ -82,6 +82,10 @@
                                 <button type="button" wire:click="setBackground(null)" class="flex h-6 w-6 items-center justify-center rounded-md border border-neutral-300 text-neutral-400 hover:text-neutral-700 dark:border-neutral-600 dark:hover:text-neutral-200" title="Aucun fond"><x-phosphor-x class="h-3.5 w-3.5" /></button>
                             </div>
                         </div>
+                        <x-context-menu.separator />
+                        <x-context-menu.item icon="file-csv" @click="window.location.href = '{{ route('boards.export', ['board' => $board->id, 'format' => 'csv']) }}'">Exporter en CSV</x-context-menu.item>
+                        <x-context-menu.item icon="file-xls" @click="window.location.href = '{{ route('boards.export', ['board' => $board->id, 'format' => 'xlsx']) }}'">Exporter en XLSX</x-context-menu.item>
+                        <x-context-menu.item icon="download-simple" @click="window.location.href = '{{ route('boards.export', ['board' => $board->id, 'format' => 'json']) }}'">Exporter en JSON</x-context-menu.item>
                         @can('delete', $board)
                             <x-context-menu.separator />
                             <x-context-menu.item icon="trash" variant="danger" @click="$store.confirm.open({ title: 'Supprimer le board', message: 'Supprimer définitivement ce board et tout son contenu ? Cette action est irréversible.', confirmLabel: 'Supprimer', danger: true }).then(ok => ok && $wire.deleteBoard())">Supprimer le board</x-context-menu.item>

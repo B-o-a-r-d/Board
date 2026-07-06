@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BoardExportController;
 use App\Http\Controllers\PublicBoardPresenceController;
 use App\Livewire\Boards\PublicBoard;
 use App\Livewire\Boards\Show as BoardShow;
@@ -16,6 +17,7 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', Dashboard::class)->name('dashboard');
     Route::get('/boards/{board}', BoardShow::class)->name('boards.show');
+    Route::get('/boards/{board}/export/{format}', BoardExportController::class)->name('boards.export');
     Route::get('/workspaces/{workspace}/settings', WorkspaceSettings::class)->name('workspaces.settings');
 });
 
