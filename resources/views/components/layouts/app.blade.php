@@ -14,13 +14,16 @@
 <body class="h-full bg-neutral-100 text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
     <div class="min-h-full">
         <header class="border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-            <nav class="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+            <nav class="mx-auto flex h-14 max-w-full items-center justify-between px-4 sm:px-6 lg:px-8">
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-2">
                     <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">B</span>
                     <span class="font-semibold tracking-tight">{{ config('app.name') }}</span>
                 </a>
 
-                <div x-data="{ open: false }" class="relative">
+                <div class="flex items-center gap-2">
+                    <livewire:notifications-bell wire:key="nav-notifications" />
+
+                    <div x-data="{ open: false }" class="relative">
                     <button
                         type="button"
                         @click="open = !open"
@@ -48,6 +51,7 @@
                                 Se déconnecter
                             </button>
                         </form>
+                    </div>
                     </div>
                 </div>
             </nav>

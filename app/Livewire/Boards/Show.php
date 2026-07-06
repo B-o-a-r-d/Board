@@ -3,6 +3,7 @@
 namespace App\Livewire\Boards;
 
 use App\Events\BoardActivity;
+use App\Models\Activity;
 use App\Models\Board;
 use App\Models\BoardList;
 use App\Models\Card;
@@ -116,12 +117,14 @@ class Show extends Component
 
         $list = $this->listForBoard($listId);
 
-        $list->cards()->create([
+        $card = $list->cards()->create([
             'board_id' => $this->board->id,
             'created_by' => Auth::id(),
             'title' => $title,
             'position' => (int) $list->cards()->max('position') + 1,
         ]);
+
+        $this->logActivity('card.created', $card->id, ['title' => $card->title]);
 
         $this->newCardTitle[$listId] = '';
         $this->broadcastActivity('card.created');
@@ -150,6 +153,7 @@ class Show extends Component
 
         if ($sourceListId !== $targetList->id) {
             $this->resequence($sourceListId);
+            $this->logActivity('card.moved', $card->id, ['to_list' => $targetList->name]);
         }
 
         $this->broadcastActivity('card.moved');
@@ -190,6 +194,20 @@ class Show extends Component
     private function broadcastActivity(string $action): void
     {
         broadcast(new BoardActivity($this->board->id, $action, Auth::id()))->toOthers();
+    }
+
+    /**
+     * @param  array<string, mixed>  $properties
+     */
+    private function logActivity(string $type, ?int $cardId = null, array $properties = []): void
+    {
+        Activity::create([
+            'board_id' => $this->board->id,
+            'card_id' => $cardId,
+            'user_id' => Auth::id(),
+            'type' => $type,
+            'properties' => $properties,
+        ]);
     }
 
     public function render(): View

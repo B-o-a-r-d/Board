@@ -272,6 +272,30 @@
                                 @endforeach
                             </div>
                         </div>
+
+                        {{-- Activity feed --}}
+                        <div class="space-y-2">
+                            <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Activité</h3>
+                            @forelse ($card->activities->take(12) as $activity)
+                                @php
+                                    $label = match ($activity->type) {
+                                        'card.created' => 'a créé la carte',
+                                        'card.moved' => 'a déplacé la carte' . (! empty($activity->properties['to_list']) ? ' vers « ' . $activity->properties['to_list'] . ' »' : ''),
+                                        'card.completed' => 'a marqué la carte terminée',
+                                        'comment.created' => 'a commenté',
+                                        'member.assigned' => 'a assigné ' . ($activity->properties['user_name'] ?? 'un membre'),
+                                        default => $activity->type,
+                                    };
+                                @endphp
+                                <div wire:key="activity-{{ $activity->id }}" class="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+                                    <span class="font-medium text-neutral-700 dark:text-neutral-300">{{ $activity->user?->name ?? 'Quelqu\'un' }}</span>
+                                    <span>{{ $label }}</span>
+                                    <span class="text-neutral-400">· {{ $activity->created_at->diffForHumans() }}</span>
+                                </div>
+                            @empty
+                                <p class="text-xs text-neutral-400">Aucune activité pour le moment.</p>
+                            @endforelse
+                        </div>
                     </div>
 
                     {{-- Sidebar --}}

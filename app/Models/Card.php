@@ -67,4 +67,9 @@ class Card extends Model
     {
         return $this->hasMany(Attachment::class)->latest();
     }
+
+    public function activities(): HasMany
+    {
+        return $this->hasMany(Activity::class)->latest();
+    }
 }

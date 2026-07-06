@@ -3,12 +3,15 @@
 namespace App\Livewire\Cards;
 
 use App\Events\BoardActivity;
+use App\Models\Activity;
 use App\Models\Board;
 use App\Models\Card;
 use App\Models\ChecklistItem;
 use App\Models\User;
+use App\Notifications\CardNotification;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -111,6 +114,11 @@ class CardDetail extends Component
         $card = $this->guardedCard();
 
         $card->update(['completed_at' => $card->completed_at ? null : now()]);
+
+        if ($card->completed_at) {
+            $this->logActivity($card, 'card.completed');
+        }
+
         $this->touched('card.completed');
     }
 
@@ -122,7 +130,18 @@ class CardDetail extends Component
             return;
         }
 
-        $card->members()->toggle($userId);
+        $result = $card->members()->toggle($userId);
+
+        if (in_array($userId, $result['attached'], true) && $userId !== Auth::id()) {
+            $assignee = User::find($userId);
+
+            $this->logActivity($card, 'member.assigned', ['user_id' => $userId, 'user_name' => $assignee?->name]);
+
+            if ($assignee) {
+                $assignee->notify(new CardNotification($card, 'assigned', Auth::user()));
+            }
+        }
+
         $this->touched('card.members');
     }
 
@@ -282,8 +301,48 @@ class CardDetail extends Component
             'body' => $data['newComment'],
         ]);
 
+        $this->logActivity($card, 'comment.created');
+        $this->notifyForComment($card, $data['newComment']);
+
         $this->reset('newComment');
         $this->touched('comment.created');
+    }
+
+    /**
+     * Notify mentioned members (as mentions) and other card members (as a comment),
+     * excluding the comment author.
+     */
+    private function notifyForComment(Card $card, string $body): void
+    {
+        $actor = Auth::user();
+        $excerpt = Str::limit(trim($body), 120);
+
+        $mentioned = $this->mentionedUsers($body)->reject(fn (User $user) => $user->is($actor));
+
+        $mentioned->each(fn (User $user) => $user->notify(new CardNotification($card, 'mention', $actor, $excerpt)));
+
+        $mentionedIds = $mentioned->pluck('id')->push($actor->getKey())->all();
+
+        $card->members()
+            ->whereKeyNot($mentionedIds)
+            ->get()
+            ->each(fn (User $user) => $user->notify(new CardNotification($card, 'comment', $actor, $excerpt)));
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    private function mentionedUsers(string $body): Collection
+    {
+        preg_match_all('/@([\p{L}0-9_-]+)/u', $body, $matches);
+
+        if (empty($matches[1])) {
+            return collect();
+        }
+
+        $slugs = collect($matches[1])->map(fn (string $token) => Str::slug($token))->unique();
+
+        return $this->board->members->filter(fn (User $user) => $slugs->contains(Str::slug($user->name)))->values();
     }
 
     public function deleteComment(int $commentId): void
@@ -321,6 +380,20 @@ class CardDetail extends Component
         }, e($body));
     }
 
+    /**
+     * @param  array<string, mixed>  $properties
+     */
+    private function logActivity(Card $card, string $type, array $properties = []): void
+    {
+        Activity::create([
+            'board_id' => $card->board_id,
+            'card_id' => $card->id,
+            'user_id' => Auth::id(),
+            'type' => $type,
+            'properties' => $properties,
+        ]);
+    }
+
     private function guardedCard(): Card
     {
         $this->authorize('view', $this->board);
@@ -338,7 +411,7 @@ class CardDetail extends Component
     {
         $card = $this->cardId
             ? $this->board->cards()
-                ->with(['members', 'labels', 'checklists.items', 'attachments.uploader', 'comments.user'])
+                ->with(['members', 'labels', 'checklists.items', 'attachments.uploader', 'comments.user', 'activities.user'])
                 ->find($this->cardId)
             : null;
 
