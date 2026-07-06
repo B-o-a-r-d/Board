@@ -24,12 +24,31 @@ class Profile extends Component
 
     public string $password_confirmation = '';
 
+    public string $tokenName = '';
+
+    public ?string $newToken = null;
+
     public function mount(): void
     {
         $user = Auth::user();
 
         $this->name = $user->name;
         $this->email = $user->email;
+    }
+
+    public function createToken(): void
+    {
+        $this->validate(['tokenName' => ['required', 'string', 'max:255']]);
+
+        $this->newToken = Auth::user()->createToken($this->tokenName)->plainTextToken;
+        $this->tokenName = '';
+        $this->dispatch('toast', message: 'Token API créé', type: 'success');
+    }
+
+    public function revokeToken(int $tokenId): void
+    {
+        Auth::user()->tokens()->whereKey($tokenId)->delete();
+        $this->dispatch('toast', message: 'Token révoqué', type: 'info');
     }
 
     public function updateProfileInformation(UpdateUserProfileInformation $updater): void
@@ -57,6 +76,8 @@ class Profile extends Component
 
     public function render(): View
     {
-        return view('livewire.settings.profile');
+        return view('livewire.settings.profile', [
+            'tokens' => Auth::user()->tokens()->latest()->get(),
+        ]);
     }
 }
