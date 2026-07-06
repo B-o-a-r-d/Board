@@ -188,7 +188,8 @@ test('a member can duplicate a list with its cards, labels and members', functio
 
     Livewire::actingAs($owner)
         ->test(Show::class, ['board' => $board])
-        ->call('duplicateList', $list->id);
+        ->call('duplicateList', $list->id)
+        ->assertDispatched('toast');
 
     $copy = $board->lists()->where('name', 'Backlog (copie)')->firstOrFail();
 

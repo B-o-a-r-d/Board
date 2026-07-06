@@ -98,8 +98,10 @@ class Show extends Component
 
         if ($this->board->isShared()) {
             $this->board->disableSharing();
+            $this->dispatch('toast', message: 'Partage public désactivé', type: 'info');
         } else {
             $this->board->enableSharing();
+            $this->dispatch('toast', message: 'Lien de partage public activé', type: 'success');
         }
     }
 
@@ -220,6 +222,7 @@ class Show extends Component
         }
 
         $this->broadcastActivity('list.duplicated');
+        $this->dispatch('toast', message: 'Liste dupliquée', type: 'success');
     }
 
     public function reorderLists(int $id, int $position): void
@@ -314,6 +317,7 @@ class Show extends Component
 
         $this->logActivity('card.duplicated', $copy->id, ['from' => $card->id]);
         $this->broadcastActivity('card.duplicated');
+        $this->dispatch('toast', message: 'Carte dupliquée', type: 'success');
     }
 
     public function moveCard(int $id, int $position, int $listId): void

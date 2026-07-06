@@ -37,6 +37,7 @@ class Dashboard extends Component
         $workspace->members()->attach(Auth::id(), ['role' => Role::Owner->value]);
 
         $this->newWorkspaceName = '';
+        $this->dispatch('toast', message: 'Workspace créé', type: 'success');
     }
 
     public ?int $renamingWorkspaceId = null;

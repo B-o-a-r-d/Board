@@ -320,6 +320,7 @@ class CardDetail extends Component
 
         $this->reset('upload');
         $this->touched('attachment.added');
+        $this->dispatch('toast', message: 'Pièce jointe ajoutée', type: 'success');
     }
 
     public function deleteAttachment(int $attachmentId): void

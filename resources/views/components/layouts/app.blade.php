@@ -111,5 +111,6 @@
     </div>
 
     <x-confirm-modal />
+    <x-toasts />
 </body>
 </html>
