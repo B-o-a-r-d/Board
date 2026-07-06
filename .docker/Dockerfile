@@ -7,6 +7,17 @@ FROM node:22-alpine AS assets
 
 WORKDIR /app
 
+# Vite bakes VITE_* into the JS bundle at build time. Provide the Reverb client
+# config as build args so the compiled Echo config points at the prod WebSocket.
+ARG VITE_REVERB_APP_KEY=""
+ARG VITE_REVERB_HOST=""
+ARG VITE_REVERB_PORT="443"
+ARG VITE_REVERB_SCHEME="https"
+ENV VITE_REVERB_APP_KEY=$VITE_REVERB_APP_KEY \
+    VITE_REVERB_HOST=$VITE_REVERB_HOST \
+    VITE_REVERB_PORT=$VITE_REVERB_PORT \
+    VITE_REVERB_SCHEME=$VITE_REVERB_SCHEME
+
 COPY package.json package-lock.json ./
 RUN npm ci
 

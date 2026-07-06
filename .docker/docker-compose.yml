@@ -8,6 +8,11 @@ services:
       context: ..
       dockerfile: .docker/Dockerfile
       target: app
+      args:
+        VITE_REVERB_APP_KEY: ${REVERB_APP_KEY:-}
+        VITE_REVERB_HOST: ${REVERB_HOST:-}
+        VITE_REVERB_PORT: ${REVERB_PORT:-443}
+        VITE_REVERB_SCHEME: ${REVERB_SCHEME:-https}
     image: board-app:latest
     restart: unless-stopped
     env_file: .env
@@ -31,14 +36,22 @@ services:
       context: ..
       dockerfile: .docker/Dockerfile
       target: web
+      args:
+        VITE_REVERB_APP_KEY: ${REVERB_APP_KEY:-}
+        VITE_REVERB_HOST: ${REVERB_HOST:-}
+        VITE_REVERB_PORT: ${REVERB_PORT:-443}
+        VITE_REVERB_SCHEME: ${REVERB_SCHEME:-https}
     image: board-web:latest
     restart: unless-stopped
     depends_on:
       - app
     volumes:
       - storage-data:/var/www/html/storage:ro
-    ports:
-      - "8000:80"
+    expose:
+      - "80"
+    networks:
+      - default
+      - dokploy-network
 
   reverb:
     image: board-app:latest
@@ -59,8 +72,11 @@ services:
       - app
     volumes:
       - storage-data:/var/www/html/storage
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
+    networks:
+      - default
+      - dokploy-network
 
   queue:
     image: board-app:latest
@@ -119,3 +135,12 @@ volumes:
   postgres-data:
   redis-data:
   storage-data:
+
+networks:
+  # Project-private network (isolated per Dokploy project): app <-> postgres/redis/queue…
+  # Keeping postgres & redis here (and NOT on dokploy-network) avoids any DNS collision
+  # with a "postgres" service from another Dokploy app.
+  default:
+  # Shared Traefik network — ONLY web & reverb join it so Dokploy can route domains to them.
+  dokploy-network:
+    external: true
