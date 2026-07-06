@@ -1,7 +1,13 @@
 <x-layouts.guest title="Créer un compte">
     <div class="mb-6">
         <h1 class="text-xl font-semibold">Créer un compte</h1>
-        <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Commencez à organiser vos boards.</p>
+        <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+            @if (! empty($invitationEmail))
+                Vous avez été invité à rejoindre {{ config('app.name') }}. Choisissez un mot de passe pour créer votre compte.
+            @else
+                Commencez à organiser vos boards.
+            @endif
+        </p>
     </div>
 
     <form method="POST" action="{{ route('register') }}" class="space-y-4">
@@ -28,10 +34,11 @@
                 id="email"
                 name="email"
                 type="email"
-                value="{{ old('email') }}"
+                value="{{ old('email', $invitationEmail ?? '') }}"
                 required
                 autocomplete="username"
-                class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800"
+                @if (! empty($invitationEmail)) readonly @endif
+                class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none read-only:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:read-only:bg-neutral-900"
             >
             @error('email') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
         </div>

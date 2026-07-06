@@ -35,6 +35,21 @@ class WorkspaceInvitation extends Model
         return $this->belongsTo(User::class, 'invited_by');
     }
 
+    /**
+     * Resolve a still-usable invitation from its token (null if missing,
+     * accepted or expired).
+     */
+    public static function pendingFromToken(?string $token): ?self
+    {
+        if (! $token) {
+            return null;
+        }
+
+        $invitation = static::with('workspace')->where('token', $token)->first();
+
+        return $invitation && $invitation->isPending() ? $invitation : null;
+    }
+
     public function isPending(): bool
     {
         return $this->accepted_at === null && ! $this->isExpired();

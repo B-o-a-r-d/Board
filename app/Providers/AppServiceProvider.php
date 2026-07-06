@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -23,5 +26,41 @@ class AppServiceProvider extends ServiceProvider
         if (config('app.env') === 'production') {
             URL::forceScheme('https');
         }
+
+        $this->translateAuthMails();
+    }
+
+    /**
+     * Localise (French) the email verification and password reset e-mails.
+     */
+    private function translateAuthMails(): void
+    {
+        VerifyEmail::toMailUsing(function (object $notifiable, string $url): MailMessage {
+            return (new MailMessage)
+                ->subject('Vérifiez votre adresse e-mail')
+                ->greeting('Bonjour '.$notifiable->name.',')
+                ->line('Merci de votre inscription sur '.config('app.name').'. Cliquez sur le bouton ci-dessous pour vérifier votre adresse e-mail.')
+                ->action('Vérifier mon adresse e-mail', $url)
+                ->line("Si vous n'êtes pas à l'origine de cette inscription, aucune action n'est requise.")
+                ->salutation('À bientôt,'."\n".config('app.name'));
+        });
+
+        ResetPassword::toMailUsing(function (object $notifiable, string $token): MailMessage {
+            $url = url(route('password.reset', [
+                'token' => $token,
+                'email' => $notifiable->getEmailForPasswordReset(),
+            ], false));
+
+            $expire = config('auth.passwords.'.config('auth.defaults.passwords').'.expire');
+
+            return (new MailMessage)
+                ->subject('Réinitialisation de votre mot de passe')
+                ->greeting('Bonjour,')
+                ->line('Vous recevez cet e-mail car une réinitialisation du mot de passe de votre compte a été demandée.')
+                ->action('Réinitialiser le mot de passe', $url)
+                ->line("Ce lien de réinitialisation expirera dans {$expire} minutes.")
+                ->line("Si vous n'avez pas demandé cette réinitialisation, aucune action n'est requise.")
+                ->salutation('Cordialement,'."\n".config('app.name'));
+        });
     }
 }

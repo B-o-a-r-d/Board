@@ -3,6 +3,7 @@
 namespace App\Actions\Fortify;
 
 use App\Models\User;
+use App\Models\WorkspaceInvitation;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -34,10 +35,39 @@ class CreateNewUser implements CreatesNewUsers
             'password' => $this->passwordRules(),
         ])->validate();
 
-        return User::create([
+        $invitation = WorkspaceInvitation::pendingFromToken(session('invitation_token'));
+
+        if (config('board.registration_invite_only') && ! $invitation) {
+            throw ValidationException::withMessages([
+                'email' => "L'inscription se fait uniquement sur invitation.",
+            ]);
+        }
+
+        if ($invitation && strcasecmp($invitation->email, $input['email']) !== 0) {
+            throw ValidationException::withMessages([
+                'email' => "Cette invitation est destinée à {$invitation->email}.",
+            ]);
+        }
+
+        $user = User::create([
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => Hash::make($input['password']),
         ]);
+
+        if ($invitation) {
+            // The invitee proved control of this address by following the e-mail
+            // link, so mark it verified and add them to the workspace.
+            $user->forceFill(['email_verified_at' => now()])->save();
+
+            $invitation->workspace->members()->syncWithoutDetaching([
+                $user->id => ['role' => $invitation->role],
+            ]);
+            $invitation->update(['accepted_at' => now()]);
+
+            session()->forget('invitation_token');
+        }
+
+        return $user;
     }
 }

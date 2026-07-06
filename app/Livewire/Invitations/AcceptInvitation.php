@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Invitations;
 
+use App\Models\User;
 use App\Models\WorkspaceInvitation;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
@@ -9,7 +10,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-#[Layout('components.layouts.app')]
+#[Layout('components.layouts.guest')]
 #[Title('Invitation')]
 class AcceptInvitation extends Component
 {
@@ -17,10 +18,23 @@ class AcceptInvitation extends Component
 
     public ?WorkspaceInvitation $invitation = null;
 
-    public function mount(string $token): void
+    public function mount(string $token): mixed
     {
         $this->token = $token;
         $this->invitation = WorkspaceInvitation::with('workspace')->where('token', $token)->first();
+
+        // A guest whose invited address has no account yet is routed to
+        // registration, which is gated by this invitation (email pre-filled,
+        // workspace joined on submit). Logged-in visitors see the normal page.
+        if ($this->invitation && $this->invitation->isPending()
+            && ! Auth::check()
+            && ! User::where('email', $this->invitation->email)->exists()) {
+            session()->put('invitation_token', $this->token);
+
+            return $this->redirect(route('register'));
+        }
+
+        return null;
     }
 
     public function accept(): mixed
@@ -54,6 +68,10 @@ class AcceptInvitation extends Component
 
         if ($this->invitation->isExpired()) {
             return 'Cette invitation a expiré.';
+        }
+
+        if (! Auth::check()) {
+            return "Un compte existe déjà pour {$this->invitation->email}. Connectez-vous avec cette adresse pour rejoindre le workspace.";
         }
 
         if (strcasecmp($this->invitation->email, Auth::user()->email) !== 0) {
