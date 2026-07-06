@@ -51,6 +51,11 @@ services:
       - storage-data:/var/www/html/storage:ro
     expose:
       - "80"
+    # Traefik must be explicitly enabled on the container, otherwise Dokploy's
+    # domain routers (injected from the "Domains" UI) never bind → 502.
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
     networks:
       - default
       - dokploy-network
@@ -76,6 +81,9 @@ services:
       - storage-data:/var/www/html/storage
     expose:
       - "8080"
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
     networks:
       - default
       - dokploy-network
