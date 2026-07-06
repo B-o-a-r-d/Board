@@ -81,6 +81,28 @@ class Show extends Component
         $this->renamingBoard = false;
     }
 
+    public bool $showShare = false;
+
+    public function openShare(): void
+    {
+        $this->authorize('update', $this->board);
+        abort_unless((bool) config('board.public_sharing'), 404);
+
+        $this->showShare = true;
+    }
+
+    public function toggleShare(): void
+    {
+        $this->authorize('update', $this->board);
+        abort_unless((bool) config('board.public_sharing'), 404);
+
+        if ($this->board->isShared()) {
+            $this->board->disableSharing();
+        } else {
+            $this->board->enableSharing();
+        }
+    }
+
     public function deleteBoard(): mixed
     {
         $this->authorize('delete', $this->board);

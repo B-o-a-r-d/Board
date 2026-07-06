@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\PublicBoardPresenceController;
+use App\Livewire\Boards\PublicBoard;
 use App\Livewire\Boards\Show as BoardShow;
 use App\Livewire\Dashboard;
 use App\Livewire\Invitations\AcceptInvitation;
@@ -20,6 +22,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // Invitation links are reachable by guests: an invitee without an account is
 // routed to (invite-gated) registration; existing users are asked to log in.
 Route::get('/invitations/{token}', AcceptInvitation::class)->name('invitations.accept');
+
+// Public, read-only board share link (guest-accessible, resolved by token).
+Route::get('/share/{token}', PublicBoard::class)->name('boards.public');
+Route::post('/share/{token}/presence-auth', PublicBoardPresenceController::class)->name('boards.public.presence');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', Profile::class)->name('profile.edit');

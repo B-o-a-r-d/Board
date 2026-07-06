@@ -39,7 +39,13 @@
                 }'
             >
                 <template x-for="u in users" :key="u.id">
-                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700 ring-2 ring-white dark:bg-indigo-500/20 dark:text-indigo-300 dark:ring-neutral-950" :title="u.name" x-text="u.name.charAt(0).toUpperCase()"></span>
+                    <span
+                        class="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ring-2 ring-white dark:ring-neutral-950"
+                        :class="u.guest ? 'text-white' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300'"
+                        :style="u.guest ? `background-color: ${u.color}` : ''"
+                        :title="u.guest ? u.name + ' (invité)' : u.name"
+                        x-text="(u.guest ? u.name.replace('Visiteur ', '') : u.name).charAt(0).toUpperCase()"
+                    ></span>
                 </template>
             </div>
 
@@ -56,6 +62,9 @@
                     </x-slot:trigger>
                     <x-slot:menu>
                         <x-context-menu.item icon="pencil-simple" wire:click="startRenameBoard">Renommer</x-context-menu.item>
+                        @if (config('board.public_sharing'))
+                            <x-context-menu.item icon="share-network" wire:click="openShare">Partager…</x-context-menu.item>
+                        @endif
                         @can('delete', $board)
                             <x-context-menu.separator />
                             <x-context-menu.item icon="trash" variant="danger" wire:click="deleteBoard" wire:confirm="Supprimer définitivement ce board et tout son contenu ? Cette action est irréversible.">Supprimer le board</x-context-menu.item>
@@ -311,6 +320,56 @@
                             <p class="text-sm text-neutral-400">Aucune carte archivée.</p>
                         @endforelse
                     </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Share panel --}}
+    @if ($showShare)
+        <div class="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:p-8" wire:key="share-modal">
+            <div class="w-full max-w-lg rounded-2xl bg-white shadow-xl dark:bg-neutral-900">
+                <div class="flex items-center justify-between border-b border-neutral-100 px-5 py-3 dark:border-neutral-800">
+                    <h2 class="flex items-center gap-2 text-base font-semibold"><x-phosphor-share-network class="h-5 w-5" /> Partager le tableau</h2>
+                    <button type="button" wire:click="$set('showShare', false)" class="rounded-full p-1.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"><x-phosphor-x class="h-4 w-4" /></button>
+                </div>
+
+                <div class="space-y-4 p-5">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-sm font-medium">Lien public en lecture seule</p>
+                            <p class="text-xs text-neutral-500 dark:text-neutral-400">Toute personne disposant du lien peut consulter ce tableau et ses cartes, sans compte.</p>
+                        </div>
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked="{{ $board->isShared() ? 'true' : 'false' }}"
+                            wire:click="toggleShare"
+                            class="relative mt-0.5 inline-flex h-5 w-9 shrink-0 items-center rounded-full transition {{ $board->isShared() ? 'bg-indigo-600' : 'bg-neutral-300 dark:bg-neutral-700' }}"
+                        >
+                            <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition {{ $board->isShared() ? 'translate-x-4' : 'translate-x-0.5' }}"></span>
+                        </button>
+                    </div>
+
+                    @if ($board->isShared())
+                        @php $shareUrl = route('boards.public', ['token' => $board->share_token]); @endphp
+                        <div class="flex items-center gap-2" x-data="{ copied: false }">
+                            <input type="text" readonly value="{{ $shareUrl }}" @focus="$el.select()" class="flex-1 rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-800">
+                            <button
+                                type="button"
+                                @click="navigator.clipboard?.writeText('{{ $shareUrl }}'); copied = true; setTimeout(() => copied = false, 1500)"
+                                class="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500"
+                            >
+                                <x-phosphor-copy class="h-4 w-4" />
+                                <span x-text="copied ? 'Copié !' : 'Copier'"></span>
+                            </button>
+                        </div>
+                        <a href="{{ $shareUrl }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">
+                            <x-phosphor-arrow-square-out class="h-3.5 w-3.5" /> Ouvrir dans un nouvel onglet
+                        </a>
+                    @else
+                        <p class="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-500 dark:bg-neutral-800/50 dark:text-neutral-400">Activez le partage pour générer un lien. Le désactiver invalide immédiatement l'ancien lien.</p>
+                    @endif
                 </div>
             </div>
         </div>

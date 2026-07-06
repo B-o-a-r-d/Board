@@ -274,7 +274,7 @@
                             <div class="space-y-3">
                                 @foreach ($card->comments as $comment)
                                     @php $canDelete = $comment->user_id === auth()->id() || $board->memberRole(auth()->user())?->isAdministrator(); @endphp
-                                    <div wire:key="comment-{{ $comment->id }}" class="flex gap-2">
+                                    <div wire:key="comment-{{ $comment->id }}" id="comment-{{ $comment->id }}" class="group/comment flex gap-2">
                                         <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-xs font-semibold text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300">
                                             {{ Str::of($comment->user?->name ?? '?')->substr(0, 1)->upper() }}
                                         </span>
@@ -282,9 +282,12 @@
                                             <div class="flex items-center gap-2">
                                                 <span class="text-sm font-medium">{{ $comment->user?->name ?? 'Utilisateur supprimé' }}</span>
                                                 <span class="text-xs text-neutral-400">{{ $comment->created_at->diffForHumans() }}</span>
-                                                @if ($canDelete)
-                                                    <button type="button" wire:click="deleteComment({{ $comment->id }})" class="ml-auto text-xs text-neutral-300 hover:text-red-500">Supprimer</button>
-                                                @endif
+                                                <div class="ml-auto flex items-center gap-2" x-data="{ copied: false }">
+                                                    <button type="button" @click="navigator.clipboard?.writeText('{{ route('boards.show', ['board' => $board->id, 'card' => $card->id]) }}#comment-{{ $comment->id }}'); copied = true; setTimeout(() => copied = false, 1500)" class="text-xs text-neutral-300 opacity-0 transition hover:text-indigo-500 group-hover/comment:opacity-100" title="Copier le lien du commentaire"><span x-text="copied ? 'Copié !' : 'Lien'"></span></button>
+                                                    @if ($canDelete)
+                                                        <button type="button" wire:click="deleteComment({{ $comment->id }})" class="text-xs text-neutral-300 opacity-0 transition hover:text-red-500 group-hover/comment:opacity-100">Supprimer</button>
+                                                    @endif
+                                                </div>
                                             </div>
                                             <div class="mt-0.5 whitespace-pre-wrap break-words text-sm text-neutral-700 dark:text-neutral-300">{!! $this->renderCommentBody($comment->body) !!}</div>
                                         </div>

@@ -18,5 +18,5 @@ Broadcast::channel('board-presence.{board}', function (User $user, Board $board)
         return false;
     }
 
-    return ['id' => $user->id, 'name' => $user->name];
+    return ['id' => $user->id, 'name' => $user->name, 'guest' => false];
 });

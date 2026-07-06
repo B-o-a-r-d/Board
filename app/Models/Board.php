@@ -12,8 +12,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
-#[Fillable(['workspace_id', 'created_by', 'name', 'slug', 'description', 'background', 'visibility', 'position', 'archived_at'])]
+#[Fillable(['workspace_id', 'created_by', 'name', 'slug', 'description', 'background', 'visibility', 'share_token', 'position', 'archived_at'])]
 class Board extends Model
 {
     /** @use HasFactory<BoardFactory> */
@@ -28,6 +29,23 @@ class Board extends Model
             'visibility' => BoardVisibility::class,
             'archived_at' => 'datetime',
         ];
+    }
+
+    public function isShared(): bool
+    {
+        return $this->share_token !== null;
+    }
+
+    public function enableSharing(): void
+    {
+        if ($this->share_token === null) {
+            $this->update(['share_token' => Str::random(32)]);
+        }
+    }
+
+    public function disableSharing(): void
+    {
+        $this->update(['share_token' => null]);
     }
 
     public function workspace(): BelongsTo
