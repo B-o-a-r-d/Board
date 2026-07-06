@@ -26,7 +26,7 @@
         <header class="border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
             <nav class="mx-auto flex h-14 max-w-full items-center justify-between px-4 sm:px-6 lg:px-8">
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-2">
-                    <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">B</span>
+                    <img srcset="{{ asset('logo.png') }}" alt="icon" class="h-10"/>
                     <span class="font-semibold tracking-tight">{{ config('app.name') }}</span>
                 </a>
 
