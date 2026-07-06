@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-#[Fillable(['workspace_id', 'created_by', 'name', 'slug', 'description', 'background', 'visibility', 'share_token', 'position', 'archived_at'])]
+#[Fillable(['workspace_id', 'created_by', 'name', 'slug', 'description', 'background', 'visibility', 'is_template', 'share_token', 'position', 'archived_at'])]
 class Board extends Model
 {
     /** @use HasFactory<BoardFactory> */
@@ -28,7 +28,16 @@ class Board extends Model
         return [
             'visibility' => BoardVisibility::class,
             'archived_at' => 'datetime',
+            'is_template' => 'boolean',
         ];
+    }
+
+    /**
+     * @param  Builder<Board>  $query
+     */
+    public function scopeTemplates(Builder $query): void
+    {
+        $query->where('is_template', true)->whereNull('archived_at');
     }
 
     public function isShared(): bool

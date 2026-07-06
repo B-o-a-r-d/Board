@@ -65,6 +65,9 @@
                         @if (config('board.public_sharing'))
                             <x-context-menu.item icon="share-network" wire:click="openShare">Partager…</x-context-menu.item>
                         @endif
+                        @can('admin')
+                            <x-context-menu.item icon="stack" wire:click="toggleTemplate">{{ $board->is_template ? 'Retirer des modèles' : 'Définir comme modèle' }}</x-context-menu.item>
+                        @endcan
                         <x-context-menu.separator />
                         <div class="px-2 py-1.5">
                             <p class="mb-1.5 text-xs text-neutral-500">Fond du tableau</p>

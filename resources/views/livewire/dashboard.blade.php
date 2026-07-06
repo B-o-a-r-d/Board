@@ -90,4 +90,56 @@
             <p class="text-sm text-neutral-500 dark:text-neutral-400">Vous n'avez pas encore de workspace. Créez-en un pour démarrer.</p>
         </div>
     @endforelse
+
+    {{-- Board templates gallery --}}
+    @if ($templates->isNotEmpty())
+        <section class="space-y-3">
+            <div class="flex items-center gap-2">
+                <x-phosphor-stack class="h-5 w-5 text-neutral-500" />
+                <h2 class="text-base font-semibold">Modèles</h2>
+                <span class="rounded-full bg-neutral-200 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">Global</span>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                @foreach ($templates as $template)
+                    @php $bg = $template->background ? (config('board.backgrounds')[$template->background] ?? null) : null; @endphp
+                    <button
+                        type="button"
+                        wire:key="tpl-{{ $template->id }}"
+                        wire:click="openTemplateModal({{ $template->id }})"
+                        class="group flex h-24 flex-col justify-between rounded-xl border border-neutral-200 p-4 text-left shadow-sm transition hover:border-indigo-400 hover:shadow dark:border-neutral-800"
+                        @if ($bg) style="background: {{ $bg }};" @endif
+                    >
+                        <span class="font-medium {{ $bg ? 'text-white' : 'group-hover:text-indigo-600 dark:group-hover:text-indigo-400' }}">{{ $template->name }}</span>
+                        <span class="inline-flex items-center gap-1 text-xs {{ $bg ? 'text-white/80' : 'text-neutral-400' }}"><x-phosphor-copy class="h-3.5 w-3.5" /> Utiliser ce modèle</span>
+                    </button>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
+    {{-- Use-template modal --}}
+    @if ($templateToUse !== null)
+        <x-modal title="Créer depuis un modèle" max-width="md" on-close="$wire.$set('templateToUse', null)">
+            <form wire:submit="createFromTemplate" class="space-y-4 p-5">
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Nom du board</label>
+                    <input type="text" wire:model="templateBoardName" class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                    @error('templateBoardName') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Workspace de destination</label>
+                    <select wire:model="templateWorkspaceId" class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                        @foreach ($workspaces as $workspace)
+                            <option value="{{ $workspace->id }}">{{ $workspace->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button type="button" @click="$wire.$set('templateToUse', null)" class="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">Annuler</button>
+                    <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Créer le board</button>
+                </div>
+            </form>
+        </x-modal>
+    @endif
 </div>

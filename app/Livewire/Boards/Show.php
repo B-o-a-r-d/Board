@@ -117,6 +117,14 @@ class Show extends Component
         $this->broadcastActivity('board.background');
     }
 
+    public function toggleTemplate(): void
+    {
+        abort_unless(Auth::user()->isAdmin(), 403);
+
+        $this->board->update(['is_template' => ! $this->board->is_template]);
+        $this->dispatch('toast', message: $this->board->is_template ? 'Board défini comme modèle global' : 'Modèle retiré', type: 'success');
+    }
+
     public function deleteBoard(): mixed
     {
         $this->authorize('delete', $this->board);

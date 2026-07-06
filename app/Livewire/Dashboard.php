@@ -6,6 +6,7 @@ use App\Enums\BoardVisibility;
 use App\Enums\Role;
 use App\Models\Board;
 use App\Models\Workspace;
+use App\Services\BoardTemplateService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -79,6 +80,42 @@ class Dashboard extends Component
         $workspace->delete();
     }
 
+    public ?int $templateToUse = null;
+
+    public ?int $templateWorkspaceId = null;
+
+    public string $templateBoardName = '';
+
+    public function openTemplateModal(int $templateId): void
+    {
+        $template = Board::templates()->findOrFail($templateId);
+
+        $this->templateToUse = $template->id;
+        $this->templateBoardName = $template->name;
+        $this->templateWorkspaceId = Auth::user()->workspaces()->min('workspaces.id');
+    }
+
+    public function createFromTemplate(): mixed
+    {
+        if ($this->templateToUse === null) {
+            return null;
+        }
+
+        $template = Board::templates()->findOrFail($this->templateToUse);
+        $workspace = Auth::user()->workspaces()->findOrFail($this->templateWorkspaceId);
+
+        $board = app(BoardTemplateService::class)->instantiate(
+            $template,
+            $workspace,
+            Auth::user(),
+            $this->templateBoardName,
+        );
+
+        $this->templateToUse = null;
+
+        return $this->redirectRoute('boards.show', $board, navigate: true);
+    }
+
     public function createBoard(int $workspaceId): mixed
     {
         $workspace = Auth::user()->workspaces()->findOrFail($workspaceId);
@@ -114,6 +151,7 @@ class Dashboard extends Component
         $workspaces = $user->workspaces()
             ->with(['boards' => function ($query) use ($user) {
                 $query->notArchived()
+                    ->where('is_template', false)
                     ->where(function ($scoped) use ($user) {
                         $scoped->where('visibility', BoardVisibility::Workspace)
                             ->orWhereHas('members', fn ($members) => $members->whereKey($user->getKey()));
@@ -123,6 +161,9 @@ class Dashboard extends Component
             ->orderBy('name')
             ->get();
 
-        return view('livewire.dashboard', ['workspaces' => $workspaces]);
+        return view('livewire.dashboard', [
+            'workspaces' => $workspaces,
+            'templates' => Board::templates()->orderBy('name')->get(),
+        ]);
     }
 }
