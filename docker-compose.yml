@@ -1,0 +1,111 @@
+# Docker Compose stack — targets a Dokploy environment.
+# Dokploy provides the reverse proxy (Traefik) and TLS termination; expose the
+# `web` and `reverb` services to your domains from the Dokploy dashboard.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile
+      target: app
+    image: board-app:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      CONTAINER_ROLE: app
+    volumes:
+      - storage-data:/var/www/html/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "php", "artisan", "db:show", "--quiet"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile
+      target: web
+    image: board-web:latest
+    restart: unless-stopped
+    depends_on:
+      - app
+    volumes:
+      - storage-data:/var/www/html/storage:ro
+    ports:
+      - "8000:80"
+
+  reverb:
+    image: board-app:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      CONTAINER_ROLE: reverb
+    command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
+    depends_on:
+      - app
+    volumes:
+      - storage-data:/var/www/html/storage
+    ports:
+      - "8080:8080"
+
+  queue:
+    image: board-app:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      CONTAINER_ROLE: queue
+    command: ["php", "artisan", "queue:work", "--tries=3", "--timeout=90", "--sleep=1"]
+    depends_on:
+      - app
+    volumes:
+      - storage-data:/var/www/html/storage
+
+  scheduler:
+    image: board-app:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      CONTAINER_ROLE: scheduler
+    command: ["php", "artisan", "schedule:work"]
+    depends_on:
+      - app
+    volumes:
+      - storage-data:/var/www/html/storage
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-board}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_DATABASE:-board}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+  redis-data:
+  storage-data:
