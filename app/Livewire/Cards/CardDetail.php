@@ -317,7 +317,31 @@ class CardDetail extends Component
             return;
         }
 
-        $card->update(['cover_path' => $card->cover_path === $attachment->path ? null : $attachment->path]);
+        $useAsCover = $card->cover_path !== $attachment->path;
+
+        $card->update([
+            'cover_path' => $useAsCover ? $attachment->path : null,
+            'cover_color' => $useAsCover ? null : $card->cover_color,
+        ]);
+        $this->touched('card.cover');
+    }
+
+    public function setCoverColor(string $color): void
+    {
+        $card = $this->guardedCard();
+
+        $card->update([
+            'cover_color' => $card->cover_color === $color ? null : $color,
+            'cover_path' => null,
+        ]);
+        $this->touched('card.cover');
+    }
+
+    public function clearCover(): void
+    {
+        $card = $this->guardedCard();
+
+        $card->update(['cover_path' => null, 'cover_color' => null]);
         $this->touched('card.cover');
     }
 

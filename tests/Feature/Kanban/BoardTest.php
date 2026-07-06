@@ -222,6 +222,19 @@ test('a member can duplicate a card within the same list', function () {
         ->and($copy->members->pluck('id')->all())->toBe([$owner->id]);
 });
 
+test('a member can set and clear a list cover color', function () {
+    ['board' => $board, 'owner' => $owner] = makeBoard();
+    $list = BoardList::factory()->create(['board_id' => $board->id]);
+
+    $component = Livewire::actingAs($owner)->test(Show::class, ['board' => $board]);
+
+    $component->call('setListColor', $list->id, '#3b82f6');
+    expect($list->fresh()->cover_color)->toBe('#3b82f6');
+
+    $component->call('setListColor', $list->id, null);
+    expect($list->fresh()->cover_color)->toBeNull();
+});
+
 test('outsiders are forbidden from the board component', function () {
     ['board' => $board, 'outsider' => $outsider] = makeBoard();
 

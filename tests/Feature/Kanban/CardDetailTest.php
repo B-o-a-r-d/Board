@@ -91,6 +91,26 @@ test('a label can be created and is attached to the card', function () {
         ->and($card->labels()->whereKey($label->id)->exists())->toBeTrue();
 });
 
+test('a solid color cover can be set and cleared on a card', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+
+    $component = Livewire::actingAs($owner)
+        ->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id);
+
+    $component->call('setCoverColor', '#22c55e');
+    expect($card->fresh()->cover_color)->toBe('#22c55e');
+
+    // Selecting the same color again toggles it off.
+    $component->call('setCoverColor', '#22c55e');
+    expect($card->fresh()->cover_color)->toBeNull();
+
+    $component->call('setCoverColor', '#3b82f6');
+    $component->call('clearCover');
+    expect($card->fresh()->cover_color)->toBeNull()
+        ->and($card->fresh()->cover_path)->toBeNull();
+});
+
 test('a label can be renamed, recolored and deleted from the board', function () {
     ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
     $label = $board->labels()->create(['name' => 'Ancien', 'color' => '#000000']);

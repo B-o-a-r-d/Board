@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['board_list_id', 'board_id', 'created_by', 'title', 'description', 'position', 'cover_path', 'due_at', 'completed_at', 'archived_at'])]
+#[Fillable(['board_list_id', 'board_id', 'created_by', 'title', 'description', 'position', 'cover_path', 'cover_color', 'due_at', 'completed_at', 'archived_at'])]
 class Card extends Model
 {
     /** @use HasFactory<CardFactory> */

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['board_id', 'name', 'position', 'archived_at'])]
+#[Fillable(['board_id', 'name', 'cover_color', 'position', 'archived_at'])]
 class BoardList extends Model
 {
     /** @use HasFactory<BoardListFactory> */

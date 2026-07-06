@@ -303,6 +303,23 @@
                             {{ $card->completed_at ? 'Terminée' : 'Marquer terminée' }}
                         </button>
 
+                        {{-- Cover (solid color — an image cover is set from the attachments list) --}}
+                        @php $coverPalette = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b']; @endphp
+                        <div>
+                            <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Couverture</h3>
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                @foreach ($coverPalette as $swatch)
+                                    <button type="button" wire:click="setCoverColor('{{ $swatch }}')" class="h-6 w-6 rounded-md ring-offset-1 hover:ring-2 hover:ring-neutral-400 dark:ring-offset-neutral-900 {{ $card->cover_color === $swatch ? 'ring-2 ring-indigo-500' : '' }}" style="background-color: {{ $swatch }}" title="{{ $swatch }}"></button>
+                                @endforeach
+                                @if ($card->cover_path || $card->cover_color)
+                                    <button type="button" wire:click="clearCover" class="flex h-6 items-center gap-1 rounded-md border border-neutral-300 px-2 text-xs text-neutral-500 hover:text-neutral-700 dark:border-neutral-700 dark:hover:text-neutral-200" title="Retirer la couverture"><x-phosphor-x class="h-3 w-3" /> Retirer</button>
+                                @endif
+                            </div>
+                            @if ($card->cover_path)
+                                <p class="mt-1.5 text-xs text-neutral-400">Une image est utilisée comme couverture (voir Pièces jointes).</p>
+                            @endif
+                        </div>
+
                         {{-- Members --}}
                         <div>
                             <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Membres</h3>
@@ -336,7 +353,7 @@
                                             <button type="button" @click="openAt($event.clientX, $event.clientY)" class="shrink-0 rounded p-1 text-neutral-400 opacity-0 transition hover:bg-neutral-100 hover:text-neutral-700 group-hover/label:opacity-100 dark:hover:bg-neutral-800 dark:hover:text-neutral-200" title="Options du label (clic droit aussi)"><x-phosphor-dots-three class="h-4 w-4" /></button>
                                         </x-slot:trigger>
                                         <x-slot:menu>
-                                            <div class="p-1" x-data="{ name: @js($label->name) }">
+                                            <div class="p-1" x-data="{ name: @js($label->name) }" @click.stop>
                                                 <input
                                                     type="text"
                                                     x-model="name"

@@ -107,6 +107,8 @@
         @endif
     </div>
 
+    @php $coverPalette = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b']; @endphp
+
     {{-- Lists (columns) --}}
     <div
         wire:sort="reorderLists"
@@ -116,8 +118,12 @@
             <div
                 wire:key="list-{{ $list->id }}"
                 wire:sort:item="{{ $list->id }}"
-                class="flex max-h-full w-72 shrink-0 flex-col rounded-xl bg-neutral-200/70 dark:bg-neutral-900"
+                class="flex max-h-full w-72 shrink-0 flex-col overflow-hidden rounded-xl bg-neutral-200/70 dark:bg-neutral-900"
             >
+                @if ($list->cover_color)
+                    <div class="h-2 w-full" style="background-color: {{ $list->cover_color }}"></div>
+                @endif
+
                 {{-- List header (drag handle for column reordering) --}}
                 <x-context-menu wire:sort:handle class="flex cursor-grab items-center justify-between gap-2 px-3 py-2">
                     <x-slot:trigger>
@@ -136,6 +142,16 @@
                     <x-slot:menu>
                         <x-context-menu.item icon="pencil-simple" @click="document.getElementById('list-name-{{ $list->id }}')?.focus()">Renommer</x-context-menu.item>
                         <x-context-menu.item icon="copy" wire:click="duplicateList({{ $list->id }})">Dupliquer</x-context-menu.item>
+                        <x-context-menu.separator />
+                        <div class="px-2 py-1.5">
+                            <p class="mb-1.5 text-xs text-neutral-500">Couleur de la liste</p>
+                            <div class="flex flex-wrap gap-1.5">
+                                @foreach ($coverPalette as $swatch)
+                                    <button type="button" wire:click="setListColor({{ $list->id }}, '{{ $swatch }}')" class="h-5 w-5 rounded-full ring-offset-1 hover:ring-2 hover:ring-neutral-400 dark:ring-offset-neutral-800" style="background-color: {{ $swatch }}" title="{{ $swatch }}"></button>
+                                @endforeach
+                                <button type="button" wire:click="setListColor({{ $list->id }}, null)" class="flex h-5 w-5 items-center justify-center rounded-full border border-neutral-300 text-neutral-400 hover:text-neutral-700 dark:border-neutral-600 dark:hover:text-neutral-200" title="Aucune couleur"><x-phosphor-x class="h-3 w-3" /></button>
+                            </div>
+                        </div>
                         <x-context-menu.separator />
                         <x-context-menu.item icon="archive" variant="danger" wire:click="archiveList({{ $list->id }})" wire:confirm="Archiver cette liste et ses cartes ?">Archiver</x-context-menu.item>
                     </x-slot:menu>
@@ -164,6 +180,8 @@
                                 <x-slot:trigger>
                                     @if ($card->cover_path)
                                         <img src="{{ Storage::disk('public')->url($card->cover_path) }}" alt="" class="h-24 w-full object-cover">
+                                    @elseif ($card->cover_color)
+                                        <div class="h-9 w-full" style="background-color: {{ $card->cover_color }}"></div>
                                     @endif
 
                                     <div class="p-2.5">

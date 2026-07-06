@@ -138,6 +138,14 @@ class Show extends Component
         $this->broadcastActivity('list.renamed');
     }
 
+    public function setListColor(int $listId, ?string $color): void
+    {
+        $this->authorize('view', $this->board);
+
+        $this->listForBoard($listId)->update(['cover_color' => $color ?: null]);
+        $this->broadcastActivity('list.recolored');
+    }
+
     public function archiveList(int $listId): void
     {
         $this->authorize('view', $this->board);
@@ -170,6 +178,7 @@ class Show extends Component
 
         $copy = $this->board->lists()->create([
             'name' => $source->name.' (copie)',
+            'cover_color' => $source->cover_color,
             'position' => (int) $this->board->lists()->max('position') + 1,
         ]);
 
@@ -179,6 +188,8 @@ class Show extends Component
                 'created_by' => Auth::id(),
                 'title' => $card->title,
                 'description' => $card->description,
+                'cover_path' => $card->cover_path,
+                'cover_color' => $card->cover_color,
                 'due_at' => $card->due_at,
                 'position' => $index,
             ]);
@@ -271,6 +282,7 @@ class Show extends Component
             'title' => $card->title.' (copie)',
             'description' => $card->description,
             'cover_path' => $card->cover_path,
+            'cover_color' => $card->cover_color,
             'due_at' => $card->due_at,
             'position' => (int) $card->list->cards()->max('position') + 1,
         ]);
