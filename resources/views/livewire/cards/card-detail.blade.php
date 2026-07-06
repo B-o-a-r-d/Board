@@ -334,9 +334,12 @@
                                         default => $activity->type,
                                     };
                                 @endphp
-                                <div wire:key="activity-{{ $activity->id }}" class="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+                                <div wire:key="activity-{{ $activity->id }}" class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-neutral-500 dark:text-neutral-400">
                                     <span class="font-medium text-neutral-700 dark:text-neutral-300">{{ $activity->user?->name ?? 'Quelqu\'un' }}</span>
                                     <span>{{ $label }}</span>
+                                    @if (Str::startsWith((string) $activity->source, 'mcp:'))
+                                        <span class="inline-flex items-center gap-0.5 rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300"><x-phosphor-robot class="h-3 w-3" /> {{ Str::after($activity->source, 'mcp:') }}</span>
+                                    @endif
                                     <span class="text-neutral-400">· {{ $activity->created_at->diffForHumans() }}</span>
                                 </div>
                             @empty

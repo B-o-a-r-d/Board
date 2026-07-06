@@ -117,4 +117,73 @@
             @endforelse
         </div>
     </section>
+
+    {{-- MCP (Model Context Protocol) --}}
+    <section class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <h2 class="flex items-center gap-2 text-base font-semibold"><x-phosphor-robot class="h-5 w-5" /> Connexion IA (MCP)</h2>
+                <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Branchez un assistant IA (Claude, Codex, Cursor…) sur vos boards via le protocole MCP. Les actions de l'IA respectent vos droits et apparaissent en temps réel dans l'activité.</p>
+            </div>
+            @can('admin')
+                <button type="button" role="switch" aria-label="Activer le MCP pour l'instance" :aria-checked="@js($mcpEnabled)" wire:click="toggleMcp" class="relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition {{ $mcpEnabled ? 'bg-indigo-600' : 'bg-neutral-300 dark:bg-neutral-700' }}">
+                    <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition {{ $mcpEnabled ? 'translate-x-5' : 'translate-x-0.5' }}"></span>
+                </button>
+            @endcan
+        </div>
+
+        @unless ($mcpEnabled)
+            <p class="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+                Le MCP est actuellement <strong>désactivé</strong> pour l'instance. @can('admin') Activez-le avec l'interrupteur ci-dessus. @else Un administrateur doit l'activer. @endcan
+            </p>
+        @else
+            @php
+                $tok = $newToken ?? '<VOTRE_TOKEN>';
+                $configs = [
+                    'Claude Code (.mcp.json)' => '{
+  "mcpServers": {
+    "board": {
+      "type": "http",
+      "url": "'.$mcpEndpoint.'",
+      "headers": { "Authorization": "Bearer '.$tok.'" }
+    }
+  }
+}',
+                    'Claude Desktop (claude_desktop_config.json)' => '{
+  "mcpServers": {
+    "board": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "'.$mcpEndpoint.'", "--header", "Authorization: Bearer '.$tok.'"]
+    }
+  }
+}',
+                    'Codex (~/.codex/config.toml)' => '[mcp_servers.board]
+command = "npx"
+args = ["-y", "mcp-remote", "'.$mcpEndpoint.'", "--header", "Authorization: Bearer '.$tok.'"]',
+                    'Cursor (.cursor/mcp.json)' => '{
+  "mcpServers": {
+    "board": {
+      "url": "'.$mcpEndpoint.'",
+      "headers": { "Authorization": "Bearer '.$tok.'" }
+    }
+  }
+}',
+                ];
+            @endphp
+
+            <div class="mt-4 space-y-3">
+                <p class="text-sm text-neutral-600 dark:text-neutral-300">Endpoint : <code class="rounded bg-neutral-100 px-1.5 py-0.5 text-xs dark:bg-neutral-800">{{ $mcpEndpoint }}</code>@unless ($newToken) — créez d'abord un jeton d'API ci-dessus et remplacez <code class="text-xs">&lt;VOTRE_TOKEN&gt;</code>.@endunless</p>
+
+                @foreach ($configs as $label => $snippet)
+                    <div x-data="{ copied: false }">
+                        <div class="mb-1 flex items-center justify-between">
+                            <span class="text-xs font-semibold uppercase tracking-wide text-neutral-500">{{ $label }}</span>
+                            <button type="button" @click="navigator.clipboard?.writeText($refs.code.textContent); copied = true; setTimeout(() => copied = false, 1500)" class="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"><span x-text="copied ? 'Copié !' : 'Copier'"></span></button>
+                        </div>
+                        <pre x-ref="code" class="overflow-x-auto rounded-lg bg-neutral-900 p-3 font-mono text-xs text-neutral-100 dark:bg-neutral-950">{{ $snippet }}</pre>
+                    </div>
+                @endforeach
+            </div>
+        @endunless
+    </section>
 </div>

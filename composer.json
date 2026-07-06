@@ -14,6 +14,7 @@
         "codeat3/blade-phosphor-icons": "^2.4",
         "laravel/fortify": "^1.36",
         "laravel/framework": "^13.8",
+        "laravel/mcp": "^0.8.2",
         "laravel/reverb": "^1.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",

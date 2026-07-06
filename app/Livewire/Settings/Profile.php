@@ -4,6 +4,7 @@ namespace App\Livewire\Settings;
 
 use App\Actions\Fortify\UpdateUserPassword;
 use App\Actions\Fortify\UpdateUserProfileInformation;
+use App\Models\Setting;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -28,12 +29,24 @@ class Profile extends Component
 
     public ?string $newToken = null;
 
+    public bool $mcpEnabled = false;
+
     public function mount(): void
     {
         $user = Auth::user();
 
         $this->name = $user->name;
         $this->email = $user->email;
+        $this->mcpEnabled = Setting::mcpEnabled();
+    }
+
+    public function toggleMcp(): void
+    {
+        abort_unless(Auth::user()->isAdmin(), 403);
+
+        $this->mcpEnabled = ! $this->mcpEnabled;
+        Setting::set('mcp_enabled', $this->mcpEnabled);
+        $this->dispatch('toast', message: $this->mcpEnabled ? 'MCP activé pour l\'instance' : 'MCP désactivé', type: 'success');
     }
 
     public function createToken(): void
@@ -78,6 +91,7 @@ class Profile extends Component
     {
         return view('livewire.settings.profile', [
             'tokens' => Auth::user()->tokens()->latest()->get(),
+            'mcpEndpoint' => url('/mcp/board'),
         ]);
     }
 }

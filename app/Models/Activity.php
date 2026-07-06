@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['board_id', 'card_id', 'user_id', 'type', 'properties'])]
+#[Fillable(['board_id', 'card_id', 'user_id', 'type', 'source', 'properties'])]
 class Activity extends Model
 {
     /** @use HasFactory<ActivityFactory> */
