@@ -48,9 +48,34 @@ class NotificationsBell extends Component
         Auth::user()->notifications()->whereKey($id)->first()?->markAsRead();
     }
 
+    public function toggleRead(string $id): void
+    {
+        $notification = Auth::user()->notifications()->whereKey($id)->first();
+
+        if (! $notification) {
+            return;
+        }
+
+        if ($notification->read_at) {
+            $notification->update(['read_at' => null]);
+        } else {
+            $notification->markAsRead();
+        }
+    }
+
     public function markAllRead(): void
     {
         Auth::user()->unreadNotifications->markAsRead();
+    }
+
+    public function deleteNotification(string $id): void
+    {
+        Auth::user()->notifications()->whereKey($id)->delete();
+    }
+
+    public function deleteAll(): void
+    {
+        Auth::user()->notifications()->delete();
     }
 
     public function render(): View

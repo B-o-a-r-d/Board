@@ -92,6 +92,35 @@ test('deep-linking to a card opens its modal on the board', function () {
         ->assertSee('Commentaires'); // this heading only renders inside the open card modal
 });
 
+test('a single notification can be toggled read then unread', function () {
+    ['owner' => $owner, 'member' => $member, 'card' => $card] = makeCardContext();
+    $member->notify(new CardNotification($card, 'assigned', $owner));
+    $id = $member->notifications()->first()->id;
+
+    $component = Livewire::actingAs($member)->test(NotificationsBell::class);
+
+    $component->call('toggleRead', $id);
+    expect($member->fresh()->unreadNotifications()->count())->toBe(0);
+
+    $component->call('toggleRead', $id);
+    expect($member->fresh()->unreadNotifications()->count())->toBe(1);
+});
+
+test('a single notification can be deleted and all can be cleared', function () {
+    ['owner' => $owner, 'member' => $member, 'card' => $card] = makeCardContext();
+    $member->notify(new CardNotification($card, 'assigned', $owner));
+    $member->notify(new CardNotification($card, 'mention', $owner));
+    $id = $member->notifications()->first()->id;
+
+    $component = Livewire::actingAs($member)->test(NotificationsBell::class);
+
+    $component->call('deleteNotification', $id);
+    expect($member->fresh()->notifications()->count())->toBe(1);
+
+    $component->call('deleteAll');
+    expect($member->fresh()->notifications()->count())->toBe(0);
+});
+
 test('the bell lists notifications and marks them read', function () {
     ['board' => $board, 'owner' => $owner, 'member' => $member, 'card' => $card] = makeCardContext();
 
