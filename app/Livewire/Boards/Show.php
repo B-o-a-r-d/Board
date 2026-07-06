@@ -7,6 +7,7 @@ use App\Models\Activity;
 use App\Models\Board;
 use App\Models\BoardList;
 use App\Models\Card;
+use App\Models\CardTemplate;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Auth;
@@ -295,6 +296,38 @@ class Show extends Component
         $this->broadcastActivity('card.created');
     }
 
+    public function addCardFromTemplate(int $listId, int $templateId): void
+    {
+        $this->authorize('view', $this->board);
+
+        $list = $this->listForBoard($listId);
+        $template = CardTemplate::findOrFail($templateId);
+
+        $card = $list->cards()->create([
+            'board_id' => $this->board->id,
+            'created_by' => Auth::id(),
+            'title' => $template->title,
+            'description' => $template->description,
+            'cover_color' => $template->cover_color,
+            'position' => (int) $list->cards()->max('position') + 1,
+        ]);
+
+        foreach ($template->checklists ?? [] as $checklistIndex => $checklist) {
+            $newChecklist = $card->checklists()->create([
+                'title' => $checklist['title'] ?? 'Checklist',
+                'position' => $checklistIndex,
+            ]);
+
+            foreach ($checklist['items'] ?? [] as $itemIndex => $content) {
+                $newChecklist->items()->create(['content' => $content, 'position' => $itemIndex]);
+            }
+        }
+
+        $this->logActivity('card.created', $card->id, ['title' => $card->title, 'from_template' => true]);
+        $this->broadcastActivity('card.created');
+        $this->dispatch('toast', message: 'Carte créée depuis le modèle', type: 'success');
+    }
+
     public function archiveCard(int $cardId): void
     {
         $this->authorize('view', $this->board);
@@ -444,6 +477,7 @@ class Show extends Component
             'members' => $this->board->members,
             'archivedLists' => $this->showTrash ? $this->board->lists()->whereNotNull('archived_at')->orderBy('name')->get() : collect(),
             'archivedCards' => $this->showTrash ? $this->board->cards()->whereNotNull('archived_at')->with('list')->latest('archived_at')->get() : collect(),
+            'cardTemplates' => CardTemplate::orderBy('name')->get(),
         ]);
     }
 

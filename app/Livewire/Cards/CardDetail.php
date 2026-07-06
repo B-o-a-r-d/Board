@@ -6,6 +6,7 @@ use App\Events\BoardActivity;
 use App\Models\Activity;
 use App\Models\Board;
 use App\Models\Card;
+use App\Models\CardTemplate;
 use App\Models\ChecklistItem;
 use App\Models\LinkPreview;
 use App\Models\User;
@@ -375,6 +376,27 @@ class CardDetail extends Component
 
         $card->update(['cover_path' => null, 'cover_color' => null]);
         $this->touched('card.cover');
+    }
+
+    public function saveAsTemplate(): void
+    {
+        abort_unless(Auth::user()->isAdmin(), 403);
+
+        $card = $this->guardedCard()->load('checklists.items');
+
+        CardTemplate::create([
+            'created_by' => Auth::id(),
+            'name' => $card->title,
+            'title' => $card->title,
+            'description' => $card->description,
+            'cover_color' => $card->cover_color,
+            'checklists' => $card->checklists->map(fn ($checklist) => [
+                'title' => $checklist->title,
+                'items' => $checklist->items->pluck('content')->all(),
+            ])->all(),
+        ]);
+
+        $this->dispatch('toast', message: 'Carte enregistrée comme modèle global', type: 'success');
     }
 
     public function addComment(): void

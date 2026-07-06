@@ -351,6 +351,12 @@
                             {{ $card->completed_at ? 'Terminée' : 'Marquer terminée' }}
                         </button>
 
+                        @can('admin')
+                            <button type="button" wire:click="saveAsTemplate" class="flex w-full items-center justify-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">
+                                <x-phosphor-stack class="h-4 w-4" /> Enregistrer comme modèle
+                            </button>
+                        @endcan
+
                         {{-- Cover (solid color — an image cover is set from the attachments list) --}}
                         @php $coverPalette = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b']; @endphp
                         <div>

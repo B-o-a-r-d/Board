@@ -280,14 +280,32 @@
                 </ul>
 
                 {{-- Add card --}}
-                <form wire:submit="addCard({{ $list->id }})" class="p-2">
-                    <input
-                        type="text"
-                        wire:model="newCardTitle.{{ $list->id }}"
-                        placeholder="+ Ajouter une carte"
-                        class="w-full rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-sm placeholder-neutral-500 hover:bg-white focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:hover:bg-neutral-800 dark:focus:bg-neutral-800"
-                    >
-                </form>
+                <div class="flex items-center gap-1 p-2">
+                    <form wire:submit="addCard({{ $list->id }})" class="min-w-0 flex-1">
+                        <input
+                            type="text"
+                            wire:model="newCardTitle.{{ $list->id }}"
+                            placeholder="+ Ajouter une carte"
+                            class="w-full rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-sm placeholder-neutral-500 hover:bg-white focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:hover:bg-neutral-800 dark:focus:bg-neutral-800"
+                        >
+                    </form>
+
+                    @if ($cardTemplates->isNotEmpty())
+                        <x-context-menu class="shrink-0">
+                            <x-slot:trigger>
+                                <button type="button" @click="openAt($event.clientX, $event.clientY)" class="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-300 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200" title="Ajouter depuis un modèle">
+                                    <x-phosphor-stack class="h-4 w-4" />
+                                </button>
+                            </x-slot:trigger>
+                            <x-slot:menu>
+                                <p class="px-2 py-1 text-xs font-medium uppercase tracking-wide text-neutral-400">Depuis un modèle</p>
+                                @foreach ($cardTemplates as $template)
+                                    <x-context-menu.item icon="cards" wire:click="addCardFromTemplate({{ $list->id }}, {{ $template->id }})">{{ $template->name }}</x-context-menu.item>
+                                @endforeach
+                            </x-slot:menu>
+                        </x-context-menu>
+                    @endif
+                </div>
             </div>
         @endforeach
 
