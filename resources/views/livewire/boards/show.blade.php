@@ -67,7 +67,7 @@
                         @endif
                         @can('delete', $board)
                             <x-context-menu.separator />
-                            <x-context-menu.item icon="trash" variant="danger" wire:click="deleteBoard" wire:confirm="Supprimer définitivement ce board et tout son contenu ? Cette action est irréversible.">Supprimer le board</x-context-menu.item>
+                            <x-context-menu.item icon="trash" variant="danger" @click="$store.confirm.open({ title: 'Supprimer le board', message: 'Supprimer définitivement ce board et tout son contenu ? Cette action est irréversible.', confirmLabel: 'Supprimer', danger: true }).then(ok => ok && $wire.deleteBoard())">Supprimer le board</x-context-menu.item>
                         @endcan
                     </x-slot:menu>
                 </x-context-menu>
@@ -162,7 +162,7 @@
                             </div>
                         </div>
                         <x-context-menu.separator />
-                        <x-context-menu.item icon="archive" variant="danger" wire:click="archiveList({{ $list->id }})" wire:confirm="Archiver cette liste et ses cartes ?">Archiver</x-context-menu.item>
+                        <x-context-menu.item icon="archive" variant="danger" @click="$store.confirm.open({ title: 'Archiver la liste', message: 'Archiver cette liste et ses cartes ?', confirmLabel: 'Archiver' }).then(ok => ok && $wire.archiveList({{ $list->id }}))">Archiver</x-context-menu.item>
                     </x-slot:menu>
                 </x-context-menu>
 
@@ -278,13 +278,7 @@
 
     {{-- Trash / archive panel --}}
     @if ($showTrash)
-        <div class="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:p-8">
-            <div class="w-full max-w-2xl rounded-2xl bg-white shadow-xl dark:bg-neutral-900">
-                <div class="flex items-center justify-between border-b border-neutral-100 px-5 py-3 dark:border-neutral-800">
-                    <h2 class="text-base font-semibold">Corbeille</h2>
-                    <button type="button" wire:click="toggleTrash" class="rounded-full p-1.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"><x-phosphor-x class="h-4 w-4" /></button>
-                </div>
-
+        <x-modal title="Corbeille" max-width="2xl" on-close="$wire.toggleTrash()">
                 <div class="max-h-[70vh] space-y-6 overflow-y-auto p-5">
                     {{-- Archived lists --}}
                     <div>
@@ -294,7 +288,7 @@
                                 <span class="font-medium">{{ $list->name }}</span>
                                 <div class="flex shrink-0 gap-3">
                                     <button type="button" wire:click="restoreList({{ $list->id }})" class="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">Restaurer</button>
-                                    <button type="button" wire:click="deleteListPermanently({{ $list->id }})" wire:confirm="Supprimer définitivement cette liste et ses cartes ?" class="text-xs text-neutral-400 hover:text-red-500">Supprimer définitivement</button>
+                                    <button type="button" @click="$store.confirm.open({ title: 'Supprimer la liste', message: 'Supprimer définitivement cette liste et ses cartes ?', confirmLabel: 'Supprimer', danger: true }).then(ok => ok && $wire.deleteListPermanently({{ $list->id }}))" class="text-xs text-neutral-400 hover:text-red-500">Supprimer définitivement</button>
                                 </div>
                             </div>
                         @empty
@@ -313,7 +307,7 @@
                                 </div>
                                 <div class="flex shrink-0 gap-3">
                                     <button type="button" wire:click="restoreCard({{ $card->id }})" class="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">Restaurer</button>
-                                    <button type="button" wire:click="deleteCardPermanently({{ $card->id }})" wire:confirm="Supprimer définitivement cette carte ?" class="text-xs text-neutral-400 hover:text-red-500">Supprimer définitivement</button>
+                                    <button type="button" @click="$store.confirm.open({ title: 'Supprimer la carte', message: 'Supprimer définitivement cette carte ?', confirmLabel: 'Supprimer', danger: true }).then(ok => ok && $wire.deleteCardPermanently({{ $card->id }}))" class="text-xs text-neutral-400 hover:text-red-500">Supprimer définitivement</button>
                                 </div>
                             </div>
                         @empty
@@ -321,18 +315,15 @@
                         @endforelse
                     </div>
                 </div>
-            </div>
-        </div>
+        </x-modal>
     @endif
 
     {{-- Share panel --}}
     @if ($showShare)
-        <div class="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:p-8" wire:key="share-modal">
-            <div class="w-full max-w-lg rounded-2xl bg-white shadow-xl dark:bg-neutral-900">
-                <div class="flex items-center justify-between border-b border-neutral-100 px-5 py-3 dark:border-neutral-800">
-                    <h2 class="flex items-center gap-2 text-base font-semibold"><x-phosphor-share-network class="h-5 w-5" /> Partager le tableau</h2>
-                    <button type="button" wire:click="$set('showShare', false)" class="rounded-full p-1.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"><x-phosphor-x class="h-4 w-4" /></button>
-                </div>
+        <x-modal max-width="lg" on-close="$wire.$set('showShare', false)" wire:key="share-modal">
+            <x-slot:header>
+                <span class="flex items-center gap-2"><x-phosphor-share-network class="h-5 w-5" /> Partager le tableau</span>
+            </x-slot:header>
 
                 <div class="space-y-4 p-5">
                     <div class="flex items-start justify-between gap-4">
@@ -371,8 +362,7 @@
                         <p class="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-500 dark:bg-neutral-800/50 dark:text-neutral-400">Activez le partage pour générer un lien. Le désactiver invalide immédiatement l'ancien lien.</p>
                     @endif
                 </div>
-            </div>
-        </div>
+        </x-modal>
     @endif
 
     <livewire:cards.card-detail :board="$board" wire:key="card-detail-{{ $board->id }}" />

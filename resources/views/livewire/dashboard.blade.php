@@ -56,7 +56,7 @@
                     <x-context-menu.item icon="pencil-simple" wire:click="startRenameWorkspace({{ $workspace->id }})">Renommer</x-context-menu.item>
                     @can('delete', $workspace)
                         <x-context-menu.separator />
-                        <x-context-menu.item icon="trash" variant="danger" wire:click="deleteWorkspace({{ $workspace->id }})" wire:confirm="Supprimer ce workspace et tous ses boards ? Cette action est irréversible.">Supprimer</x-context-menu.item>
+                        <x-context-menu.item icon="trash" variant="danger" @click="$store.confirm.open({ title: 'Supprimer le workspace', message: 'Supprimer ce workspace et tous ses boards ? Cette action est irréversible.', confirmLabel: 'Supprimer', danger: true }).then(ok => ok && $wire.deleteWorkspace({{ $workspace->id }}))">Supprimer</x-context-menu.item>
                     @endcan
                 </x-slot:menu>
             </x-context-menu>

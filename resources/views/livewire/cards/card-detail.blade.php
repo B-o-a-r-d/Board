@@ -1,7 +1,6 @@
 <div>
     @if ($showModal && $card)
-        <div class="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:p-8" wire:key="card-modal-{{ $card->id }}">
-            <div class="relative w-full max-w-3xl rounded-2xl bg-white shadow-xl dark:bg-neutral-900" @click.outside="$wire.close()">
+        <x-modal max-width="3xl" on-close="$wire.close()" wire:key="card-modal-{{ $card->id }}">
                 {{-- Cover --}}
                 @if ($card->cover_path)
                     <img src="{{ Storage::disk('public')->url($card->cover_path) }}" alt="" class="h-40 w-full rounded-t-2xl object-cover">
@@ -416,7 +415,7 @@
                                                 @endforeach
                                             </div>
                                             <x-context-menu.separator />
-                                            <x-context-menu.item icon="trash" variant="danger" wire:click="deleteLabel({{ $label->id }})" wire:confirm="Supprimer ce label du board ?">Supprimer</x-context-menu.item>
+                                            <x-context-menu.item icon="trash" variant="danger" @click="$store.confirm.open({ title: 'Supprimer le label', message: 'Supprimer ce label du board ?', confirmLabel: 'Supprimer', danger: true }).then(ok => ok && $wire.deleteLabel({{ $label->id }}))">Supprimer</x-context-menu.item>
                                         </x-slot:menu>
                                     </x-context-menu>
                                 @endforeach
@@ -429,7 +428,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+        </x-modal>
     @endif
 </div>

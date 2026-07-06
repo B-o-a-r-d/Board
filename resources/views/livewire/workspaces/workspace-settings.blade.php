@@ -99,8 +99,7 @@
                 </p>
                 <button
                     type="button"
-                    wire:click="deleteWorkspace"
-                    wire:confirm="Supprimer définitivement « {{ $workspace->name }} » et tout son contenu ? Cette action est irréversible."
+                    @click="$store.confirm.open({ title: 'Supprimer le workspace', message: @js('Supprimer définitivement « '.$workspace->name.' » et tout son contenu ? Cette action est irréversible.'), confirmLabel: 'Supprimer', danger: true }).then(ok => ok && $wire.deleteWorkspace())"
                     class="shrink-0 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500"
                 >
                     Supprimer le workspace
