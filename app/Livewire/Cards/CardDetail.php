@@ -116,6 +116,25 @@ class CardDetail extends Component
         $this->touched('card.updated');
     }
 
+    public function saveDueDate(): void
+    {
+        $card = $this->guardedCard();
+
+        $data = $this->validate(['dueAt' => ['nullable', 'date']]);
+
+        $card->update(['due_at' => $data['dueAt'] ? Carbon::parse($data['dueAt']) : null]);
+        $this->touched('card.updated');
+    }
+
+    public function clearDueDate(): void
+    {
+        $card = $this->guardedCard();
+
+        $card->update(['due_at' => null]);
+        $this->dueAt = null;
+        $this->touched('card.updated');
+    }
+
     public function toggleComplete(): void
     {
         $card = $this->guardedCard();

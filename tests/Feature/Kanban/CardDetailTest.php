@@ -91,6 +91,20 @@ test('a label can be created and is attached to the card', function () {
         ->and($card->labels()->whereKey($label->id)->exists())->toBeTrue();
 });
 
+test('a due date can be saved and cleared from the sidebar', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+
+    $component = Livewire::actingAs($owner)
+        ->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id);
+
+    $component->set('dueAt', '2026-08-01T09:30')->call('saveDueDate')->assertHasNoErrors();
+    expect($card->fresh()->due_at->format('Y-m-d H:i'))->toBe('2026-08-01 09:30');
+
+    $component->call('clearDueDate')->assertSet('dueAt', null);
+    expect($card->fresh()->due_at)->toBeNull();
+});
+
 test('a solid color cover can be set and cleared on a card', function () {
     ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
 

@@ -5,6 +5,8 @@
                 {{-- Cover --}}
                 @if ($card->cover_path)
                     <img src="{{ Storage::disk('public')->url($card->cover_path) }}" alt="" class="h-40 w-full rounded-t-2xl object-cover">
+                @elseif ($card->cover_color)
+                    <div class="h-20 w-full rounded-t-2xl" style="background-color: {{ $card->cover_color }}"></div>
                 @endif
 
                 <button type="button" wire:click="close" class="absolute right-3 top-3 rounded-full bg-white/80 p-1.5 text-neutral-600 shadow hover:bg-white dark:bg-neutral-800/80 dark:text-neutral-300"><x-phosphor-x class="h-5 w-5" /></button>
@@ -28,11 +30,6 @@
                                     placeholder="Ajoutez une description en markdown…"
                                     class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800"
                                 ></textarea>
-                            </div>
-
-                            <div>
-                                <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-neutral-500">Échéance</label>
-                                <input type="datetime-local" wire:model="dueAt" class="rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
                             </div>
 
                             <button type="submit" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">Enregistrer</button>
@@ -318,6 +315,35 @@
                             @if ($card->cover_path)
                                 <p class="mt-1.5 text-xs text-neutral-400">Une image est utilisée comme couverture (voir Pièces jointes).</p>
                             @endif
+                        </div>
+
+                        {{-- Due date (toggleable, like Members / Labels) --}}
+                        @php $dueOverdue = $card->due_at && ! $card->completed_at && $card->due_at->isPast(); @endphp
+                        <div x-data="{ enabled: @js((bool) $card->due_at) }">
+                            <div class="mb-2 flex items-center justify-between">
+                                <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Échéance</h3>
+                                <button
+                                    type="button"
+                                    role="switch"
+                                    :aria-checked="enabled"
+                                    @click="enabled = ! enabled; if (! enabled) { $wire.clearDueDate() }"
+                                    class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition"
+                                    :class="enabled ? 'bg-indigo-600' : 'bg-neutral-300 dark:bg-neutral-700'"
+                                >
+                                    <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition" :class="enabled ? 'translate-x-4' : 'translate-x-0.5'"></span>
+                                </button>
+                            </div>
+                            <div x-show="enabled" x-cloak class="space-y-1.5">
+                                <input type="datetime-local" wire:model="dueAt" wire:change="saveDueDate" class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                @if ($card->due_at)
+                                    <div class="flex items-center justify-between text-xs">
+                                        <span class="{{ $dueOverdue ? 'font-medium text-red-600 dark:text-red-400' : 'text-neutral-500' }}">
+                                            {{ $card->due_at->translatedFormat('d M Y \à H:i') }}{{ $dueOverdue ? ' · en retard' : '' }}
+                                        </span>
+                                        <button type="button" wire:click="clearDueDate" @click="enabled = false" class="text-neutral-400 hover:text-red-500">Retirer</button>
+                                    </div>
+                                @endif
+                            </div>
                         </div>
 
                         {{-- Members --}}
