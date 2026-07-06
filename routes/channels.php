@@ -12,3 +12,11 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 Broadcast::channel('board.{board}', function (User $user, Board $board) {
     return Gate::forUser($user)->allows('view', $board);
 });
+
+Broadcast::channel('board-presence.{board}', function (User $user, Board $board) {
+    if (! Gate::forUser($user)->allows('view', $board)) {
+        return false;
+    }
+
+    return ['id' => $user->id, 'name' => $user->name];
+});

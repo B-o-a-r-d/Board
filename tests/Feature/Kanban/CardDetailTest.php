@@ -1,39 +1,10 @@
 <?php
 
-use App\Enums\Role;
 use App\Livewire\Cards\CardDetail;
-use App\Models\Board;
-use App\Models\BoardList;
-use App\Models\Card;
-use App\Models\Checklist;
 use App\Models\Label;
-use App\Models\User;
-use App\Models\Workspace;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
-
-/**
- * @return array{board: Board, owner: User, member: User, outsider: User, card: Card}
- */
-function makeCardContext(): array
-{
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $outsider = User::factory()->create();
-
-    $workspace = Workspace::factory()->create(['owner_id' => $owner->id]);
-    $workspace->members()->attach($owner, ['role' => Role::Owner->value]);
-
-    $board = Board::factory()->create(['workspace_id' => $workspace->id]);
-    $board->members()->attach($owner, ['role' => Role::Owner->value]);
-    $board->members()->attach($member, ['role' => Role::Member->value]);
-
-    $list = BoardList::factory()->create(['board_id' => $board->id]);
-    $card = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id]);
-
-    return compact('board', 'owner', 'member', 'outsider', 'card');
-}
 
 test('opening a card loads its data into the modal', function () {
     ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();

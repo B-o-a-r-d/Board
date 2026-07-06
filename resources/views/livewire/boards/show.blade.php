@@ -1,10 +1,31 @@
 <div class="flex h-[calc(100vh-8rem)] flex-col">
     {{-- Board header --}}
-    <div class="mb-4 flex items-center justify-between">
+    <div class="mb-4 flex items-start justify-between gap-4">
         <div>
-            <a href="{{ route('dashboard') }}" class="text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200">← Tableau de bord</a>
+{{--            <a href="{{ route('dashboard') }}" wire:navigate class="text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200">← Tableau de bord</a>--}}
             <h1 class="text-2xl font-semibold tracking-tight">{{ $board->name }}</h1>
             <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ $board->workspace->name }}</p>
+        </div>
+
+        {{-- Presence: who is currently viewing this board --}}
+        <div
+            class="flex items-center -space-x-2"
+            x-data='{
+                users: [],
+                init() {
+                    if (! window.Echo) return;
+                    const channel = "board-presence.{{ $board->id }}";
+                    window.Echo.join(channel)
+                        .here((u) => { this.users = u; })
+                        .joining((u) => { this.users = [...this.users, u]; })
+                        .leaving((u) => { this.users = this.users.filter((x) => x.id !== u.id); });
+                    document.addEventListener("livewire:navigating", () => window.Echo.leave(channel), { once: true });
+                }
+            }'
+        >
+            <template x-for="u in users" :key="u.id">
+                <span class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700 ring-2 ring-white dark:bg-indigo-500/20 dark:text-indigo-300 dark:ring-neutral-950" :title="u.name" x-text="u.name.charAt(0).toUpperCase()"></span>
+            </template>
         </div>
     </div>
 

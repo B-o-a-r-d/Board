@@ -1,5 +1,11 @@
 <?php
 
+use App\Enums\Role;
+use App\Models\Board;
+use App\Models\BoardList;
+use App\Models\Card;
+use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -44,7 +50,26 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * Build a board with an owner (admin), a plain member, an outsider and a card.
+ *
+ * @return array{board: Board, owner: User, member: User, outsider: User, card: Card}
+ */
+function makeCardContext(): array
 {
-    // ..
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+    $outsider = User::factory()->create();
+
+    $workspace = Workspace::factory()->create(['owner_id' => $owner->id]);
+    $workspace->members()->attach($owner, ['role' => Role::Owner->value]);
+
+    $board = Board::factory()->create(['workspace_id' => $workspace->id]);
+    $board->members()->attach($owner, ['role' => Role::Owner->value]);
+    $board->members()->attach($member, ['role' => Role::Member->value]);
+
+    $list = BoardList::factory()->create(['board_id' => $board->id]);
+    $card = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id]);
+
+    return compact('board', 'owner', 'member', 'outsider', 'card');
 }

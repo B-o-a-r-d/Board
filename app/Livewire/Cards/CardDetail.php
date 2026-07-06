@@ -11,6 +11,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -42,10 +43,27 @@ class CardDetail extends Component
 
     public mixed $upload = null;
 
+    public string $newComment = '';
+
     public function mount(Board $board): void
     {
         $this->board = $board;
     }
+
+    /**
+     * Re-render the open modal when a remote board activity is broadcast,
+     * so comments and edits from other users appear live.
+     *
+     * @return array<string, string>
+     */
+    public function getListeners(): array
+    {
+        return [
+            "echo-private:board.{$this->board->id},.board.activity" => 'onRemoteActivity',
+        ];
+    }
+
+    public function onRemoteActivity(): void {}
 
     #[On('open-card')]
     public function openCard(int $cardId): void
@@ -253,6 +271,56 @@ class CardDetail extends Component
         $this->touched('card.cover');
     }
 
+    public function addComment(): void
+    {
+        $card = $this->guardedCard();
+
+        $data = $this->validate(['newComment' => ['required', 'string', 'max:5000']]);
+
+        $card->comments()->create([
+            'user_id' => Auth::id(),
+            'body' => $data['newComment'],
+        ]);
+
+        $this->reset('newComment');
+        $this->touched('comment.created');
+    }
+
+    public function deleteComment(int $commentId): void
+    {
+        $card = $this->guardedCard();
+        $comment = $card->comments()->findOrFail($commentId);
+
+        abort_unless(
+            $comment->user_id === Auth::id() || $this->board->memberRole(Auth::user())?->isAdministrator(),
+            403,
+        );
+
+        $comment->delete();
+        $this->touched('comment.deleted');
+    }
+
+    /**
+     * Escape a comment body and highlight @mentions of board members.
+     */
+    public function renderCommentBody(string $body): string
+    {
+        $members = $this->board->members;
+
+        return (string) preg_replace_callback('/@([\p{L}0-9_-]+)/u', function (array $match) use ($members) {
+            $token = $match[1];
+
+            $member = $members->first(fn ($user) => Str::slug($user->name) === Str::slug($token)
+                || Str::lower(Str::before($user->name, ' ')) === Str::lower($token));
+
+            if ($member) {
+                return '<span class="rounded bg-indigo-100 px-1 font-medium text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">@'.e($member->name).'</span>';
+            }
+
+            return $match[0];
+        }, e($body));
+    }
+
     private function guardedCard(): Card
     {
         $this->authorize('view', $this->board);
@@ -270,7 +338,7 @@ class CardDetail extends Component
     {
         $card = $this->cardId
             ? $this->board->cards()
-                ->with(['members', 'labels', 'checklists.items', 'attachments.uploader'])
+                ->with(['members', 'labels', 'checklists.items', 'attachments.uploader', 'comments.user'])
                 ->find($this->cardId)
             : null;
 

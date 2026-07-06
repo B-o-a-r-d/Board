@@ -117,6 +117,161 @@
                             <div wire:loading wire:target="upload" class="text-xs text-neutral-500">Chargement du fichier…</div>
                             @error('upload') <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                         </div>
+
+                        {{-- Comments (real-time) --}}
+                        <div
+                            class="space-y-3"
+                            data-uname="{{ auth()->user()->name }}"
+                            data-members="{{ json_encode($boardMembers->map(fn ($m) => ['id' => $m->id, 'name' => $m->name, 'slug' => \Illuminate\Support\Str::slug($m->name)])->values()) }}"
+                            x-data='{
+                                typers: {},
+                                channel: null,
+                                timers: {},
+                                lastPing: 0,
+                                members: [],
+                                open: false,
+                                items: [],
+                                index: 0,
+                                top: 0,
+                                left: 0,
+                                init() {
+                                    this.members = JSON.parse(this.$root.dataset.members || "[]");
+                                    if (! window.Echo) return;
+                                    this.channel = window.Echo.private("board.{{ $board->id }}");
+                                    this.channel.listenForWhisper("typing", (e) => {
+                                        if (e.cardId !== {{ $card->id }} || e.id === {{ auth()->id() }}) return;
+                                        this.typers = { ...this.typers, [e.id]: e.name };
+                                        clearTimeout(this.timers[e.id]);
+                                        this.timers[e.id] = setTimeout(() => {
+                                            let t = { ...this.typers }; delete t[e.id]; this.typers = t;
+                                        }, 2500);
+                                    });
+                                },
+                                ping() {
+                                    const now = Date.now();
+                                    if (now - this.lastPing < 800) return;
+                                    this.lastPing = now;
+                                    if (this.channel) this.channel.whisper("typing", { id: {{ auth()->id() }}, name: this.$root.dataset.uname, cardId: {{ $card->id }} });
+                                },
+                                onInput() {
+                                    this.ping();
+                                    this.detect();
+                                },
+                                detect() {
+                                    const el = this.$refs.input;
+                                    const before = el.value.substring(0, el.selectionStart);
+                                    const m = before.match(/(?:^|\s)@([\p{L}0-9_-]*)$/u);
+                                    if (! m) { this.open = false; return; }
+                                    const q = m[1].toLowerCase();
+                                    this.items = this.members.filter(u => u.name.toLowerCase().includes(q) || u.slug.includes(q)).slice(0, 6);
+                                    this.index = 0;
+                                    this.open = this.items.length > 0;
+                                    if (this.open) this.position();
+                                },
+                                position() {
+                                    const el = this.$refs.input;
+                                    const div = document.createElement("div");
+                                    const s = getComputedStyle(el);
+                                    ["fontFamily","fontSize","fontWeight","lineHeight","letterSpacing","paddingTop","paddingRight","paddingBottom","paddingLeft","borderTopWidth","borderLeftWidth","boxSizing","textTransform"].forEach(p => div.style[p] = s[p]);
+                                    div.style.position = "absolute"; div.style.visibility = "hidden"; div.style.whiteSpace = "pre-wrap"; div.style.wordWrap = "break-word"; div.style.width = el.offsetWidth + "px";
+                                    div.textContent = el.value.substring(0, el.selectionStart);
+                                    const marker = document.createElement("span"); marker.textContent = "​"; div.appendChild(marker);
+                                    document.body.appendChild(div);
+                                    this.top = marker.offsetTop - el.scrollTop;
+                                    this.left = Math.min(marker.offsetLeft, el.offsetWidth - 180);
+                                    document.body.removeChild(div);
+                                },
+                                onKeydown(e) {
+                                    if (! this.open) return;
+                                    if (e.key === "ArrowDown") { e.preventDefault(); this.index = (this.index + 1) % this.items.length; }
+                                    else if (e.key === "ArrowUp") { e.preventDefault(); this.index = (this.index - 1 + this.items.length) % this.items.length; }
+                                    else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); this.pick(this.items[this.index]); }
+                                    else if (e.key === "Escape") { this.open = false; }
+                                },
+                                pick(member) {
+                                    const el = this.$refs.input;
+                                    const caret = el.selectionStart;
+                                    const before = el.value.substring(0, caret);
+                                    const after = el.value.substring(caret);
+                                    const replaced = before.replace(/@([\p{L}0-9_-]*)$/u, "@" + member.slug + " ");
+                                    el.value = replaced + after;
+                                    const pos = replaced.length;
+                                    el.dispatchEvent(new Event("input"));
+                                    this.$nextTick(() => { el.focus(); el.setSelectionRange(pos, pos); });
+                                    this.open = false;
+                                },
+                                get typingText() {
+                                    const n = Object.values(this.typers);
+                                    if (! n.length) return "";
+                                    return n.length === 1 ? n[0] + " écrit…" : n.length + " personnes écrivent…";
+                                }
+                            }'
+                        >
+                            <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Commentaires</h3>
+
+                            <form wire:submit="addComment" class="space-y-2">
+                                <div class="relative">
+                                    <textarea
+                                        x-ref="input"
+                                        wire:model="newComment"
+                                        @input="onInput()"
+                                        @keydown="onKeydown($event)"
+                                        @blur="setTimeout(() => open = false, 150)"
+                                        rows="2"
+                                        placeholder="Écrire un commentaire… (mentionnez avec @nom)"
+                                        class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800"
+                                    ></textarea>
+
+                                    {{-- Mention autocomplete popup (anchored above the caret) --}}
+                                    <div
+                                        x-show="open"
+                                        x-cloak
+                                        class="absolute z-50 w-48 -translate-y-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
+                                        :style="`top: ${top - 4}px; left: ${left}px;`"
+                                    >
+                                        <template x-for="(u, i) in items" :key="u.id">
+                                            <button
+                                                type="button"
+                                                @mousedown.prevent="pick(u)"
+                                                @mouseenter="index = i"
+                                                class="flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm"
+                                                :class="i === index ? 'bg-indigo-50 dark:bg-indigo-500/10' : ''"
+                                            >
+                                                <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-semibold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300" x-text="u.name.charAt(0).toUpperCase()"></span>
+                                                <span class="truncate" x-text="u.name"></span>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs text-indigo-500" x-text="typingText"></span>
+                                    <button type="submit" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">Commenter</button>
+                                </div>
+                                @error('newComment') <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                            </form>
+
+                            <div class="space-y-3">
+                                @foreach ($card->comments as $comment)
+                                    @php $canDelete = $comment->user_id === auth()->id() || $board->memberRole(auth()->user())?->isAdministrator(); @endphp
+                                    <div wire:key="comment-{{ $comment->id }}" class="flex gap-2">
+                                        <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-xs font-semibold text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300">
+                                            {{ Str::of($comment->user?->name ?? '?')->substr(0, 1)->upper() }}
+                                        </span>
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-sm font-medium">{{ $comment->user?->name ?? 'Utilisateur supprimé' }}</span>
+                                                <span class="text-xs text-neutral-400">{{ $comment->created_at->diffForHumans() }}</span>
+                                                @if ($canDelete)
+                                                    <button type="button" wire:click="deleteComment({{ $comment->id }})" class="ml-auto text-xs text-neutral-300 hover:text-red-500">Supprimer</button>
+                                                @endif
+                                            </div>
+                                            <div class="mt-0.5 whitespace-pre-wrap break-words text-sm text-neutral-700 dark:text-neutral-300">{!! $this->renderCommentBody($comment->body) !!}</div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
                     </div>
 
                     {{-- Sidebar --}}
