@@ -10,3 +10,4 @@ import './echo';
 import './context-menu';
 import './markdown-editor';
 import './public-presence';
+import './dropzone';

@@ -130,12 +130,7 @@
                                     </div>
                                 @endforeach
                             </div>
-                            <form wire:submit="saveAttachment" class="flex items-center gap-2">
-                                <input type="file" wire:model="upload" class="text-sm">
-                                <button type="submit" class="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">Téléverser</button>
-                            </form>
-                            <div wire:loading wire:target="upload" class="text-xs text-neutral-500">Chargement du fichier…</div>
-                            @error('upload') <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                            <x-dropzone model="upload" action="saveAttachment" accept="image/*,video/*" />
                         </div>
 
                         {{-- Comments (real-time) --}}

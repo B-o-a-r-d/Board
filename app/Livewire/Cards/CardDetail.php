@@ -304,7 +304,7 @@ class CardDetail extends Component
         $card = $this->guardedCard();
 
         $this->validate([
-            'upload' => ['required', 'file', 'max:51200', 'mimes:jpg,jpeg,png,gif,webp,svg,mp4,webm,mov,ogg'],
+            'upload' => ['required', 'file', 'max:204800', 'mimes:jpg,jpeg,png,gif,webp,svg,mp4,webm,mov,ogg'],
         ]);
 
         $path = $this->upload->store("attachments/{$this->board->id}", 'public');
