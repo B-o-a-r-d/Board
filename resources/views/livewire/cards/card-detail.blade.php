@@ -69,8 +69,7 @@
                                     <ul class="space-y-1">
                                         @foreach ($checklist->items as $item)
                                             <li wire:key="item-{{ $item->id }}" class="group flex items-center gap-2 text-sm">
-                                                <input type="checkbox" @checked($item->is_completed) wire:click="toggleChecklistItem({{ $item->id }})" class="rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500 dark:border-neutral-600 dark:bg-neutral-800">
-                                                <span class="{{ $item->is_completed ? 'text-neutral-400 line-through' : '' }}">{{ $item->content }}</span>
+                                                <x-checkbox :checked="$item->is_completed" :label="$item->content" wire:click="toggleChecklistItem({{ $item->id }})" wire:key="cbitem-{{ $item->id }}-{{ $item->is_completed }}" />
                                                 <button type="button" wire:click="deleteChecklistItem({{ $item->id }})" class="ml-auto text-xs text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-red-500"><x-phosphor-x class="h-3.5 w-3.5" /></button>
                                             </li>
                                         @endforeach

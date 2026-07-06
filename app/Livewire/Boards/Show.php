@@ -55,6 +55,32 @@ class Show extends Component
         return $this->search !== '' || $this->filterLabel !== null || $this->filterMember !== null || $this->filterDue !== '';
     }
 
+    public bool $renamingBoard = false;
+
+    public string $boardNameDraft = '';
+
+    public function startRenameBoard(): void
+    {
+        $this->authorize('update', $this->board);
+
+        $this->boardNameDraft = $this->board->name;
+        $this->renamingBoard = true;
+    }
+
+    public function renameBoard(): void
+    {
+        $this->authorize('update', $this->board);
+
+        $name = trim($this->boardNameDraft);
+
+        if ($name !== '') {
+            $this->board->update(['name' => $name]);
+            $this->broadcastActivity('board.renamed');
+        }
+
+        $this->renamingBoard = false;
+    }
+
     public function deleteBoard(): mixed
     {
         $this->authorize('delete', $this->board);

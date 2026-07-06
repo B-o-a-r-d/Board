@@ -5,7 +5,19 @@
             <a href="{{ route('dashboard') }}" wire:navigate class="flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200">
                 <x-phosphor-arrow-left class="h-4 w-4" /> Tableau de bord
             </a>
-            <h1 class="text-2xl font-semibold tracking-tight">{{ $board->name }}</h1>
+            @if ($renamingBoard)
+                <input
+                    type="text"
+                    wire:model="boardNameDraft"
+                    wire:keydown.enter="renameBoard"
+                    wire:keydown.escape="$set('renamingBoard', false)"
+                    wire:blur="renameBoard"
+                    x-init="$el.focus(); $el.select()"
+                    class="w-full rounded-lg border border-indigo-300 bg-white px-2 py-0.5 text-2xl font-semibold tracking-tight focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-indigo-700 dark:bg-neutral-800"
+                >
+            @else
+                <h1 class="text-2xl font-semibold tracking-tight">{{ $board->name }}</h1>
+            @endif
             <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ $board->workspace->name }}</p>
         </div>
 
@@ -35,17 +47,21 @@
                 <x-phosphor-trash class="h-4 w-4" /> Corbeille
             </button>
 
-            @can('delete', $board)
-                <div x-data="{ menu: false }" class="relative">
-                    <button type="button" @click="menu = ! menu" @click.outside="menu = false" class="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800" title="Options du board">
-                        <x-phosphor-dots-three-vertical class="h-4 w-4" />
-                    </button>
-                    <div x-show="menu" x-transition x-cloak class="absolute right-0 z-30 mt-2 w-48 rounded-xl border border-neutral-200 bg-white py-1 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
-                        <button type="button" wire:click="deleteBoard" wire:confirm="Supprimer définitivement ce board et tout son contenu ? Cette action est irréversible." class="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-neutral-100 dark:text-red-400 dark:hover:bg-neutral-800">
-                            Supprimer le board
+            @can('update', $board)
+                <x-context-menu>
+                    <x-slot:trigger>
+                        <button type="button" @click="openAt($event.clientX, $event.clientY)" class="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800" title="Options du board (clic droit aussi)">
+                            <x-phosphor-dots-three-vertical class="h-4 w-4" />
                         </button>
-                    </div>
-                </div>
+                    </x-slot:trigger>
+                    <x-slot:menu>
+                        <x-context-menu.item icon="pencil-simple" wire:click="startRenameBoard">Renommer</x-context-menu.item>
+                        @can('delete', $board)
+                            <x-context-menu.separator />
+                            <x-context-menu.item icon="trash" variant="danger" wire:click="deleteBoard" wire:confirm="Supprimer définitivement ce board et tout son contenu ? Cette action est irréversible.">Supprimer le board</x-context-menu.item>
+                        @endcan
+                    </x-slot:menu>
+                </x-context-menu>
             @endcan
         </div>
     </div>

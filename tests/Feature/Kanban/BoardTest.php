@@ -139,6 +139,31 @@ test('a board admin can delete the board and its content', function () {
         ->and(Card::whereKey($card->id)->exists())->toBeFalse();
 });
 
+test('a board admin can rename the board', function () {
+    ['board' => $board, 'owner' => $owner] = makeBoard();
+
+    Livewire::actingAs($owner)
+        ->test(Show::class, ['board' => $board])
+        ->call('startRenameBoard')
+        ->assertSet('renamingBoard', true)
+        ->set('boardNameDraft', 'Board Renommé')
+        ->call('renameBoard')
+        ->assertSet('renamingBoard', false);
+
+    expect($board->fresh()->name)->toBe('Board Renommé');
+});
+
+test('a plain board member cannot rename the board', function () {
+    ['board' => $board] = makeBoard();
+    $member = User::factory()->create();
+    $board->members()->attach($member, ['role' => Role::Member->value]);
+
+    Livewire::actingAs($member)
+        ->test(Show::class, ['board' => $board])
+        ->call('startRenameBoard')
+        ->assertForbidden();
+});
+
 test('a plain board member cannot delete the board', function () {
     ['board' => $board] = makeBoard();
     $member = User::factory()->create();

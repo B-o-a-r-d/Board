@@ -7,3 +7,4 @@
  */
 
 import './echo';
+import './context-menu';
