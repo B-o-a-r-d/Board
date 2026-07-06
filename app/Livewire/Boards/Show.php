@@ -1,0 +1,206 @@
+<?php
+
+namespace App\Livewire\Boards;
+
+use App\Events\BoardActivity;
+use App\Models\Board;
+use App\Models\BoardList;
+use App\Models\Card;
+use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Layout;
+use Livewire\Component;
+
+#[Layout('components.layouts.app')]
+class Show extends Component
+{
+    public Board $board;
+
+    public string $newListName = '';
+
+    /** @var array<int, string> */
+    public array $newCardTitle = [];
+
+    public function mount(Board $board): void
+    {
+        $this->authorize('view', $board);
+
+        $this->board = $board;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getListeners(): array
+    {
+        return [
+            "echo-private:board.{$this->board->id},.board.activity" => 'onBoardActivity',
+        ];
+    }
+
+    /**
+     * Broadcast events simply trigger a re-render, which re-queries fresh data.
+     */
+    public function onBoardActivity(): void {}
+
+    public function addList(): void
+    {
+        $this->authorize('view', $this->board);
+
+        $data = $this->validate([
+            'newListName' => ['required', 'string', 'max:255'],
+        ]);
+
+        $this->board->lists()->create([
+            'name' => $data['newListName'],
+            'position' => (int) $this->board->lists()->max('position') + 1,
+        ]);
+
+        $this->newListName = '';
+        $this->broadcastActivity('list.created');
+    }
+
+    public function renameList(int $listId, string $name): void
+    {
+        $this->authorize('view', $this->board);
+
+        $name = trim($name);
+
+        if ($name === '') {
+            return;
+        }
+
+        $this->listForBoard($listId)->update(['name' => $name]);
+        $this->broadcastActivity('list.renamed');
+    }
+
+    public function deleteList(int $listId): void
+    {
+        $this->authorize('view', $this->board);
+
+        $this->listForBoard($listId)->delete();
+        $this->broadcastActivity('list.deleted');
+    }
+
+    public function reorderLists(int $id, int $position): void
+    {
+        $this->authorize('view', $this->board);
+
+        $ids = $this->board->lists()
+            ->where('id', '!=', $id)
+            ->orderBy('position')
+            ->pluck('id')
+            ->all();
+
+        $position = max(0, min($position, count($ids)));
+        array_splice($ids, $position, 0, [$id]);
+
+        foreach ($ids as $index => $listId) {
+            BoardList::whereKey($listId)->update(['position' => $index]);
+        }
+
+        $this->broadcastActivity('list.reordered');
+    }
+
+    public function addCard(int $listId): void
+    {
+        $this->authorize('view', $this->board);
+
+        $title = trim($this->newCardTitle[$listId] ?? '');
+
+        if ($title === '') {
+            return;
+        }
+
+        $list = $this->listForBoard($listId);
+
+        $list->cards()->create([
+            'board_id' => $this->board->id,
+            'created_by' => Auth::id(),
+            'title' => $title,
+            'position' => (int) $list->cards()->max('position') + 1,
+        ]);
+
+        $this->newCardTitle[$listId] = '';
+        $this->broadcastActivity('card.created');
+    }
+
+    public function deleteCard(int $cardId): void
+    {
+        $this->authorize('view', $this->board);
+
+        $this->cardForBoard($cardId)->delete();
+        $this->broadcastActivity('card.deleted');
+    }
+
+    public function moveCard(int $id, int $position, int $listId): void
+    {
+        $this->authorize('view', $this->board);
+
+        $card = $this->cardForBoard($id);
+        $targetList = $this->listForBoard($listId);
+        $sourceListId = $card->board_list_id;
+
+        $card->board_list_id = $targetList->id;
+        $card->save();
+
+        $this->resequence($targetList->id, $id, $position);
+
+        if ($sourceListId !== $targetList->id) {
+            $this->resequence($sourceListId);
+        }
+
+        $this->broadcastActivity('card.moved');
+    }
+
+    /**
+     * Renumber a list's cards, optionally inserting a moved card at a position.
+     */
+    private function resequence(int $listId, ?int $movedId = null, ?int $position = null): void
+    {
+        $ids = Card::query()
+            ->where('board_list_id', $listId)
+            ->when($movedId !== null, fn ($query) => $query->where('id', '!=', $movedId))
+            ->orderBy('position')
+            ->pluck('id')
+            ->all();
+
+        if ($movedId !== null && $position !== null) {
+            $position = max(0, min($position, count($ids)));
+            array_splice($ids, $position, 0, [$movedId]);
+        }
+
+        foreach ($ids as $index => $cardId) {
+            Card::whereKey($cardId)->update(['position' => $index]);
+        }
+    }
+
+    private function listForBoard(int $listId): BoardList
+    {
+        return $this->board->lists()->findOrFail($listId);
+    }
+
+    private function cardForBoard(int $cardId): Card
+    {
+        return $this->board->cards()->findOrFail($cardId);
+    }
+
+    private function broadcastActivity(string $action): void
+    {
+        broadcast(new BoardActivity($this->board->id, $action, Auth::id()))->toOthers();
+    }
+
+    public function render(): View
+    {
+        $lists = $this->board->lists()
+            ->with([
+                'cards' => fn ($query) => $query->orderBy('position'),
+                'cards.members',
+                'cards.labels',
+            ])
+            ->orderBy('position')
+            ->get();
+
+        return view('livewire.boards.show', ['lists' => $lists]);
+    }
+}
