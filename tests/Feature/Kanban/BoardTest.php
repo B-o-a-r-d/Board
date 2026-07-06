@@ -7,6 +7,8 @@ use App\Models\BoardList;
 use App\Models\Card;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 /**
@@ -167,6 +169,27 @@ test('a board admin can set and clear the board background', function () {
 
     $component->call('setBackground', null);
     expect($board->fresh()->background)->toBeNull();
+});
+
+test('a board admin can upload a background image which replaces the preset', function () {
+    Storage::fake('public');
+    ['board' => $board, 'owner' => $owner] = makeBoard();
+    $board->update(['background' => 'ocean']);
+
+    Livewire::actingAs($owner)
+        ->test(Show::class, ['board' => $board])
+        ->set('backgroundUpload', UploadedFile::fake()->image('bg.jpg'))
+        ->call('uploadBackground')
+        ->assertHasNoErrors();
+
+    $board->refresh();
+    expect($board->background_image)->not->toBeNull()
+        ->and($board->background)->toBeNull();
+    Storage::disk('public')->assertExists($board->background_image);
+
+    // Choosing a preset clears the uploaded image.
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])->call('setBackground', 'forest');
+    expect($board->fresh()->background_image)->toBeNull()->and($board->fresh()->background)->toBe('forest');
 });
 
 test('a plain board member cannot rename the board', function () {

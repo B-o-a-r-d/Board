@@ -72,16 +72,7 @@
                         @can('admin')
                             <x-context-menu.item icon="stack" wire:click="toggleTemplate">{{ $board->is_template ? 'Retirer des modèles' : 'Définir comme modèle' }}</x-context-menu.item>
                         @endcan
-                        <x-context-menu.separator />
-                        <div class="px-2 py-1.5">
-                            <p class="mb-1.5 text-xs text-neutral-500">Fond du tableau</p>
-                            <div class="flex flex-wrap gap-1.5">
-                                @foreach (config('board.backgrounds') as $bgKey => $bgCss)
-                                    <button type="button" wire:click="setBackground('{{ $bgKey }}')" class="h-6 w-6 rounded-md ring-offset-1 hover:ring-2 hover:ring-neutral-400 dark:ring-offset-neutral-800 {{ $board->background === $bgKey ? 'ring-2 ring-indigo-500' : '' }}" style="background: {{ $bgCss }}" title="{{ ucfirst($bgKey) }}"></button>
-                                @endforeach
-                                <button type="button" wire:click="setBackground(null)" class="flex h-6 w-6 items-center justify-center rounded-md border border-neutral-300 text-neutral-400 hover:text-neutral-700 dark:border-neutral-600 dark:hover:text-neutral-200" title="Aucun fond"><x-phosphor-x class="h-3.5 w-3.5" /></button>
-                            </div>
-                        </div>
+                        <x-context-menu.item icon="image" wire:click="openBackground">Fond du tableau…</x-context-menu.item>
                         <x-context-menu.separator />
                         <x-context-menu.item icon="file-csv" @click="window.location.href = '{{ route('boards.export', ['board' => $board->id, 'format' => 'csv']) }}'">Exporter en CSV</x-context-menu.item>
                         <x-context-menu.item icon="file-xls" @click="window.location.href = '{{ route('boards.export', ['board' => $board->id, 'format' => 'xlsx']) }}'">Exporter en XLSX</x-context-menu.item>
@@ -139,7 +130,7 @@
 
     @php
         $coverPalette = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'];
-        $boardBg = $board->background ? (config('board.backgrounds')[$board->background] ?? null) : null;
+        $boardBg = $board->backgroundStyle();
     @endphp
 
     {{-- Lists (columns) --}}
@@ -416,6 +407,39 @@
                         <p class="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-500 dark:bg-neutral-800/50 dark:text-neutral-400">Activez le partage pour générer un lien. Le désactiver invalide immédiatement l'ancien lien.</p>
                     @endif
                 </div>
+        </x-modal>
+    @endif
+
+    {{-- Board background panel --}}
+    @if ($showBackground)
+        <x-modal max-width="lg" on-close="$wire.$set('showBackground', false)">
+            <x-slot:header>
+                <span class="flex items-center gap-2"><x-phosphor-image class="h-5 w-5" /> Fond du tableau</span>
+            </x-slot:header>
+
+            <div class="space-y-4 p-5">
+                @if ($board->background_image)
+                    <div class="relative overflow-hidden rounded-lg">
+                        <img src="{{ Storage::disk('public')->url($board->background_image) }}" alt="" class="h-32 w-full object-cover">
+                        <button type="button" wire:click="setBackground(null)" class="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70" title="Retirer l'image"><x-phosphor-x class="h-4 w-4" /></button>
+                    </div>
+                @endif
+
+                <div>
+                    <p class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Dégradés</p>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach (config('board.backgrounds') as $bgKey => $bgCss)
+                            <button type="button" wire:click="setBackground('{{ $bgKey }}')" class="h-9 w-9 rounded-lg ring-offset-2 hover:ring-2 hover:ring-neutral-400 dark:ring-offset-neutral-900 {{ $board->background === $bgKey ? 'ring-2 ring-indigo-500' : '' }}" style="background: {{ $bgCss }}" title="{{ ucfirst($bgKey) }}"></button>
+                        @endforeach
+                        <button type="button" wire:click="setBackground(null)" class="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-400 hover:text-neutral-700 dark:border-neutral-600 dark:hover:text-neutral-200" title="Aucun fond"><x-phosphor-x class="h-4 w-4" /></button>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Image personnalisée</p>
+                    <x-dropzone model="backgroundUpload" action="uploadBackground" accept="image/*" hint="Image de fond · 10 Mo max" />
+                </div>
+            </div>
         </x-modal>
     @endif
 

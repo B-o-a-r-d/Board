@@ -24,7 +24,7 @@
         </div>
     </div>
 
-    @php $boardBg = $board->background ? (config('board.backgrounds')[$board->background] ?? null) : null; @endphp
+    @php $boardBg = $board->backgroundStyle(); @endphp
 
     {{-- Lists (columns) --}}
     <div

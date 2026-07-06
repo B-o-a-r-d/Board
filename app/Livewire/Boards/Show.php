@@ -14,10 +14,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Layout('components.layouts.app')]
 class Show extends Component
 {
+    use WithFileUploads;
+
     public Board $board;
 
     public string $newListName = '';
@@ -107,6 +110,17 @@ class Show extends Component
         }
     }
 
+    public bool $showBackground = false;
+
+    public mixed $backgroundUpload = null;
+
+    public function openBackground(): void
+    {
+        $this->authorize('update', $this->board);
+
+        $this->showBackground = true;
+    }
+
     public function setBackground(?string $key): void
     {
         $this->authorize('update', $this->board);
@@ -115,8 +129,25 @@ class Show extends Component
             return;
         }
 
-        $this->board->update(['background' => $key]);
+        // A gradient preset (or "none") replaces any uploaded image.
+        $this->board->update(['background' => $key, 'background_image' => null]);
         $this->broadcastActivity('board.background');
+    }
+
+    public function uploadBackground(): void
+    {
+        $this->authorize('update', $this->board);
+
+        $this->validate([
+            'backgroundUpload' => ['required', 'image', 'max:10240'],
+        ]);
+
+        $path = $this->backgroundUpload->store("board-backgrounds/{$this->board->id}", 'public');
+
+        $this->board->update(['background_image' => $path, 'background' => null]);
+        $this->reset('backgroundUpload');
+        $this->broadcastActivity('board.background');
+        $this->dispatch('toast', message: 'Fond du board mis à jour', type: 'success');
     }
 
     public function toggleTemplate(): void

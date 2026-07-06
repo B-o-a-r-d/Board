@@ -12,9 +12,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-#[Fillable(['workspace_id', 'created_by', 'name', 'slug', 'description', 'background', 'visibility', 'is_template', 'share_token', 'position', 'archived_at'])]
+#[Fillable(['workspace_id', 'created_by', 'name', 'slug', 'description', 'background', 'background_image', 'visibility', 'is_template', 'share_token', 'position', 'archived_at'])]
 class Board extends Model
 {
     /** @use HasFactory<BoardFactory> */
@@ -55,6 +56,23 @@ class Board extends Model
     public function disableSharing(): void
     {
         $this->update(['share_token' => null]);
+    }
+
+    /**
+     * CSS background value for the board surface: an uploaded image takes
+     * precedence over a gradient preset; null means no custom background.
+     */
+    public function backgroundStyle(): ?string
+    {
+        if ($this->background_image) {
+            return "url('".Storage::disk('public')->url($this->background_image)."') center / cover no-repeat";
+        }
+
+        if ($this->background) {
+            return config('board.backgrounds')[$this->background] ?? null;
+        }
+
+        return null;
     }
 
     public function workspace(): BelongsTo

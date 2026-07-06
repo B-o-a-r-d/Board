@@ -372,21 +372,30 @@
                             </div>
                         @endif
 
-                        {{-- Cover (solid color — an image cover is set from the attachments list) --}}
+                        {{-- Cover: solid color, or an uploaded image --}}
                         @php $coverPalette = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b']; @endphp
                         <div>
                             <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Couverture</h3>
+
+                            @if ($card->cover_path)
+                                <div class="relative mb-2 overflow-hidden rounded-lg">
+                                    <img src="{{ Storage::disk('public')->url($card->cover_path) }}" alt="" class="h-24 w-full object-cover">
+                                    <button type="button" wire:click="clearCover" class="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70" title="Retirer la couverture"><x-phosphor-x class="h-3.5 w-3.5" /></button>
+                                </div>
+                            @endif
+
                             <div class="flex flex-wrap items-center gap-1.5">
                                 @foreach ($coverPalette as $swatch)
                                     <button type="button" wire:click="setCoverColor('{{ $swatch }}')" class="h-6 w-6 rounded-md ring-offset-1 hover:ring-2 hover:ring-neutral-400 dark:ring-offset-neutral-900 {{ $card->cover_color === $swatch ? 'ring-2 ring-indigo-500' : '' }}" style="background-color: {{ $swatch }}" title="{{ $swatch }}"></button>
                                 @endforeach
-                                @if ($card->cover_path || $card->cover_color)
+                                @if ($card->cover_color && ! $card->cover_path)
                                     <button type="button" wire:click="clearCover" class="flex h-6 items-center gap-1 rounded-md border border-neutral-300 px-2 text-xs text-neutral-500 hover:text-neutral-700 dark:border-neutral-700 dark:hover:text-neutral-200" title="Retirer la couverture"><x-phosphor-x class="h-3 w-3" /> Retirer</button>
                                 @endif
                             </div>
-                            @if ($card->cover_path)
-                                <p class="mt-1.5 text-xs text-neutral-400">Une image est utilisée comme couverture (voir Pièces jointes).</p>
-                            @endif
+
+                            <div class="mt-2">
+                                <x-dropzone model="coverUpload" action="uploadCover" accept="image/*" hint="Image de couverture · 10 Mo max" />
+                            </div>
                         </div>
 
                         {{-- Due date (toggleable, like Members / Labels) --}}

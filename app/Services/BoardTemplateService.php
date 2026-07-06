@@ -36,6 +36,7 @@ class BoardTemplateService
                 'name' => $boardName,
                 'slug' => Str::slug($boardName).'-'.Str::lower(Str::random(6)),
                 'background' => $template->background,
+                'background_image' => $template->background_image,
                 'visibility' => BoardVisibility::Private,
                 'is_template' => false,
                 'position' => (int) $workspace->boards()->max('position') + 1,

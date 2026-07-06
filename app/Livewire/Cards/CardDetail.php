@@ -50,6 +50,8 @@ class CardDetail extends Component
 
     public mixed $upload = null;
 
+    public mixed $coverUpload = null;
+
     public string $newComment = '';
 
     public function mount(Board $board): void
@@ -377,6 +379,20 @@ class CardDetail extends Component
 
         $card->update(['cover_path' => null, 'cover_color' => null]);
         $this->touched('card.cover');
+    }
+
+    public function uploadCover(): void
+    {
+        $card = $this->guardedCard();
+
+        $this->validate(['coverUpload' => ['required', 'image', 'max:10240']]);
+
+        $path = $this->coverUpload->store("covers/{$this->board->id}", 'public');
+
+        $card->update(['cover_path' => $path, 'cover_color' => null]);
+        $this->reset('coverUpload');
+        $this->touched('card.cover');
+        $this->dispatch('toast', message: 'Couverture mise à jour', type: 'success');
     }
 
     public function saveAsTemplate(): void

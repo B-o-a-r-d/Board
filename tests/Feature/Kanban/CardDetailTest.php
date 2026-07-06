@@ -117,6 +117,24 @@ test('a due date can be saved and cleared from the sidebar', function () {
     expect($card->fresh()->due_at)->toBeNull();
 });
 
+test('an uploaded image cover is set and clears the color cover', function () {
+    Storage::fake('public');
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+    $card->update(['cover_color' => '#3b82f6']);
+
+    Livewire::actingAs($owner)
+        ->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->set('coverUpload', UploadedFile::fake()->image('cover.jpg'))
+        ->call('uploadCover')
+        ->assertHasNoErrors();
+
+    $card->refresh();
+    expect($card->cover_path)->not->toBeNull()
+        ->and($card->cover_color)->toBeNull();
+    Storage::disk('public')->assertExists($card->cover_path);
+});
+
 test('a solid color cover can be set and cleared on a card', function () {
     ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
 
