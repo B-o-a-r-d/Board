@@ -114,7 +114,7 @@
                         <li
                             wire:key="card-{{ $card->id }}"
                             wire:sort:item="{{ $card->id }}"
-                            class="group cursor-grab overflow-hidden rounded-lg border border-neutral-200 bg-white text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-800"
+                            class="group shrink-0 cursor-grab overflow-hidden rounded-lg border border-neutral-200 bg-white text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-800"
                         >
                             @if ($card->cover_path)
                                 <img src="{{ Storage::disk('public')->url($card->cover_path) }}" alt="" class="h-24 w-full object-cover">

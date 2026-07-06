@@ -27,6 +27,11 @@
                 <span class="rounded-full bg-neutral-200 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
                     {{ $workspace->memberRole(auth()->user())?->label() }}
                 </span>
+                @can('view', $workspace)
+                    <a href="{{ route('workspaces.settings', $workspace) }}" wire:navigate class="ml-auto flex items-center gap-1 text-xs text-neutral-500 hover:text-indigo-600 dark:text-neutral-400 dark:hover:text-indigo-400" title="Paramètres du workspace">
+                        <x-phosphor-gear class="h-4 w-4" /> Membres
+                    </a>
+                @endcan
             </div>
 
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
