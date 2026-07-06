@@ -255,6 +255,11 @@ class Show extends Component
         }
 
         $this->broadcastActivity('list.reordered');
+
+        // Optimistic UI: SortableJS already moved the DOM to the final order,
+        // so skip our own re-render to avoid a morph flicker. Other viewers
+        // still re-render from the broadcast.
+        $this->skipRender();
     }
 
     public function addCard(int $listId): void
@@ -351,6 +356,11 @@ class Show extends Component
         }
 
         $this->broadcastActivity('card.moved');
+
+        // Optimistic UI: the card is already in place client-side; skip the
+        // acting user's re-render to avoid a morph flicker (others re-render
+        // from the broadcast).
+        $this->skipRender();
     }
 
     /**

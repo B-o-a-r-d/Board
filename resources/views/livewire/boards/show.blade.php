@@ -143,6 +143,13 @@
             <div
                 wire:key="list-{{ $list->id }}"
                 wire:sort:item="{{ $list->id }}"
+                x-data="{ cardCount: {{ $list->cards->count() }} }"
+                x-init="$nextTick(() => {
+                    if (! $refs.cards) return;
+                    const update = () => cardCount = $refs.cards.querySelectorAll(':scope > li').length;
+                    new MutationObserver(update).observe($refs.cards, { childList: true });
+                    update();
+                })"
                 class="flex max-h-full w-72 shrink-0 flex-col overflow-hidden rounded-xl bg-neutral-200/70 dark:bg-neutral-900"
             >
                 @if ($list->cover_color)
@@ -160,7 +167,7 @@
                                 wire:change="renameList({{ $list->id }}, $event.target.value)"
                                 class="w-full min-w-0 truncate rounded bg-transparent px-1 py-0.5 text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:focus:bg-neutral-800"
                             >
-                            <span class="shrink-0 rounded-full bg-neutral-300/70 px-1.5 py-0.5 text-xs font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">{{ $list->cards->count() }}</span>
+                            <span class="shrink-0 rounded-full bg-neutral-300/70 px-1.5 py-0.5 text-xs font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400" x-text="cardCount">{{ $list->cards->count() }}</span>
                         </div>
                         <button type="button" wire:sort:ignore @click="openAt($event.clientX, $event.clientY)" class="shrink-0 rounded p-1 text-neutral-400 hover:bg-neutral-300 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200" title="Options de la liste (clic droit aussi)"><x-phosphor-dots-three class="h-4 w-4" /></button>
                     </x-slot:trigger>
@@ -184,6 +191,7 @@
 
                 {{-- Cards --}}
                 <ul
+                    x-ref="cards"
                     wire:sort="moveCard"
                     wire:sort:group="cards"
                     wire:sort:group-id="{{ $list->id }}"
