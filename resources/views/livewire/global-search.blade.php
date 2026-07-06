@@ -32,7 +32,7 @@
                 <div class="py-1">
                     <p class="px-4 py-1 text-xs font-medium uppercase tracking-wide text-neutral-400">Cartes</p>
                     @foreach ($cards as $card)
-                        <a href="{{ route('boards.show', ['board' => $card->board_id, 'card' => $card->id]) }}" wire:navigate @click="focused = false" class="block px-4 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800">
+                        <a href="{{ route('boards.show', ['board' => $card->board, 'card' => $card->public_id]) }}" wire:navigate @click="focused = false" class="block px-4 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800">
                             <p class="truncate text-sm">{{ $card->title }}</p>
                             <p class="truncate text-xs text-neutral-400">{{ $card->board->name }}</p>
                         </a>

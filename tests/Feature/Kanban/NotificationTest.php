@@ -78,7 +78,7 @@ test('clicking a notification marks it read and redirects to its card', function
     Livewire::actingAs($member)
         ->test(NotificationsBell::class)
         ->call('openNotification', $id)
-        ->assertRedirect(route('boards.show', ['board' => $board->id, 'card' => $card->id]));
+        ->assertRedirect(route('boards.show', ['board' => $board->public_id, 'card' => $card->public_id]));
 
     expect($member->fresh()->unreadNotifications()->count())->toBe(0);
 });
@@ -87,7 +87,7 @@ test('deep-linking to a card opens its modal on the board', function () {
     ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
 
     $this->actingAs($owner)
-        ->get(route('boards.show', ['board' => $board, 'card' => $card]))
+        ->get(route('boards.show', ['board' => $board, 'card' => $card->public_id]))
         ->assertOk()
         ->assertSee('Commentaires'); // this heading only renders inside the open card modal
 });

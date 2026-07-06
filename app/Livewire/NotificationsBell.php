@@ -2,6 +2,8 @@
 
 namespace App\Livewire;
 
+use App\Models\Board;
+use App\Models\Card;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
@@ -37,9 +39,16 @@ class NotificationsBell extends Component
 
         $data = $notification->data;
 
+        $board = Board::find($data['board_id']);
+        $card = Card::find($data['card_id']);
+
+        if (! $board || ! $card) {
+            return null;
+        }
+
         return $this->redirectRoute('boards.show', [
-            'board' => $data['board_id'],
-            'card' => $data['card_id'],
+            'board' => $board->public_id,
+            'card' => $card->public_id,
         ], navigate: true);
     }
 

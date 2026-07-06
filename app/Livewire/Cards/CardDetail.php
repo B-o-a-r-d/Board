@@ -58,11 +58,11 @@ class CardDetail extends Component
     {
         $this->board = $board;
 
-        // Deep-link: open a card directly when arriving via a notification (?card=ID).
-        $cardId = (int) request()->query('card');
+        // Deep-link: open a card directly via ?card=<public_id> (notifications, copied links).
+        $cardKey = (string) request()->query('card');
 
-        if ($cardId > 0 && $this->board->cards()->whereKey($cardId)->exists()) {
-            $this->openCard($cardId);
+        if ($cardKey !== '' && $card = $this->board->cards()->where('public_id', $cardKey)->first()) {
+            $this->openCard($card->id);
         }
     }
 

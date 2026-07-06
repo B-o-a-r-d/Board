@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\BoardVisibility;
 use App\Enums\Role;
+use App\Models\Concerns\HasPublicId;
 use Database\Factories\BoardFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,7 +20,7 @@ use Illuminate\Support\Str;
 class Board extends Model
 {
     /** @use HasFactory<BoardFactory> */
-    use HasFactory;
+    use HasFactory, HasPublicId;
 
     /**
      * @return array<string, string>

@@ -18,6 +18,7 @@ class LabelResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'public_id' => $this->public_id,
             'board_id' => $this->board_id,
             'name' => $this->name,
             'color' => $this->color,

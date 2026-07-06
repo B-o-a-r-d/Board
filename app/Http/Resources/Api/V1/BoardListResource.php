@@ -18,6 +18,7 @@ class BoardListResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'public_id' => $this->public_id,
             'board_id' => $this->board_id,
             'name' => $this->name,
             'cover_color' => $this->cover_color,

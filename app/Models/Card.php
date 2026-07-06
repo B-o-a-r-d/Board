@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasPublicId;
 use Database\Factories\CardFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Card extends Model
 {
     /** @use HasFactory<CardFactory> */
-    use HasFactory;
+    use HasFactory, HasPublicId;
 
     /**
      * @return array<string, string>

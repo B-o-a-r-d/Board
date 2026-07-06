@@ -299,7 +299,7 @@
                                                 <span class="text-sm font-medium">{{ $comment->user?->name ?? 'Utilisateur supprimé' }}</span>
                                                 <span class="text-xs text-neutral-400">{{ $comment->created_at->diffForHumans() }}</span>
                                                 <div class="ml-auto flex items-center gap-2" x-data="{ copied: false }">
-                                                    <button type="button" @click="navigator.clipboard?.writeText('{{ route('boards.show', ['board' => $board->id, 'card' => $card->id]) }}#comment-{{ $comment->id }}'); copied = true; setTimeout(() => copied = false, 1500)" class="text-xs text-neutral-300 opacity-0 transition hover:text-indigo-500 group-hover/comment:opacity-100" title="Copier le lien du commentaire"><span x-text="copied ? 'Copié !' : 'Lien'"></span></button>
+                                                    <button type="button" @click="navigator.clipboard?.writeText('{{ route('boards.show', ['board' => $board, 'card' => $card->public_id]) }}#comment-{{ $comment->id }}'); copied = true; setTimeout(() => copied = false, 1500)" class="text-xs text-neutral-300 opacity-0 transition hover:text-indigo-500 group-hover/comment:opacity-100" title="Copier le lien du commentaire"><span x-text="copied ? 'Copié !' : 'Lien'"></span></button>
                                                     @if ($canDelete)
                                                         <button type="button" wire:click="deleteComment({{ $comment->id }})" class="text-xs text-neutral-300 opacity-0 transition hover:text-red-500 group-hover/comment:opacity-100">Supprimer</button>
                                                     @endif
@@ -476,6 +476,7 @@
                                                 @endforeach
                                             </div>
                                             <x-context-menu.separator />
+                                            <x-context-menu.item icon="hash" @click="navigator.clipboard?.writeText('{{ $label->public_id }}')">Copier l'ID</x-context-menu.item>
                                             <x-context-menu.item icon="trash" variant="danger" @click="$store.confirm.open({ title: 'Supprimer le label', message: 'Supprimer ce label du board ?', confirmLabel: 'Supprimer', danger: true }).then(ok => ok && $wire.deleteLabel({{ $label->id }}))">Supprimer</x-context-menu.item>
                                         </x-slot:menu>
                                     </x-context-menu>

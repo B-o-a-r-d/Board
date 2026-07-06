@@ -85,7 +85,7 @@ class BoardExportService
 
         return [
             'board' => [
-                'id' => $board->id,
+                'id' => $board->public_id,
                 'name' => $board->name,
                 'description' => $board->description,
                 'background' => $board->background,
@@ -93,12 +93,12 @@ class BoardExportService
                 'created_at' => optional($board->created_at)->toIso8601String(),
             ],
             'lists' => $board->lists->map(fn ($list) => [
-                'id' => $list->id,
+                'id' => $list->public_id,
                 'name' => $list->name,
                 'cover_color' => $list->cover_color,
                 'position' => $list->position,
                 'cards' => $list->cards->map(fn ($card) => [
-                    'id' => $card->id,
+                    'id' => $card->public_id,
                     'title' => $card->title,
                     'description' => $card->description,
                     'position' => $card->position,

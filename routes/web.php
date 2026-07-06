@@ -16,9 +16,9 @@ Route::get('/', function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', Dashboard::class)->name('dashboard');
-    Route::get('/boards/{board}', BoardShow::class)->name('boards.show');
-    Route::get('/boards/{board}/export/{format}', BoardExportController::class)->name('boards.export');
-    Route::get('/workspaces/{workspace}/settings', WorkspaceSettings::class)->name('workspaces.settings');
+    Route::get('/boards/{board:public_id}', BoardShow::class)->name('boards.show');
+    Route::get('/boards/{board:public_id}/export/{format}', BoardExportController::class)->name('boards.export');
+    Route::get('/workspaces/{workspace:public_id}/settings', WorkspaceSettings::class)->name('workspaces.settings');
 });
 
 // Invitation links are reachable by guests: an invitee without an account is

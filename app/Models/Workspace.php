@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Role;
+use App\Models\Concerns\HasPublicId;
 use Database\Factories\WorkspaceFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Workspace extends Model
 {
     /** @use HasFactory<WorkspaceFactory> */
-    use HasFactory;
+    use HasFactory, HasPublicId;
 
     public function owner(): BelongsTo
     {

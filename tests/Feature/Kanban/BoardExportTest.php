@@ -8,7 +8,7 @@ test('the CSV export contains all card data including checklist items', function
     $checklist->items()->create(['content' => 'Tests écrits', 'position' => 0, 'is_completed' => true]);
     $card->comments()->create(['user_id' => $owner->id, 'body' => 'Un commentaire']);
 
-    $response = $this->actingAs($owner)->get(route('boards.export', ['board' => $board->id, 'format' => 'csv']));
+    $response = $this->actingAs($owner)->get(route('boards.export', ['board' => $board, 'format' => 'csv']));
 
     $response->assertOk()->assertDownload();
 
@@ -22,7 +22,7 @@ test('a board can be exported to XLSX', function () {
     ['board' => $board, 'owner' => $owner] = makeCardContext();
 
     $this->actingAs($owner)
-        ->get(route('boards.export', ['board' => $board->id, 'format' => 'xlsx']))
+        ->get(route('boards.export', ['board' => $board, 'format' => 'xlsx']))
         ->assertOk()
         ->assertDownload();
 });
@@ -33,7 +33,7 @@ test('the JSON export is fully structured with nested card data', function () {
     $checklist->items()->create(['content' => 'Tests écrits', 'position' => 0, 'is_completed' => true]);
 
     $this->actingAs($owner)
-        ->get(route('boards.export', ['board' => $board->id, 'format' => 'json']))
+        ->get(route('boards.export', ['board' => $board, 'format' => 'json']))
         ->assertOk()
         ->assertDownload()
         ->assertJsonPath('board.name', $board->name)
@@ -44,10 +44,10 @@ test('an unknown format is 404 and outsiders are forbidden', function () {
     ['board' => $board, 'owner' => $owner] = makeCardContext();
 
     $this->actingAs($owner)
-        ->get(route('boards.export', ['board' => $board->id, 'format' => 'pdf']))
+        ->get(route('boards.export', ['board' => $board, 'format' => 'pdf']))
         ->assertNotFound();
 
     $this->actingAs(User::factory()->create())
-        ->get(route('boards.export', ['board' => $board->id, 'format' => 'csv']))
+        ->get(route('boards.export', ['board' => $board, 'format' => 'csv']))
         ->assertForbidden();
 });
