@@ -7,9 +7,9 @@
                     <img src="{{ Storage::disk('public')->url($card->cover_path) }}" alt="" class="h-40 w-full rounded-t-2xl object-cover">
                 @endif
 
-                <button type="button" wire:click="close" class="absolute right-3 top-3 rounded-full bg-white/80 p-1.5 text-neutral-600 shadow hover:bg-white dark:bg-neutral-800/80 dark:text-neutral-300">✕</button>
+                <button type="button" wire:click="close" class="absolute right-3 top-3 rounded-full bg-white/80 p-1.5 text-neutral-600 shadow hover:bg-white dark:bg-neutral-800/80 dark:text-neutral-300"><x-phosphor-x class="h-5 w-5" /></button>
 
-                <div class="grid gap-6 p-6 sm:grid-cols-3">
+                <div class="grid gap-6 p-6 sm:grid-cols-3 mt-6">
                     {{-- Main column --}}
                     <div class="space-y-6 sm:col-span-2">
                         <form wire:submit="saveDetails" class="space-y-3">
@@ -122,7 +122,7 @@
                     {{-- Sidebar --}}
                     <div class="space-y-5">
                         <button type="button" wire:click="toggleComplete" class="w-full rounded-lg px-3 py-2 text-sm font-medium {{ $card->completed_at ? 'bg-green-600 text-white hover:bg-green-500' : 'border border-neutral-300 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800' }}">
-                            {{ $card->completed_at ? '✓ Terminée' : 'Marquer terminée' }}
+                            {{ $card->completed_at ? 'Terminée' : 'Marquer terminée' }}
                         </button>
 
                         {{-- Members --}}
@@ -145,13 +145,12 @@
                         {{-- Labels --}}
                         <div>
                             <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Labels</h3>
-                            <div class="space-y-1">
+                            <div class="space-y-2">
                                 @foreach ($boardLabels as $label)
                                     @php $on = $card->labels->contains($label->id); @endphp
                                     <button type="button" wire:click="toggleLabel({{ $label->id }})" class="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-sm {{ $on ? 'ring-2 ring-indigo-400' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800' }}">
                                         <span class="h-3 w-6 rounded-full" style="background-color: {{ $label->color }}"></span>
                                         <span class="truncate">{{ $label->name ?? '—' }}</span>
-                                        @if ($on) <span class="ml-auto text-indigo-600 dark:text-indigo-400">✓</span> @endif
                                     </button>
                                 @endforeach
                             </div>

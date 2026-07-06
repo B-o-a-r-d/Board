@@ -34,7 +34,14 @@ return [
             'path' => env('REVERB_SERVER_PATH', ''),
             'hostname' => env('REVERB_HOST'),
             'options' => [
-                'tls' => [],
+                // When REVERB_SSL_CERT/KEY are set (local Valet HTTPS), Reverb serves
+                // over TLS (wss). Leave them empty in production to bind plain HTTP
+                // behind a TLS-terminating proxy (Traefik/Dokploy).
+                'tls' => [
+                    'local_cert' => env('REVERB_SSL_CERT'),
+                    'local_pk' => env('REVERB_SSL_KEY'),
+                    'verify_peer' => env('REVERB_TLS_VERIFY_PEER', false),
+                ],
             ],
             'max_request_size' => env('REVERB_MAX_REQUEST_SIZE', 10_000),
             'scaling' => [

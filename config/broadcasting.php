@@ -40,9 +40,16 @@ return [
                 'port' => env('REVERB_PORT', 443),
                 'scheme' => env('REVERB_SCHEME', 'https'),
                 'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
+                // Allow the server-side broadcast client to reach a Reverb served
+                // with a self-signed cert (e.g. Valet certificate) in local dev.
+                'curl_options' => [
+                    CURLOPT_SSL_VERIFYPEER => env('REVERB_TLS_VERIFY_PEER', true),
+                    CURLOPT_SSL_VERIFYHOST => env('REVERB_TLS_VERIFY_PEER', true) ? 2 : 0,
+                ],
             ],
             'client_options' => [
                 // Guzzle client options: https://docs.guzzlephp.org/en/stable/request-options.html
+                'verify' => env('REVERB_TLS_VERIFY_PEER', true),
             ],
         ],
 

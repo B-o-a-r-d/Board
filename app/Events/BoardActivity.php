@@ -5,9 +5,10 @@ namespace App\Events;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Contracts\Broadcasting\ShouldRescue;
 use Illuminate\Foundation\Events\Dispatchable;
 
-class BoardActivity implements ShouldBroadcastNow
+class BoardActivity implements ShouldBroadcastNow, ShouldRescue
 {
     use Dispatchable, InteractsWithSockets;
 

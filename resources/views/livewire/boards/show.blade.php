@@ -81,15 +81,15 @@
                                 @if ($card->due_at || $itemsTotal > 0 || $card->attachments_count > 0 || $card->completed_at)
                                     <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
                                         @if ($card->completed_at)
-                                            <span class="rounded bg-green-100 px-1.5 py-0.5 text-green-700 dark:bg-green-500/15 dark:text-green-400">✓ Terminée</span>
+                                            <span class="rounded bg-green-100 px-1.5 py-0.5 text-green-700 dark:bg-green-500/15 dark:text-green-400">Terminée</span>
                                         @endif
                                         @if ($card->due_at)
                                             <span class="rounded px-1.5 py-0.5 {{ $overdue ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400' : 'bg-neutral-100 dark:bg-neutral-700/50' }}">
-                                                🕒 {{ $card->due_at->translatedFormat('d M') }}
+                                                {{ $card->due_at->translatedFormat('d M') }}
                                             </span>
                                         @endif
                                         @if ($itemsTotal > 0)
-                                            <span class="{{ $itemsDone === $itemsTotal ? 'text-green-600 dark:text-green-400' : '' }}">☑ {{ $itemsDone }}/{{ $itemsTotal }}</span>
+                                            <span class="{{ $itemsDone === $itemsTotal ? 'text-green-600 dark:text-green-400' : '' }}"><x-phosphor-check class="inline-flex self-center h-4 w-4" /> {{ $itemsDone }}/{{ $itemsTotal }}</span>
                                         @endif
                                         @if ($card->attachments_count > 0)
                                             <span>📎 {{ $card->attachments_count }}</span>
