@@ -67,6 +67,16 @@
                             </div>
                         </div>
 
+                        {{-- Description link previews --}}
+                        @foreach ($this->linkPreviews($card->description) as $preview)
+                            <x-link-preview
+                                :preview="$preview"
+                                :hidden="in_array($preview->url, $card->hidden_previews ?? [], true)"
+                                wire-toggle="toggleDescriptionPreview('{{ $preview->url }}')"
+                                wire:key="desc-lp-{{ $card->id }}-{{ $preview->id }}"
+                            />
+                        @endforeach
+
                         {{-- Checklists --}}
                         <div class="space-y-4">
                             @foreach ($card->checklists as $checklist)
@@ -107,15 +117,27 @@
                         </div>
 
                         {{-- Attachments --}}
+                        @php
+                            $media = $card->attachments
+                                ->filter(fn ($a) => $a->isImage() || $a->isVideo())
+                                ->map(fn ($a) => ['type' => $a->isImage() ? 'image' : 'video', 'url' => $a->url, 'mime' => $a->mime_type])
+                                ->values()->all();
+                            $mediaUrls = array_column($media, 'url');
+                        @endphp
                         <div class="space-y-3">
                             <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Pièces jointes</h3>
                             <div class="grid grid-cols-2 gap-3">
                                 @foreach ($card->attachments as $attachment)
                                     <div wire:key="att-{{ $attachment->id }}" class="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700">
                                         @if ($attachment->isImage())
-                                            <img src="{{ $attachment->url }}" alt="{{ $attachment->name }}" class="h-28 w-full object-cover">
+                                            <img src="{{ $attachment->url }}" alt="{{ $attachment->name }}" @click="$store.lightbox.open(@js($media), {{ array_search($attachment->url, $mediaUrls, true) }})" class="h-28 w-full cursor-zoom-in object-cover transition hover:opacity-90">
                                         @elseif ($attachment->isVideo())
-                                            <video src="{{ $attachment->url }}" controls class="h-28 w-full bg-black object-contain"></video>
+                                            <button type="button" @click="$store.lightbox.open(@js($media), {{ array_search($attachment->url, $mediaUrls, true) }})" class="group relative block h-28 w-full">
+                                                <video src="{{ $attachment->url }}" preload="metadata" muted class="pointer-events-none h-28 w-full bg-black object-contain"></video>
+                                                <span class="absolute inset-0 flex items-center justify-center bg-black/20 transition group-hover:bg-black/30">
+                                                    <span class="flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white"><x-phosphor-play class="ml-0.5 h-5 w-5" /></span>
+                                                </span>
+                                            </button>
                                         @endif
                                         <div class="flex items-center justify-between gap-1 p-2">
                                             <span class="truncate text-xs" title="{{ $attachment->name }}">{{ $attachment->name }}</span>
@@ -284,6 +306,14 @@
                                                 </div>
                                             </div>
                                             <div class="mt-0.5 whitespace-pre-wrap break-words text-sm text-neutral-700 dark:text-neutral-300">{!! $this->renderCommentBody($comment->body) !!}</div>
+                                            @foreach ($this->linkPreviews($comment->body) as $preview)
+                                                <x-link-preview
+                                                    :preview="$preview"
+                                                    :hidden="in_array($preview->url, $comment->hidden_previews ?? [], true)"
+                                                    wire-toggle="toggleCommentPreview({{ $comment->id }}, '{{ $preview->url }}')"
+                                                    wire:key="comment-{{ $comment->id }}-lp-{{ $preview->id }}"
+                                                />
+                                            @endforeach
                                         </div>
                                     </div>
                                 @endforeach
@@ -346,6 +376,7 @@
                                 <button
                                     type="button"
                                     role="switch"
+                                    aria-label="Activer l'échéance"
                                     :aria-checked="enabled"
                                     @click="enabled = ! enabled; if (! enabled) { $wire.clearDueDate() }"
                                     class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition"

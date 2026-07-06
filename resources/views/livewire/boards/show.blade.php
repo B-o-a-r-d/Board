@@ -65,6 +65,16 @@
                         @if (config('board.public_sharing'))
                             <x-context-menu.item icon="share-network" wire:click="openShare">Partager…</x-context-menu.item>
                         @endif
+                        <x-context-menu.separator />
+                        <div class="px-2 py-1.5">
+                            <p class="mb-1.5 text-xs text-neutral-500">Fond du tableau</p>
+                            <div class="flex flex-wrap gap-1.5">
+                                @foreach (config('board.backgrounds') as $bgKey => $bgCss)
+                                    <button type="button" wire:click="setBackground('{{ $bgKey }}')" class="h-6 w-6 rounded-md ring-offset-1 hover:ring-2 hover:ring-neutral-400 dark:ring-offset-neutral-800 {{ $board->background === $bgKey ? 'ring-2 ring-indigo-500' : '' }}" style="background: {{ $bgCss }}" title="{{ ucfirst($bgKey) }}"></button>
+                                @endforeach
+                                <button type="button" wire:click="setBackground(null)" class="flex h-6 w-6 items-center justify-center rounded-md border border-neutral-300 text-neutral-400 hover:text-neutral-700 dark:border-neutral-600 dark:hover:text-neutral-200" title="Aucun fond"><x-phosphor-x class="h-3.5 w-3.5" /></button>
+                            </div>
+                        </div>
                         @can('delete', $board)
                             <x-context-menu.separator />
                             <x-context-menu.item icon="trash" variant="danger" @click="$store.confirm.open({ title: 'Supprimer le board', message: 'Supprimer définitivement ce board et tout son contenu ? Cette action est irréversible.', confirmLabel: 'Supprimer', danger: true }).then(ok => ok && $wire.deleteBoard())">Supprimer le board</x-context-menu.item>
@@ -116,12 +126,18 @@
         @endif
     </div>
 
-    @php $coverPalette = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b']; @endphp
+    @php
+        $coverPalette = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'];
+        $boardBg = $board->background ? (config('board.backgrounds')[$board->background] ?? null) : null;
+    @endphp
 
     {{-- Lists (columns) --}}
     <div
         wire:sort="reorderLists"
-        class="flex flex-1 items-start gap-4 overflow-x-auto py-4"
+        wire:loading.class.delay="opacity-40"
+        wire:target="search, filterLabel, filterMember, filterDue, resetFilters"
+        @if ($boardBg) style="background: {{ $boardBg }};" @endif
+        class="flex flex-1 items-start gap-4 overflow-x-auto py-4 transition-opacity {{ $boardBg ? 'rounded-xl px-3' : '' }}"
     >
         @foreach ($lists as $list)
             <div
@@ -334,6 +350,7 @@
                         <button
                             type="button"
                             role="switch"
+                            aria-label="Activer le partage public en lecture seule"
                             aria-checked="{{ $board->isShared() ? 'true' : 'false' }}"
                             wire:click="toggleShare"
                             class="relative mt-0.5 inline-flex h-5 w-9 shrink-0 items-center rounded-full transition {{ $board->isShared() ? 'bg-indigo-600' : 'bg-neutral-300 dark:bg-neutral-700' }}"

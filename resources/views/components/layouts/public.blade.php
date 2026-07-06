@@ -10,6 +10,8 @@
 
     <title>{{ $title ? $title . ' — ' . config('app.name') : config('app.name') }}</title>
 
+    <x-favicons />
+
     <script>
         (function () {
             const stored = localStorage.getItem('theme');

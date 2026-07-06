@@ -153,6 +153,22 @@ test('a board admin can rename the board', function () {
     expect($board->fresh()->name)->toBe('Board Renommé');
 });
 
+test('a board admin can set and clear the board background', function () {
+    ['board' => $board, 'owner' => $owner] = makeBoard();
+
+    $component = Livewire::actingAs($owner)->test(Show::class, ['board' => $board]);
+
+    $component->call('setBackground', 'ocean');
+    expect($board->fresh()->background)->toBe('ocean');
+
+    // An unknown preset is ignored.
+    $component->call('setBackground', 'not-a-preset');
+    expect($board->fresh()->background)->toBe('ocean');
+
+    $component->call('setBackground', null);
+    expect($board->fresh()->background)->toBeNull();
+});
+
 test('a plain board member cannot rename the board', function () {
     ['board' => $board] = makeBoard();
     $member = User::factory()->create();

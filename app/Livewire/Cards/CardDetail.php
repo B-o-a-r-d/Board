@@ -7,8 +7,10 @@ use App\Models\Activity;
 use App\Models\Board;
 use App\Models\Card;
 use App\Models\ChecklistItem;
+use App\Models\LinkPreview;
 use App\Models\User;
 use App\Notifications\CardNotification;
+use App\Services\UrlPreviewService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -445,13 +447,13 @@ class CardDetail extends Component
     }
 
     /**
-     * Escape a comment body and highlight @mentions of board members.
+     * Escape a comment body, highlight @mentions of board members, and linkify URLs.
      */
     public function renderCommentBody(string $body): string
     {
         $members = $this->board->members;
 
-        return (string) preg_replace_callback('/@([\p{L}0-9_-]+)/u', function (array $match) use ($members) {
+        $html = (string) preg_replace_callback('/@([\p{L}0-9_-]+)/u', function (array $match) use ($members) {
             $token = $match[1];
 
             $member = $members->first(fn ($user) => Str::slug($user->name) === Str::slug($token)
@@ -463,6 +465,67 @@ class CardDetail extends Component
 
             return $match[0];
         }, e($body));
+
+        // Linkify plain URLs (the text is already HTML-escaped; the regex stops at "<").
+        return (string) preg_replace_callback('#https?://[^\s<]+#', function (array $match) {
+            $url = $match[0];
+
+            return '<a href="'.$url.'" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline dark:text-indigo-400">'.$url.'</a>';
+        }, $html);
+    }
+
+    /**
+     * Resolve Open Graph link previews for the URLs found in a text block.
+     *
+     * @return array<int, LinkPreview>
+     */
+    public function linkPreviews(?string $text): array
+    {
+        if (blank($text)) {
+            return [];
+        }
+
+        $service = app(UrlPreviewService::class);
+
+        return collect($service->extractUrls($text))
+            ->map(fn (string $url) => $service->preview($url))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Toggle the shared "embed hidden" state for a URL in the card description.
+     */
+    public function toggleDescriptionPreview(string $url): void
+    {
+        $card = $this->guardedCard();
+
+        $card->update(['hidden_previews' => $this->toggleInList($card->hidden_previews ?? [], $url)]);
+        $this->touched('card.preview');
+    }
+
+    /**
+     * Toggle the shared "embed hidden" state for a URL in a comment.
+     */
+    public function toggleCommentPreview(int $commentId, string $url): void
+    {
+        $card = $this->guardedCard();
+        $comment = $card->comments()->findOrFail($commentId);
+
+        $comment->update(['hidden_previews' => $this->toggleInList($comment->hidden_previews ?? [], $url)]);
+        $this->touched('comment.preview');
+    }
+
+    /**
+     * @param  array<int, string>  $list
+     * @return array<int, string>
+     */
+    private function toggleInList(array $list, string $value): array
+    {
+        return in_array($value, $list, true)
+            ? array_values(array_diff($list, [$value]))
+            : [...$list, $value];
     }
 
     /**

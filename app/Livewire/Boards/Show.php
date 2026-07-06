@@ -105,6 +105,18 @@ class Show extends Component
         }
     }
 
+    public function setBackground(?string $key): void
+    {
+        $this->authorize('update', $this->board);
+
+        if ($key !== null && ! array_key_exists($key, config('board.backgrounds', []))) {
+            return;
+        }
+
+        $this->board->update(['background' => $key]);
+        $this->broadcastActivity('board.background');
+    }
+
     public function deleteBoard(): mixed
     {
         $this->authorize('delete', $this->board);

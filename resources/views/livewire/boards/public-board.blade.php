@@ -24,8 +24,13 @@
         </div>
     </div>
 
+    @php $boardBg = $board->background ? (config('board.backgrounds')[$board->background] ?? null) : null; @endphp
+
     {{-- Lists (columns) --}}
-    <div class="flex flex-1 items-start gap-4 overflow-x-auto py-4">
+    <div
+        @if ($boardBg) style="background: {{ $boardBg }};" @endif
+        class="flex flex-1 items-start gap-4 overflow-x-auto py-4 {{ $boardBg ? 'rounded-xl px-3' : '' }}"
+    >
         @forelse ($lists as $list)
             <div
                 wire:key="public-list-{{ $list->id }}"

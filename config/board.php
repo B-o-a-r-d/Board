@@ -28,4 +28,24 @@ return [
 
     'public_sharing' => env('PUBLIC_SHARING', true),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Board backgrounds
+    |--------------------------------------------------------------------------
+    |
+    | Preset backgrounds a board admin can pick from. The key is stored on the
+    | board (boards.background); the value is the CSS applied behind the lists.
+    | Keeping this an allow-list avoids storing arbitrary CSS from the client.
+    |
+    */
+
+    'backgrounds' => [
+        'indigo' => 'linear-gradient(135deg, #6366f1, #4338ca)',
+        'ocean' => 'linear-gradient(135deg, #0ea5e9, #2563eb)',
+        'sunset' => 'linear-gradient(135deg, #fb923c, #db2777)',
+        'forest' => 'linear-gradient(135deg, #10b981, #047857)',
+        'rose' => 'linear-gradient(135deg, #fb7185, #be123c)',
+        'slate' => 'linear-gradient(135deg, #64748b, #1e293b)',
+    ],
+
 ];

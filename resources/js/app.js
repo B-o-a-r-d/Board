@@ -13,3 +13,5 @@ import './public-presence';
 import './dropzone';
 import './confirm';
 import './toast';
+import './lightbox';
+import './video-player';
