@@ -3,7 +3,9 @@
 # `web` and `reverb` services to your domains from the Dokploy dashboard.
 
 services:
-  app:
+  # Renamed from "app" for the same reason as the database: avoid the "app" alias
+  # colliding with other Dokploy apps on the shared network (nginx → board-app:9000).
+  board-app:
     build:
       context: ..
       dockerfile: .docker/Dockerfile
@@ -44,7 +46,7 @@ services:
     image: board-web:latest
     restart: unless-stopped
     depends_on:
-      - app
+      - board-app
     volumes:
       - storage-data:/var/www/html/storage:ro
     expose:
@@ -69,7 +71,7 @@ services:
       REVERB_SSL_KEY: ""
     command: ["sh", "-c", "php artisan config:clear && php artisan reverb:start --host=0.0.0.0 --port=8080 --no-interaction"]
     depends_on:
-      - app
+      - board-app
     volumes:
       - storage-data:/var/www/html/storage
     expose:
@@ -87,7 +89,7 @@ services:
       CONTAINER_ROLE: queue
     command: ["php", "artisan", "queue:work", "--tries=3", "--timeout=90", "--sleep=1"]
     depends_on:
-      - app
+      - board-app
     volumes:
       - storage-data:/var/www/html/storage
 
@@ -100,7 +102,7 @@ services:
       CONTAINER_ROLE: scheduler
     command: ["php", "artisan", "schedule:work"]
     depends_on:
-      - app
+      - board-app
     volumes:
       - storage-data:/var/www/html/storage
 
