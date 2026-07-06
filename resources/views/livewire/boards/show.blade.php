@@ -48,9 +48,9 @@
                         wire:change="renameList({{ $list->id }}, $event.target.value)"
                         class="w-full truncate rounded bg-transparent px-1 py-0.5 text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:focus:bg-neutral-800"
                     >
-                    <div wire:sort:ignore x-data="{ confirm: false }" class="relative">
-                        <button type="button" @click="confirm = true" class="rounded p-1 text-neutral-400 hover:bg-neutral-300 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200" title="Supprimer la liste">✕</button>
-                        <div x-show="confirm" x-cloak @click.outside="confirm = false" class="absolute right-0 z-10 mt-1 w-40 rounded-lg border border-neutral-200 bg-white p-2 text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-800">
+                    <div wire:sort:ignore x-data="{ confirming: false }" class="relative">
+                        <button type="button" @click="confirming = true" class="rounded p-1 text-neutral-400 hover:bg-neutral-300 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200" title="Supprimer la liste">✕</button>
+                        <div x-show="confirming" x-cloak @click.outside="confirming = false" class="absolute right-0 z-10 mt-1 w-40 rounded-lg border border-neutral-200 bg-white p-2 text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-800">
                             <p class="mb-2">Supprimer cette liste et ses cartes ?</p>
                             <button type="button" wire:click="deleteList({{ $list->id }})" class="w-full rounded bg-red-600 px-2 py-1 font-medium text-white hover:bg-red-500">Supprimer</button>
                         </div>

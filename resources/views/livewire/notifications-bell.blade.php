@@ -1,8 +1,8 @@
-<div x-data="{ open: false }" class="relative">
+<div x-data="{ expanded: false }" class="relative">
     <button
         type="button"
-        @click="open = ! open"
-        @click.outside="open = false"
+        @click="expanded = ! expanded"
+        @click.outside="expanded = false"
         class="relative flex h-9 w-9 items-center justify-center rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800"
         title="Notifications"
     >
@@ -15,7 +15,7 @@
     </button>
 
     <div
-        x-show="open"
+        x-show="expanded"
         x-transition
         x-cloak
         class="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900"
@@ -30,11 +30,10 @@
         <div class="max-h-96 overflow-y-auto">
             @forelse ($notifications as $notification)
                 @php $data = $notification->data; @endphp
-                <a
-                    href="{{ route('boards.show', $data['board_id']) }}"
-                    wire:navigate
-                    wire:click="markRead('{{ $notification->id }}')"
-                    class="flex gap-3 border-b border-neutral-50 px-4 py-3 hover:bg-neutral-50 dark:border-neutral-800/50 dark:hover:bg-neutral-800/50 {{ $notification->read_at ? 'opacity-60' : '' }}"
+                <button
+                    type="button"
+                    wire:click="openNotification('{{ $notification->id }}')"
+                    class="flex w-full gap-3 border-b border-neutral-50 px-4 py-3 text-left hover:bg-neutral-50 dark:border-neutral-800/50 dark:hover:bg-neutral-800/50 {{ $notification->read_at ? 'opacity-60' : '' }}"
                 >
                     @unless ($notification->read_at)
                         <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-500"></span>
@@ -48,7 +47,7 @@
                         @endif
                         <p class="mt-0.5 text-xs text-neutral-400">{{ $notification->created_at->diffForHumans() }}</p>
                     </div>
-                </a>
+                </button>
             @empty
                 <p class="px-4 py-8 text-center text-sm text-neutral-500 dark:text-neutral-400">Aucune notification.</p>
             @endforelse

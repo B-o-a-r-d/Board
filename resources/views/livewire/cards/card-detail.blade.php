@@ -129,11 +129,11 @@
                                 timers: {},
                                 lastPing: 0,
                                 members: [],
-                                open: false,
+                                showList: false,
                                 items: [],
                                 index: 0,
-                                top: 0,
-                                left: 0,
+                                caretTop: 0,
+                                caretLeft: 0,
                                 init() {
                                     this.members = JSON.parse(this.$root.dataset.members || "[]");
                                     if (! window.Echo) return;
@@ -161,12 +161,12 @@
                                     const el = this.$refs.input;
                                     const before = el.value.substring(0, el.selectionStart);
                                     const m = before.match(/(?:^|\s)@([\p{L}0-9_-]*)$/u);
-                                    if (! m) { this.open = false; return; }
+                                    if (! m) { this.showList = false; return; }
                                     const q = m[1].toLowerCase();
                                     this.items = this.members.filter(u => u.name.toLowerCase().includes(q) || u.slug.includes(q)).slice(0, 6);
                                     this.index = 0;
-                                    this.open = this.items.length > 0;
-                                    if (this.open) this.position();
+                                    this.showList = this.items.length > 0;
+                                    if (this.showList) this.position();
                                 },
                                 position() {
                                     const el = this.$refs.input;
@@ -177,16 +177,16 @@
                                     div.textContent = el.value.substring(0, el.selectionStart);
                                     const marker = document.createElement("span"); marker.textContent = "​"; div.appendChild(marker);
                                     document.body.appendChild(div);
-                                    this.top = marker.offsetTop - el.scrollTop;
-                                    this.left = Math.min(marker.offsetLeft, el.offsetWidth - 180);
+                                    this.caretTop = marker.offsetTop - el.scrollTop;
+                                    this.caretLeft = Math.min(marker.offsetLeft, el.offsetWidth - 180);
                                     document.body.removeChild(div);
                                 },
                                 onKeydown(e) {
-                                    if (! this.open) return;
+                                    if (! this.showList) return;
                                     if (e.key === "ArrowDown") { e.preventDefault(); this.index = (this.index + 1) % this.items.length; }
                                     else if (e.key === "ArrowUp") { e.preventDefault(); this.index = (this.index - 1 + this.items.length) % this.items.length; }
                                     else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); this.pick(this.items[this.index]); }
-                                    else if (e.key === "Escape") { this.open = false; }
+                                    else if (e.key === "Escape") { this.showList = false; }
                                 },
                                 pick(member) {
                                     const el = this.$refs.input;
@@ -198,7 +198,7 @@
                                     const pos = replaced.length;
                                     el.dispatchEvent(new Event("input"));
                                     this.$nextTick(() => { el.focus(); el.setSelectionRange(pos, pos); });
-                                    this.open = false;
+                                    this.showList = false;
                                 },
                                 get typingText() {
                                     const n = Object.values(this.typers);
@@ -216,7 +216,7 @@
                                         wire:model="newComment"
                                         @input="onInput()"
                                         @keydown="onKeydown($event)"
-                                        @blur="setTimeout(() => open = false, 150)"
+                                        @blur="setTimeout(() => showList = false, 150)"
                                         rows="2"
                                         placeholder="Écrire un commentaire… (mentionnez avec @nom)"
                                         class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800"
@@ -224,10 +224,10 @@
 
                                     {{-- Mention autocomplete popup (anchored above the caret) --}}
                                     <div
-                                        x-show="open"
+                                        x-show="showList"
                                         x-cloak
                                         class="absolute z-50 w-48 -translate-y-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
-                                        :style="`top: ${top - 4}px; left: ${left}px;`"
+                                        :style="`top: ${caretTop - 4}px; left: ${caretLeft}px;`"
                                     >
                                         <template x-for="(u, i) in items" :key="u.id">
                                             <button

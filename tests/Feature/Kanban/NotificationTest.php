@@ -70,6 +70,28 @@ test('the due command notifies assigned members of soon-due cards', function () 
     Notification::assertSentTo($member, CardNotification::class, fn ($n) => $n->type === 'due_soon');
 });
 
+test('clicking a notification marks it read and redirects to its card', function () {
+    ['board' => $board, 'owner' => $owner, 'member' => $member, 'card' => $card] = makeCardContext();
+    $member->notify(new CardNotification($card, 'mention', $owner));
+    $id = $member->notifications()->first()->id;
+
+    Livewire::actingAs($member)
+        ->test(NotificationsBell::class)
+        ->call('openNotification', $id)
+        ->assertRedirect(route('boards.show', ['board' => $board->id, 'card' => $card->id]));
+
+    expect($member->fresh()->unreadNotifications()->count())->toBe(0);
+});
+
+test('deep-linking to a card opens its modal on the board', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+
+    $this->actingAs($owner)
+        ->get(route('boards.show', ['board' => $board, 'card' => $card]))
+        ->assertOk()
+        ->assertSee('Commentaires'); // this heading only renders inside the open card modal
+});
+
 test('the bell lists notifications and marks them read', function () {
     ['board' => $board, 'owner' => $owner, 'member' => $member, 'card' => $card] = makeCardContext();
 

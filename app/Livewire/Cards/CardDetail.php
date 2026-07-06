@@ -51,6 +51,13 @@ class CardDetail extends Component
     public function mount(Board $board): void
     {
         $this->board = $board;
+
+        // Deep-link: open a card directly when arriving via a notification (?card=ID).
+        $cardId = (int) request()->query('card');
+
+        if ($cardId > 0 && $this->board->cards()->whereKey($cardId)->exists()) {
+            $this->openCard($cardId);
+        }
     }
 
     /**

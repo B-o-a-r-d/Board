@@ -22,6 +22,27 @@ class NotificationsBell extends Component
 
     public function onNotification(): void {}
 
+    /**
+     * Mark the notification read and open its card on the target board.
+     */
+    public function openNotification(string $id): mixed
+    {
+        $notification = Auth::user()->notifications()->whereKey($id)->first();
+
+        if (! $notification) {
+            return null;
+        }
+
+        $notification->markAsRead();
+
+        $data = $notification->data;
+
+        return $this->redirectRoute('boards.show', [
+            'board' => $data['board_id'],
+            'card' => $data['card_id'],
+        ], navigate: true);
+    }
+
     public function markRead(string $id): void
     {
         Auth::user()->notifications()->whereKey($id)->first()?->markAsRead();
