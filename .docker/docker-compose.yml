@@ -21,9 +21,9 @@ services:
     volumes:
       - storage-data:/var/www/html/storage
     depends_on:
-      postgres:
+      board-postgres:
         condition: service_healthy
-      redis:
+      board-redis:
         condition: service_started
     healthcheck:
       test: ["CMD", "php", "artisan", "db:show", "--quiet"]
@@ -104,7 +104,10 @@ services:
     volumes:
       - storage-data:/var/www/html/storage
 
-  postgres:
+  # Renamed from "postgres" to a project-unique name: Dokploy attaches every service
+  # to the shared "dokploy-network" where other apps also expose a "postgres" alias,
+  # which would otherwise make the hostname "postgres" resolve to a foreign database.
+  board-postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
@@ -119,7 +122,7 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
+  board-redis:
     image: redis:7-alpine
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
