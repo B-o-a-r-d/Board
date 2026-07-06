@@ -29,13 +29,14 @@ class ListBoardsTool extends Tool
                     ->orWhereHas('members', fn ($m) => $m->whereKey($user->id));
             })
             ->orderBy('name')
-            ->get(['id', 'name', 'workspace_id']);
+            ->with('workspace:id,public_id')
+            ->get(['id', 'public_id', 'name', 'workspace_id']);
 
         return Response::json([
             'boards' => $boards->map(fn ($board) => [
-                'id' => $board->id,
+                'id' => $board->public_id,
                 'name' => $board->name,
-                'workspace_id' => $board->workspace_id,
+                'workspace_id' => $board->workspace?->public_id,
             ])->all(),
         ]);
     }

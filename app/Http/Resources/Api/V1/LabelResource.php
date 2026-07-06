@@ -17,9 +17,8 @@ class LabelResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
-            'public_id' => $this->public_id,
-            'board_id' => $this->board_id,
+            'id' => $this->public_id,
+            'board_id' => $this->board?->public_id,
             'name' => $this->name,
             'color' => $this->color,
         ];

@@ -17,9 +17,9 @@ class ArchiveListTool extends Tool
 
     public function handle(Request $request): Response
     {
-        $request->validate(['list_id' => 'required|integer']);
+        $request->validate(['list_id' => 'required|string']);
 
-        $list = BoardList::find($request->get('list_id'));
+        $list = $this->resolvePublicId(BoardList::class, $request->get('list_id'));
 
         if ($error = $this->denyUnlessBoardAccess($request, $list?->board)) {
             return $error;
@@ -27,7 +27,7 @@ class ArchiveListTool extends Tool
 
         $list->update(['archived_at' => now()]);
 
-        return Response::json(['id' => $list->id, 'archived' => true]);
+        return Response::json(['id' => $list->public_id, 'archived' => true]);
     }
 
     /**
@@ -36,7 +36,7 @@ class ArchiveListTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'list_id' => $schema->integer()->description('The list id to archive.')->required(),
+            'list_id' => $schema->string()->description('The list public id (ULID) to archive.')->required(),
         ];
     }
 }

@@ -18,12 +18,12 @@ class UpdateLabelTool extends Tool
     public function handle(Request $request): Response
     {
         $request->validate([
-            'label_id' => 'required|integer',
+            'label_id' => 'required|string',
             'name' => 'sometimes|nullable|string|max:255',
             'color' => 'sometimes|string|max:9',
         ]);
 
-        $label = Label::with('board')->find($request->get('label_id'));
+        $label = Label::with('board')->where('public_id', $request->get('label_id'))->first();
 
         if ($error = $this->denyUnlessBoardAccess($request, $label?->board)) {
             return $error;
@@ -40,7 +40,7 @@ class UpdateLabelTool extends Tool
 
         $label->update($update);
 
-        return Response::json(['id' => $label->id, 'name' => $label->name, 'color' => $label->color]);
+        return Response::json(['id' => $label->public_id, 'name' => $label->name, 'color' => $label->color]);
     }
 
     /**
@@ -49,7 +49,7 @@ class UpdateLabelTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'label_id' => $schema->integer()->description('The label id.')->required(),
+            'label_id' => $schema->string()->description('The label public id (ULID).')->required(),
             'name' => $schema->string()->description('New name (null to clear).'),
             'color' => $schema->string()->description('New hex color.'),
         ];

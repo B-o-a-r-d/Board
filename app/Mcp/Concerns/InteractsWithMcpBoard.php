@@ -8,6 +8,7 @@ use App\Models\Board;
 use App\Models\Card;
 use App\Models\Setting;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -20,6 +21,24 @@ trait InteractsWithMcpBoard
     public function shouldRegister(Request $request): bool
     {
         return Setting::mcpEnabled();
+    }
+
+    /**
+     * Resolve a model by its public ULID — the only identifier the MCP surface
+     * accepts. The internal bigint primary key is never exposed nor accepted.
+     *
+     * @template TModel of Model
+     *
+     * @param  class-string<TModel>  $modelClass
+     * @return TModel|null
+     */
+    protected function resolvePublicId(string $modelClass, mixed $publicId): ?Model
+    {
+        if (! is_string($publicId) || $publicId === '') {
+            return null;
+        }
+
+        return $modelClass::query()->where('public_id', $publicId)->first();
     }
 
     /**

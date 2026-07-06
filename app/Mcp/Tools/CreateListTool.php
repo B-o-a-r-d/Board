@@ -18,11 +18,11 @@ class CreateListTool extends Tool
     public function handle(Request $request): Response
     {
         $request->validate([
-            'board_id' => 'required|integer',
+            'board_id' => 'required|string',
             'name' => 'required|string|max:255',
         ]);
 
-        $board = Board::find($request->get('board_id'));
+        $board = $this->resolvePublicId(Board::class, $request->get('board_id'));
 
         if ($error = $this->denyUnlessBoardAccess($request, $board)) {
             return $error;
@@ -33,7 +33,7 @@ class CreateListTool extends Tool
             'position' => (int) $board->lists()->max('position') + 1,
         ]);
 
-        return Response::json(['id' => $list->id, 'name' => $list->name, 'board_id' => $board->id]);
+        return Response::json(['id' => $list->public_id, 'name' => $list->name, 'board_id' => $board->public_id]);
     }
 
     /**
@@ -42,7 +42,7 @@ class CreateListTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'board_id' => $schema->integer()->description('The board id.')->required(),
+            'board_id' => $schema->string()->description('The board public id (ULID).')->required(),
             'name' => $schema->string()->description('The list name.')->required(),
         ];
     }

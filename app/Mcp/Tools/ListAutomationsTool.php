@@ -17,9 +17,9 @@ class ListAutomationsTool extends Tool
 
     public function handle(Request $request): Response
     {
-        $request->validate(['board_id' => 'required|integer']);
+        $request->validate(['board_id' => 'required|string']);
 
-        $board = Board::find($request->get('board_id'));
+        $board = $this->resolvePublicId(Board::class, $request->get('board_id'));
 
         if ($error = $this->denyUnlessBoardAccess($request, $board)) {
             return $error;
@@ -27,7 +27,7 @@ class ListAutomationsTool extends Tool
 
         return Response::json([
             'automations' => $board->automations->map(fn ($a) => [
-                'id' => $a->id,
+                'id' => $a->public_id,
                 'name' => $a->name,
                 'trigger' => $a->trigger_type,
                 'action' => $a->action_type,
@@ -43,7 +43,7 @@ class ListAutomationsTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'board_id' => $schema->integer()->description('The board id.')->required(),
+            'board_id' => $schema->string()->description('The board public id (ULID).')->required(),
         ];
     }
 }

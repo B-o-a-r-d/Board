@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasPublicId;
 use Database\Factories\AttachmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -15,7 +16,7 @@ use Illuminate\Support\Str;
 class Attachment extends Model
 {
     /** @use HasFactory<AttachmentFactory> */
-    use HasFactory;
+    use HasFactory, HasPublicId;
 
     /**
      * @return array<string, string>

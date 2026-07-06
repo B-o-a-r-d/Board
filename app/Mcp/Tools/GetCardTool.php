@@ -17,29 +17,31 @@ class GetCardTool extends Tool
 
     public function handle(Request $request): Response
     {
-        $request->validate(['card_id' => 'required|integer']);
+        $request->validate(['card_id' => 'required|string']);
 
-        $card = Card::with(['labels', 'members', 'checklists.items'])->find($request->get('card_id'));
+        $card = Card::with(['board', 'list', 'labels', 'members', 'checklists.items'])
+            ->where('public_id', $request->get('card_id'))
+            ->first();
 
         if ($error = $this->denyUnlessBoardAccess($request, $card?->board)) {
             return $error;
         }
 
         return Response::json([
-            'id' => $card->id,
-            'board_id' => $card->board_id,
-            'list_id' => $card->board_list_id,
+            'id' => $card->public_id,
+            'board_id' => $card->board?->public_id,
+            'list_id' => $card->list?->public_id,
             'title' => $card->title,
             'description' => $card->description,
             'completed' => $card->completed_at !== null,
             'due_at' => optional($card->due_at)->toIso8601String(),
-            'labels' => $card->labels->map(fn ($l) => ['id' => $l->id, 'name' => $l->name, 'color' => $l->color])->all(),
-            'members' => $card->members->map(fn ($m) => ['id' => $m->id, 'name' => $m->name])->all(),
+            'labels' => $card->labels->map(fn ($l) => ['id' => $l->public_id, 'name' => $l->name, 'color' => $l->color])->all(),
+            'members' => $card->members->map(fn ($m) => ['id' => $m->public_id, 'name' => $m->name])->all(),
             'checklists' => $card->checklists->map(fn ($cl) => [
-                'id' => $cl->id,
+                'id' => $cl->public_id,
                 'title' => $cl->title,
                 'items' => $cl->items->map(fn ($item) => [
-                    'id' => $item->id,
+                    'id' => $item->public_id,
                     'content' => $item->content,
                     'completed' => (bool) $item->is_completed,
                 ])->all(),
@@ -53,7 +55,7 @@ class GetCardTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'card_id' => $schema->integer()->description('The card id.')->required(),
+            'card_id' => $schema->string()->description('The card public id (ULID).')->required(),
         ];
     }
 }

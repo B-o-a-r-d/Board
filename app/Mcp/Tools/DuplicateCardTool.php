@@ -17,9 +17,9 @@ class DuplicateCardTool extends Tool
 
     public function handle(Request $request): Response
     {
-        $request->validate(['card_id' => 'required|integer']);
+        $request->validate(['card_id' => 'required|string']);
 
-        $card = Card::with(['labels', 'members'])->find($request->get('card_id'));
+        $card = Card::with(['labels', 'members'])->where('public_id', $request->get('card_id'))->first();
 
         if ($error = $this->denyUnlessBoardAccess($request, $card?->board)) {
             return $error;
@@ -41,7 +41,7 @@ class DuplicateCardTool extends Tool
 
         $this->recordMcpActivity($copy, $request->user(), 'card.duplicated', $this->mcpSource($request), ['from' => $card->id]);
 
-        return Response::json(['id' => $copy->id, 'title' => $copy->title]);
+        return Response::json(['id' => $copy->public_id, 'title' => $copy->title]);
     }
 
     /**
@@ -50,7 +50,7 @@ class DuplicateCardTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'card_id' => $schema->integer()->description('The card id to duplicate.')->required(),
+            'card_id' => $schema->string()->description('The card public id (ULID) to duplicate.')->required(),
         ];
     }
 }

@@ -17,7 +17,7 @@ class LabelController extends Controller
     {
         $this->authorize('view', $board);
 
-        return LabelResource::collection($board->labels()->get());
+        return LabelResource::collection($board->labels()->with('board')->get());
     }
 
     public function store(Request $request, Board $board): JsonResponse

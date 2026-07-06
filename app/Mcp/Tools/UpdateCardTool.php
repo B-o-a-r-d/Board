@@ -19,7 +19,7 @@ class UpdateCardTool extends Tool
     public function handle(Request $request): Response
     {
         $request->validate([
-            'card_id' => 'required|integer',
+            'card_id' => 'required|string',
             'title' => 'sometimes|string|max:255',
             'description' => 'sometimes|nullable|string',
             'due_at' => 'sometimes|nullable|date',
@@ -27,7 +27,7 @@ class UpdateCardTool extends Tool
             'completed' => 'sometimes|boolean',
         ]);
 
-        $card = Card::find($request->get('card_id'));
+        $card = $this->resolvePublicId(Card::class, $request->get('card_id'));
 
         if ($error = $this->denyUnlessBoardAccess($request, $card?->board)) {
             return $error;
@@ -53,7 +53,7 @@ class UpdateCardTool extends Tool
 
         $this->recordMcpActivity($card, $request->user(), 'card.updated', $this->mcpSource($request));
 
-        return Response::json(['id' => $card->id, 'title' => $card->title, 'completed' => $card->completed_at !== null]);
+        return Response::json(['id' => $card->public_id, 'title' => $card->title, 'completed' => $card->completed_at !== null]);
     }
 
     /**
@@ -62,7 +62,7 @@ class UpdateCardTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'card_id' => $schema->integer()->description('The card id.')->required(),
+            'card_id' => $schema->string()->description('The card public id (ULID).')->required(),
             'title' => $schema->string()->description('New title.'),
             'description' => $schema->string()->description('New markdown description (null to clear).'),
             'due_at' => $schema->string()->description('Due date ISO-8601 (null to clear).'),

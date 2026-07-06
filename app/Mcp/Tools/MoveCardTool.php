@@ -19,18 +19,18 @@ class MoveCardTool extends Tool
     public function handle(Request $request): Response
     {
         $request->validate([
-            'card_id' => 'required|integer',
-            'list_id' => 'required|integer',
+            'card_id' => 'required|string',
+            'list_id' => 'required|string',
         ]);
 
         $user = $request->user();
-        $card = Card::find($request->get('card_id'));
+        $card = $this->resolvePublicId(Card::class, $request->get('card_id'));
 
         if (! $card || ! Gate::forUser($user)->allows('update', $card)) {
             return Response::error('Carte introuvable ou accès refusé.');
         }
 
-        $list = $card->board->lists()->find($request->get('list_id'));
+        $list = $card->board->lists()->where('public_id', $request->get('list_id'))->first();
 
         if (! $list) {
             return Response::error('Liste de destination introuvable sur ce board.');
@@ -43,7 +43,7 @@ class MoveCardTool extends Tool
 
         $this->recordMcpActivity($card, $user, 'card.moved', $this->mcpSource($request), ['to_list' => $list->name]);
 
-        return Response::json(['id' => $card->id, 'list_id' => $list->id]);
+        return Response::json(['id' => $card->public_id, 'list_id' => $list->public_id]);
     }
 
     /**
@@ -52,8 +52,8 @@ class MoveCardTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'card_id' => $schema->integer()->description('The card id to move.')->required(),
-            'list_id' => $schema->integer()->description('The destination list id (same board).')->required(),
+            'card_id' => $schema->string()->description('The card public id (ULID) to move.')->required(),
+            'list_id' => $schema->string()->description('The destination list public id (ULID), same board.')->required(),
         ];
     }
 }

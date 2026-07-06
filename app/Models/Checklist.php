@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasPublicId;
 use Database\Factories\ChecklistFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Checklist extends Model
 {
     /** @use HasFactory<ChecklistFactory> */
-    use HasFactory;
+    use HasFactory, HasPublicId;
 
     public function card(): BelongsTo
     {

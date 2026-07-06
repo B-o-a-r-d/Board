@@ -19,13 +19,13 @@ class CreateCardTool extends Tool
     public function handle(Request $request): Response
     {
         $request->validate([
-            'list_id' => 'required|integer',
+            'list_id' => 'required|string',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
         ]);
 
         $user = $request->user();
-        $list = BoardList::find($request->get('list_id'));
+        $list = $this->resolvePublicId(BoardList::class, $request->get('list_id'));
 
         if (! $list || ! Gate::forUser($user)->allows('view', $list->board)) {
             return Response::error('Liste introuvable ou accès refusé.');
@@ -41,7 +41,7 @@ class CreateCardTool extends Tool
 
         $this->recordMcpActivity($card, $user, 'card.created', $this->mcpSource($request), ['title' => $card->title]);
 
-        return Response::json(['id' => $card->id, 'title' => $card->title, 'list_id' => $list->id]);
+        return Response::json(['id' => $card->public_id, 'title' => $card->title, 'list_id' => $list->public_id]);
     }
 
     /**
@@ -50,7 +50,7 @@ class CreateCardTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'list_id' => $schema->integer()->description('The list id to create the card in.')->required(),
+            'list_id' => $schema->string()->description('The list public id (ULID) to create the card in.')->required(),
             'title' => $schema->string()->description('The card title.')->required(),
             'description' => $schema->string()->description('Optional markdown description.'),
         ];

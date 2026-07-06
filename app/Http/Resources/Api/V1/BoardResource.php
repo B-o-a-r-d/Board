@@ -17,9 +17,8 @@ class BoardResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
-            'public_id' => $this->public_id,
-            'workspace_id' => $this->workspace_id,
+            'id' => $this->public_id,
+            'workspace_id' => $this->workspace?->public_id,
             'name' => $this->name,
             'slug' => $this->slug,
             'description' => $this->description,

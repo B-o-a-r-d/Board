@@ -30,11 +30,18 @@ test('deep-linking a card by public_id opens its modal', function () {
         ->assertSee('Commentaires');
 });
 
-test('the API exposes the public_id', function () {
+test('the API resolves by public_id and never exposes the integer id', function () {
     ['board' => $board, 'owner' => $owner] = makeCardContext();
     Sanctum::actingAs($owner);
 
-    $this->getJson("/api/v1/boards/{$board->id}")
+    // The internal integer PK is not a valid API route key.
+    $this->getJson("/api/v1/boards/{$board->id}")->assertNotFound();
+
+    $response = $this->getJson("/api/v1/boards/{$board->public_id}")
         ->assertOk()
-        ->assertJsonPath('data.public_id', $board->public_id);
+        ->assertJsonPath('data.id', $board->public_id);
+
+    // The ULID is the sole identifier; the bigint id is never leaked.
+    expect($response->json('data'))->not->toHaveKey('public_id');
+    expect($response->json('data.id'))->toBe($board->public_id);
 });

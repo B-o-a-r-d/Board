@@ -18,11 +18,11 @@ class ToggleChecklistItemTool extends Tool
     public function handle(Request $request): Response
     {
         $request->validate([
-            'item_id' => 'required|integer',
+            'item_id' => 'required|string',
             'completed' => 'sometimes|boolean',
         ]);
 
-        $item = ChecklistItem::with('checklist.card')->find($request->get('item_id'));
+        $item = ChecklistItem::with('checklist.card')->where('public_id', $request->get('item_id'))->first();
 
         if ($error = $this->denyUnlessBoardAccess($request, $item?->checklist?->card?->board)) {
             return $error;
@@ -36,7 +36,7 @@ class ToggleChecklistItemTool extends Tool
 
         $this->recordMcpActivity($item->checklist->card, $request->user(), 'checklist.item.toggled', $this->mcpSource($request));
 
-        return Response::json(['id' => $item->id, 'completed' => (bool) $item->is_completed]);
+        return Response::json(['id' => $item->public_id, 'completed' => (bool) $item->is_completed]);
     }
 
     /**
@@ -45,7 +45,7 @@ class ToggleChecklistItemTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'item_id' => $schema->integer()->description('The checklist item id.')->required(),
+            'item_id' => $schema->string()->description('The checklist item public id (ULID).')->required(),
             'completed' => $schema->boolean()->description('Set completion explicitly (omit to toggle).'),
         ];
     }

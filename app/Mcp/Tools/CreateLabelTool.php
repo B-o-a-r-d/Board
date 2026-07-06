@@ -18,12 +18,12 @@ class CreateLabelTool extends Tool
     public function handle(Request $request): Response
     {
         $request->validate([
-            'board_id' => 'required|integer',
+            'board_id' => 'required|string',
             'name' => 'nullable|string|max:255',
             'color' => 'required|string|max:9',
         ]);
 
-        $board = Board::find($request->get('board_id'));
+        $board = $this->resolvePublicId(Board::class, $request->get('board_id'));
 
         if ($error = $this->denyUnlessBoardAccess($request, $board)) {
             return $error;
@@ -34,7 +34,7 @@ class CreateLabelTool extends Tool
             'color' => $request->get('color'),
         ]);
 
-        return Response::json(['id' => $label->id, 'name' => $label->name, 'color' => $label->color]);
+        return Response::json(['id' => $label->public_id, 'name' => $label->name, 'color' => $label->color]);
     }
 
     /**
@@ -43,7 +43,7 @@ class CreateLabelTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'board_id' => $schema->integer()->description('The board id.')->required(),
+            'board_id' => $schema->string()->description('The board public id (ULID).')->required(),
             'name' => $schema->string()->description('Optional label name.'),
             'color' => $schema->string()->description('Hex color, e.g. #ef4444.')->required(),
         ];

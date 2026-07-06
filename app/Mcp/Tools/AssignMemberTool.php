@@ -18,34 +18,34 @@ class AssignMemberTool extends Tool
     public function handle(Request $request): Response
     {
         $request->validate([
-            'card_id' => 'required|integer',
-            'user_id' => 'required|integer',
+            'card_id' => 'required|string',
+            'user_id' => 'required|string',
             'assigned' => 'sometimes|boolean',
         ]);
 
-        $card = Card::find($request->get('card_id'));
+        $card = $this->resolvePublicId(Card::class, $request->get('card_id'));
 
         if ($error = $this->denyUnlessBoardAccess($request, $card?->board)) {
             return $error;
         }
 
-        $userId = (int) $request->get('user_id');
+        $member = $card->board->members()->where('users.public_id', $request->get('user_id'))->first();
 
-        if (! $card->board->members()->whereKey($userId)->exists()) {
+        if (! $member) {
             return Response::error('Cet utilisateur n\'est pas membre du board.');
         }
 
         $assigned = $request->has('assigned') ? $request->boolean('assigned') : true;
 
         if ($assigned) {
-            $card->members()->syncWithoutDetaching([$userId]);
+            $card->members()->syncWithoutDetaching([$member->id]);
         } else {
-            $card->members()->detach([$userId]);
+            $card->members()->detach([$member->id]);
         }
 
-        $this->recordMcpActivity($card, $request->user(), 'card.members', $this->mcpSource($request), ['user_id' => $userId]);
+        $this->recordMcpActivity($card, $request->user(), 'card.members', $this->mcpSource($request), ['user_name' => $member->name]);
 
-        return Response::json(['card_id' => $card->id, 'user_id' => $userId, 'assigned' => $assigned]);
+        return Response::json(['card_id' => $card->public_id, 'user_id' => $member->public_id, 'assigned' => $assigned]);
     }
 
     /**
@@ -54,8 +54,8 @@ class AssignMemberTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'card_id' => $schema->integer()->description('The card id.')->required(),
-            'user_id' => $schema->integer()->description('The board member user id.')->required(),
+            'card_id' => $schema->string()->description('The card public id (ULID).')->required(),
+            'user_id' => $schema->string()->description('The board member user public id (ULID), from get-board-meta.')->required(),
             'assigned' => $schema->boolean()->description('true to assign (default), false to unassign.'),
         ];
     }

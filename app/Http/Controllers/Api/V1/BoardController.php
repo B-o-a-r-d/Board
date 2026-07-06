@@ -28,6 +28,7 @@ class BoardController extends Controller
                 $query->where('visibility', BoardVisibility::Workspace)
                     ->orWhereHas('members', fn ($members) => $members->whereKey($user->id));
             })
+            ->with('workspace')
             ->latest()
             ->get();
 
@@ -37,13 +38,13 @@ class BoardController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'workspace_id' => ['required', 'integer'],
+            'workspace_id' => ['required', 'string'],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'visibility' => ['nullable', Rule::enum(BoardVisibility::class)],
         ]);
 
-        $workspace = $request->user()->workspaces()->findOrFail($data['workspace_id']);
+        $workspace = $request->user()->workspaces()->where('workspaces.public_id', $data['workspace_id'])->firstOrFail();
 
         $board = Board::create([
             'workspace_id' => $workspace->id,
@@ -65,8 +66,12 @@ class BoardController extends Controller
         $this->authorize('view', $board);
 
         $board->load([
+            'workspace',
             'lists' => fn ($query) => $query->whereNull('archived_at')->orderBy('position'),
+            'lists.board',
             'lists.cards' => fn ($query) => $query->whereNull('archived_at')->orderBy('position'),
+            'lists.cards.board',
+            'lists.cards.list',
             'lists.cards.labels',
             'labels',
         ]);

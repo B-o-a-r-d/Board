@@ -43,7 +43,7 @@
                         class="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ring-2 ring-white dark:ring-neutral-950"
                         :class="u.guest ? 'text-white' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300'"
                         :style="u.guest ? `background-color: ${u.color}` : ''"
-                        :title="u.guest ? u.name + ' (invité)' : u.name"
+                        :title="u.guest ? u.name + ' {{ __('(invité)') }}' : u.name"
                         x-text="(u.guest ? u.name.replace('Visiteur ', '') : u.name).charAt(0).toUpperCase()"
                     ></span>
                 </template>

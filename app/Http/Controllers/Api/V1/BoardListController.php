@@ -18,7 +18,7 @@ class BoardListController extends Controller
         $this->authorize('view', $board);
 
         return BoardListResource::collection(
-            $board->lists()->whereNull('archived_at')->orderBy('position')->get(),
+            $board->lists()->whereNull('archived_at')->orderBy('position')->with('board')->get(),
         );
     }
 

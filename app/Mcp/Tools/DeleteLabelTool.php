@@ -17,9 +17,9 @@ class DeleteLabelTool extends Tool
 
     public function handle(Request $request): Response
     {
-        $request->validate(['label_id' => 'required|integer']);
+        $request->validate(['label_id' => 'required|string']);
 
-        $label = Label::with('board')->find($request->get('label_id'));
+        $label = Label::with('board')->where('public_id', $request->get('label_id'))->first();
 
         if ($error = $this->denyUnlessBoardAccess($request, $label?->board)) {
             return $error;
@@ -36,7 +36,7 @@ class DeleteLabelTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'label_id' => $schema->integer()->description('The label id to delete.')->required(),
+            'label_id' => $schema->string()->description('The label public id (ULID) to delete.')->required(),
         ];
     }
 }

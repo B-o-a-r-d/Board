@@ -19,12 +19,12 @@ class AddCommentTool extends Tool
     public function handle(Request $request): Response
     {
         $request->validate([
-            'card_id' => 'required|integer',
+            'card_id' => 'required|string',
             'body' => 'required|string|max:5000',
         ]);
 
         $user = $request->user();
-        $card = Card::find($request->get('card_id'));
+        $card = $this->resolvePublicId(Card::class, $request->get('card_id'));
 
         if (! $card || ! Gate::forUser($user)->allows('view', $card->board)) {
             return Response::error('Carte introuvable ou accès refusé.');
@@ -37,7 +37,7 @@ class AddCommentTool extends Tool
 
         $this->recordMcpActivity($card, $user, 'comment.created', $this->mcpSource($request));
 
-        return Response::json(['id' => $comment->id, 'card_id' => $card->id]);
+        return Response::json(['id' => $comment->public_id, 'card_id' => $card->public_id]);
     }
 
     /**
@@ -46,7 +46,7 @@ class AddCommentTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'card_id' => $schema->integer()->description('The card id to comment on.')->required(),
+            'card_id' => $schema->string()->description('The card public id (ULID) to comment on.')->required(),
             'body' => $schema->string()->description('The comment body.')->required(),
         ];
     }

@@ -17,9 +17,9 @@ class DeleteChecklistTool extends Tool
 
     public function handle(Request $request): Response
     {
-        $request->validate(['checklist_id' => 'required|integer']);
+        $request->validate(['checklist_id' => 'required|string']);
 
-        $checklist = Checklist::with('card')->find($request->get('checklist_id'));
+        $checklist = Checklist::with('card')->where('public_id', $request->get('checklist_id'))->first();
 
         if ($error = $this->denyUnlessBoardAccess($request, $checklist?->card?->board)) {
             return $error;
@@ -36,7 +36,7 @@ class DeleteChecklistTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'checklist_id' => $schema->integer()->description('The checklist id to delete.')->required(),
+            'checklist_id' => $schema->string()->description('The checklist public id (ULID) to delete.')->required(),
         ];
     }
 }

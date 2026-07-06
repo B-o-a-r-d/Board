@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasPublicId;
 use Database\Factories\ChecklistItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ChecklistItem extends Model
 {
     /** @use HasFactory<ChecklistItemFactory> */
-    use HasFactory;
+    use HasFactory, HasPublicId;
 
     /**
      * @return array<string, string>

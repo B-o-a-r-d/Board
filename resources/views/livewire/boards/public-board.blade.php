@@ -17,7 +17,7 @@
                     class="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ring-2 ring-neutral-100 dark:ring-neutral-950"
                     :class="viewer.guest ? 'text-white' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300'"
                     :style="viewer.guest ? `background-color: ${viewer.color}` : ''"
-                    :title="viewer.guest ? viewer.name + ' (invité)' : viewer.name"
+                    :title="viewer.guest ? viewer.name + ' {{ __('(invité)') }}' : viewer.name"
                     x-text="(viewer.guest ? viewer.name.replace('Visiteur ', '') : viewer.name).charAt(0).toUpperCase()"
                 ></span>
             </template>

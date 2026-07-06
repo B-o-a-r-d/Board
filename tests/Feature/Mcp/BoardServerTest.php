@@ -79,7 +79,7 @@ test('create card via mcp creates a card and logs an mcp-sourced activity', func
     ['owner' => $owner, 'list' => $list] = makeMcpBoard();
 
     BoardServer::actingAs($owner)->tool(CreateCardTool::class, [
-        'list_id' => $list->id,
+        'list_id' => $list->public_id,
         'title' => 'Créée par une IA',
     ])->assertOk();
 
@@ -97,7 +97,7 @@ test('mcp tools deny users without board access', function () {
     $outsider = User::factory()->create();
 
     BoardServer::actingAs($outsider)->tool(CreateCardTool::class, [
-        'list_id' => $list->id,
+        'list_id' => $list->public_id,
         'title' => 'Intrus',
     ])->assertHasErrors();
 
@@ -110,14 +110,14 @@ test('checklist items can be added and toggled via mcp', function () {
     $card = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id]);
 
     BoardServer::actingAs($owner)->tool(CreateChecklistTool::class, [
-        'card_id' => $card->id, 'title' => 'Critères',
+        'card_id' => $card->public_id, 'title' => 'Critères',
     ])->assertOk();
 
     $checklist = $card->checklists()->firstOrFail();
     $item = $checklist->items()->create(['content' => 'Tests écrits', 'position' => 0]);
 
     BoardServer::actingAs($owner)->tool(ToggleChecklistItemTool::class, [
-        'item_id' => $item->id, 'completed' => true,
+        'item_id' => $item->public_id, 'completed' => true,
     ])->assertOk();
 
     expect($item->fresh()->is_completed)->toBeTrue();
@@ -129,17 +129,17 @@ test('labels and members can be created and assigned via mcp', function () {
     $card = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id]);
 
     BoardServer::actingAs($owner)->tool(CreateLabelTool::class, [
-        'board_id' => $board->id, 'color' => '#ef4444', 'name' => 'Bug',
+        'board_id' => $board->public_id, 'color' => '#ef4444', 'name' => 'Bug',
     ])->assertOk();
-    $labelId = $board->labels()->firstOrFail()->id;
+    $label = $board->labels()->firstOrFail();
 
     BoardServer::actingAs($owner)->tool(AssignLabelTool::class, [
-        'card_id' => $card->id, 'label_id' => $labelId,
+        'card_id' => $card->public_id, 'label_id' => $label->public_id,
     ])->assertOk();
-    expect($card->labels()->whereKey($labelId)->exists())->toBeTrue();
+    expect($card->labels()->whereKey($label->id)->exists())->toBeTrue();
 
     BoardServer::actingAs($owner)->tool(AssignMemberTool::class, [
-        'card_id' => $card->id, 'user_id' => $owner->id,
+        'card_id' => $card->public_id, 'user_id' => $owner->public_id,
     ])->assertOk();
     expect($card->members()->whereKey($owner->id)->exists())->toBeTrue();
 });
@@ -150,11 +150,11 @@ test('labels can be edited and deleted via mcp', function () {
     $label = $board->labels()->create(['name' => 'Ancien', 'color' => '#000000']);
 
     BoardServer::actingAs($owner)->tool(UpdateLabelTool::class, [
-        'label_id' => $label->id, 'name' => 'Nouveau', 'color' => '#22c55e',
+        'label_id' => $label->public_id, 'name' => 'Nouveau', 'color' => '#22c55e',
     ])->assertOk();
     expect($label->fresh()->name)->toBe('Nouveau')->and($label->fresh()->color)->toBe('#22c55e');
 
-    BoardServer::actingAs($owner)->tool(DeleteLabelTool::class, ['label_id' => $label->id])->assertOk();
+    BoardServer::actingAs($owner)->tool(DeleteLabelTool::class, ['label_id' => $label->public_id])->assertOk();
     expect($board->labels()->count())->toBe(0);
 });
 
@@ -164,16 +164,16 @@ test('a board can be created updated and deleted via mcp', function () {
     $workspace = $board->workspace;
 
     BoardServer::actingAs($owner)->tool(CreateBoardTool::class, [
-        'workspace_id' => $workspace->id, 'name' => 'Board IA',
+        'workspace_id' => $workspace->public_id, 'name' => 'Board IA',
     ])->assertOk();
     $created = Board::where('name', 'Board IA')->firstOrFail();
 
     BoardServer::actingAs($owner)->tool(UpdateBoardTool::class, [
-        'board_id' => $created->id, 'name' => 'Board IA renommé', 'background' => 'ocean',
+        'board_id' => $created->public_id, 'name' => 'Board IA renommé', 'background' => 'ocean',
     ])->assertOk();
     expect($created->fresh()->name)->toBe('Board IA renommé')->and($created->fresh()->background)->toBe('ocean');
 
-    BoardServer::actingAs($owner)->tool(DeleteBoardTool::class, ['board_id' => $created->id])->assertOk();
+    BoardServer::actingAs($owner)->tool(DeleteBoardTool::class, ['board_id' => $created->public_id])->assertOk();
     expect(Board::whereKey($created->id)->exists())->toBeFalse();
 });
 
@@ -187,7 +187,7 @@ test('attach file from base64 content stores a local file', function () {
     $png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
     BoardServer::actingAs($owner)->tool(AttachFileTool::class, [
-        'card_id' => $card->id, 'name' => 'capture.png', 'content' => $png,
+        'card_id' => $card->public_id, 'name' => 'capture.png', 'content' => $png,
     ])->assertOk();
 
     $attachment = $card->attachments()->firstOrFail();
@@ -206,7 +206,7 @@ test('attach file from url stores an attachment', function () {
     $card = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id]);
 
     BoardServer::actingAs($owner)->tool(AttachFileFromUrlTool::class, [
-        'card_id' => $card->id, 'url' => 'http://93.184.216.34/image.png', 'name' => 'schema.png',
+        'card_id' => $card->public_id, 'url' => 'http://93.184.216.34/image.png', 'name' => 'schema.png',
     ])->assertOk();
 
     expect($card->attachments()->count())->toBe(1)
@@ -219,10 +219,10 @@ test('move card and add comment via mcp work and log activities', function () {
     $target = BoardList::factory()->create(['board_id' => $board->id, 'name' => 'Fait']);
     $card = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id]);
 
-    BoardServer::actingAs($owner)->tool(MoveCardTool::class, ['card_id' => $card->id, 'list_id' => $target->id])->assertOk();
+    BoardServer::actingAs($owner)->tool(MoveCardTool::class, ['card_id' => $card->public_id, 'list_id' => $target->public_id])->assertOk();
     expect($card->fresh()->board_list_id)->toBe($target->id);
 
-    BoardServer::actingAs($owner)->tool(AddCommentTool::class, ['card_id' => $card->id, 'body' => 'Note IA'])->assertOk();
+    BoardServer::actingAs($owner)->tool(AddCommentTool::class, ['card_id' => $card->public_id, 'body' => 'Note IA'])->assertOk();
     expect($card->comments()->count())->toBe(1)
         ->and(Activity::where('card_id', $card->id)->where('type', 'comment.created')->where('source', 'mcp:client')->exists())->toBeTrue();
 });

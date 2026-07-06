@@ -18,9 +18,9 @@ class GetBoardTool extends Tool
 
     public function handle(Request $request): Response
     {
-        $request->validate(['board_id' => 'required|integer']);
+        $request->validate(['board_id' => 'required|string']);
 
-        $board = Board::find($request->get('board_id'));
+        $board = $this->resolvePublicId(Board::class, $request->get('board_id'));
 
         if (! $board || ! Gate::forUser($request->user())->allows('view', $board)) {
             return Response::error('Board introuvable ou accès refusé.');
@@ -32,13 +32,13 @@ class GetBoardTool extends Tool
         ]);
 
         return Response::json([
-            'id' => $board->id,
+            'id' => $board->public_id,
             'name' => $board->name,
             'lists' => $board->lists->map(fn ($list) => [
-                'id' => $list->id,
+                'id' => $list->public_id,
                 'name' => $list->name,
                 'cards' => $list->cards->map(fn ($card) => [
-                    'id' => $card->id,
+                    'id' => $card->public_id,
                     'title' => $card->title,
                     'completed' => $card->completed_at !== null,
                     'due_at' => optional($card->due_at)->toIso8601String(),
@@ -53,7 +53,7 @@ class GetBoardTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'board_id' => $schema->integer()->description('The board id.')->required(),
+            'board_id' => $schema->string()->description('The board public id (ULID).')->required(),
         ];
     }
 }

@@ -21,12 +21,12 @@ class CreateBoardTool extends Tool
     public function handle(Request $request): Response
     {
         $request->validate([
-            'workspace_id' => 'required|integer',
+            'workspace_id' => 'required|string',
             'name' => 'required|string|max:255',
         ]);
 
         $user = $request->user();
-        $workspace = $user->workspaces()->find($request->get('workspace_id'));
+        $workspace = $user->workspaces()->where('public_id', $request->get('workspace_id'))->first();
 
         if (! $workspace) {
             return Response::error('Workspace introuvable ou accès refusé.');
@@ -45,7 +45,7 @@ class CreateBoardTool extends Tool
 
         $board->members()->attach($user->id, ['role' => Role::Owner->value]);
 
-        return Response::json(['id' => $board->id, 'name' => $board->name, 'workspace_id' => $workspace->id]);
+        return Response::json(['id' => $board->public_id, 'name' => $board->name, 'workspace_id' => $workspace->public_id]);
     }
 
     /**
@@ -54,7 +54,7 @@ class CreateBoardTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'workspace_id' => $schema->integer()->description('The workspace id to create the board in.')->required(),
+            'workspace_id' => $schema->string()->description('The workspace public id (ULID) to create the board in.')->required(),
             'name' => $schema->string()->description('The board name.')->required(),
         ];
     }

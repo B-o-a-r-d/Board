@@ -18,34 +18,34 @@ class AssignLabelTool extends Tool
     public function handle(Request $request): Response
     {
         $request->validate([
-            'card_id' => 'required|integer',
-            'label_id' => 'required|integer',
+            'card_id' => 'required|string',
+            'label_id' => 'required|string',
             'attached' => 'sometimes|boolean',
         ]);
 
-        $card = Card::find($request->get('card_id'));
+        $card = $this->resolvePublicId(Card::class, $request->get('card_id'));
 
         if ($error = $this->denyUnlessBoardAccess($request, $card?->board)) {
             return $error;
         }
 
-        $labelId = (int) $request->get('label_id');
+        $label = $card->board->labels()->where('public_id', $request->get('label_id'))->first();
 
-        if (! $card->board->labels()->whereKey($labelId)->exists()) {
+        if (! $label) {
             return Response::error('Ce label n\'appartient pas au board de la carte.');
         }
 
         $attached = $request->has('attached') ? $request->boolean('attached') : true;
 
         if ($attached) {
-            $card->labels()->syncWithoutDetaching([$labelId]);
+            $card->labels()->syncWithoutDetaching([$label->id]);
         } else {
-            $card->labels()->detach([$labelId]);
+            $card->labels()->detach([$label->id]);
         }
 
         $this->recordMcpActivity($card, $request->user(), 'card.labels', $this->mcpSource($request));
 
-        return Response::json(['card_id' => $card->id, 'label_id' => $labelId, 'attached' => $attached]);
+        return Response::json(['card_id' => $card->public_id, 'label_id' => $label->public_id, 'attached' => $attached]);
     }
 
     /**
@@ -54,8 +54,8 @@ class AssignLabelTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'card_id' => $schema->integer()->description('The card id.')->required(),
-            'label_id' => $schema->integer()->description('The board label id.')->required(),
+            'card_id' => $schema->string()->description('The card public id (ULID).')->required(),
+            'label_id' => $schema->string()->description('The board label public id (ULID), from get-board-meta.')->required(),
             'attached' => $schema->boolean()->description('true to attach (default), false to detach.'),
         ];
     }

@@ -20,14 +20,14 @@ class UpdateBoardTool extends Tool
     public function handle(Request $request): Response
     {
         $request->validate([
-            'board_id' => 'required|integer',
+            'board_id' => 'required|string',
             'name' => 'sometimes|string|max:255',
             'description' => 'sometimes|nullable|string',
             'background' => 'sometimes|nullable|string',
             'visibility' => 'sometimes|in:private,workspace',
         ]);
 
-        $board = Board::find($request->get('board_id'));
+        $board = $this->resolvePublicId(Board::class, $request->get('board_id'));
 
         if (! $board || ! Gate::forUser($request->user())->allows('update', $board)) {
             return Response::error('Board introuvable ou droits insuffisants (admin requis).');
@@ -46,7 +46,7 @@ class UpdateBoardTool extends Tool
 
         $board->update($update);
 
-        return Response::json(['id' => $board->id, 'name' => $board->name]);
+        return Response::json(['id' => $board->public_id, 'name' => $board->name]);
     }
 
     /**
@@ -55,7 +55,7 @@ class UpdateBoardTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'board_id' => $schema->integer()->description('The board id.')->required(),
+            'board_id' => $schema->string()->description('The board public id (ULID).')->required(),
             'name' => $schema->string()->description('New board name.'),
             'description' => $schema->string()->description('New description.'),
             'background' => $schema->string()->description('Background preset key (indigo, ocean, sunset, forest, rose, slate) or null.'),

@@ -19,11 +19,11 @@ class RunAutomationTool extends Tool
     public function handle(Request $request, AutomationEngine $engine): Response
     {
         $request->validate([
-            'automation_id' => 'required|integer',
-            'card_id' => 'required|integer',
+            'automation_id' => 'required|string',
+            'card_id' => 'required|string',
         ]);
 
-        $card = Card::find($request->get('card_id'));
+        $card = $this->resolvePublicId(Card::class, $request->get('card_id'));
 
         if ($error = $this->denyUnlessBoardAccess($request, $card?->board)) {
             return $error;
@@ -32,7 +32,8 @@ class RunAutomationTool extends Tool
         $automation = $card->board->automations()
             ->where('trigger_type', 'manual')
             ->where('is_active', true)
-            ->find($request->get('automation_id'));
+            ->where('public_id', $request->get('automation_id'))
+            ->first();
 
         if (! $automation) {
             return Response::error('Automation manuelle introuvable ou inactive sur ce board.');
@@ -42,7 +43,7 @@ class RunAutomationTool extends Tool
 
         $this->recordMcpActivity($card, $request->user(), 'automation.run', $this->mcpSource($request), ['automation' => $automation->name]);
 
-        return Response::json(['automation_id' => $automation->id, 'card_id' => $card->id, 'ran' => $ran]);
+        return Response::json(['automation_id' => $automation->public_id, 'card_id' => $card->public_id, 'ran' => $ran]);
     }
 
     /**
@@ -51,8 +52,8 @@ class RunAutomationTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'automation_id' => $schema->integer()->description('The manual automation id.')->required(),
-            'card_id' => $schema->integer()->description('The card to run it against.')->required(),
+            'automation_id' => $schema->string()->description('The manual automation public id (ULID), from list-automations.')->required(),
+            'card_id' => $schema->string()->description('The card public id (ULID) to run it against.')->required(),
         ];
     }
 }

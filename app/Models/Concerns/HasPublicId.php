@@ -19,4 +19,14 @@ trait HasPublicId
             }
         });
     }
+
+    /**
+     * Resolve route-model bindings by the public ULID, never the internal
+     * bigint primary key. This makes the public_id the sole public identifier
+     * across web and API routes; the integer PK is never exposed nor accepted.
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'public_id';
+    }
 }

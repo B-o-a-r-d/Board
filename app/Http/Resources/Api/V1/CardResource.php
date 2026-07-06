@@ -17,10 +17,9 @@ class CardResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
-            'public_id' => $this->public_id,
-            'board_id' => $this->board_id,
-            'list_id' => $this->board_list_id,
+            'id' => $this->public_id,
+            'board_id' => $this->board?->public_id,
+            'list_id' => $this->list?->public_id,
             'title' => $this->title,
             'description' => $this->description,
             'position' => $this->position,
@@ -30,7 +29,7 @@ class CardResource extends JsonResource
             'archived_at' => optional($this->archived_at)->toIso8601String(),
             'labels' => LabelResource::collection($this->whenLoaded('labels')),
             'members' => $this->whenLoaded('members', fn () => $this->members->map(fn ($member) => [
-                'id' => $member->id,
+                'id' => $member->public_id,
                 'name' => $member->name,
             ])),
             'created_at' => optional($this->created_at)->toIso8601String(),

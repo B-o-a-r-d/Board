@@ -18,12 +18,12 @@ class UpdateListTool extends Tool
     public function handle(Request $request): Response
     {
         $request->validate([
-            'list_id' => 'required|integer',
+            'list_id' => 'required|string',
             'name' => 'sometimes|string|max:255',
             'cover_color' => 'sometimes|nullable|string|max:9',
         ]);
 
-        $list = BoardList::find($request->get('list_id'));
+        $list = $this->resolvePublicId(BoardList::class, $request->get('list_id'));
 
         if ($error = $this->denyUnlessBoardAccess($request, $list?->board)) {
             return $error;
@@ -40,7 +40,7 @@ class UpdateListTool extends Tool
 
         $list->update($update);
 
-        return Response::json(['id' => $list->id, 'name' => $list->name, 'cover_color' => $list->cover_color]);
+        return Response::json(['id' => $list->public_id, 'name' => $list->name, 'cover_color' => $list->cover_color]);
     }
 
     /**
@@ -49,7 +49,7 @@ class UpdateListTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'list_id' => $schema->integer()->description('The list id.')->required(),
+            'list_id' => $schema->string()->description('The list public id (ULID).')->required(),
             'name' => $schema->string()->description('New list name.'),
             'cover_color' => $schema->string()->description('Header hex color (null to clear).'),
         ];

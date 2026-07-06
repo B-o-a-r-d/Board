@@ -18,9 +18,9 @@ class DeleteBoardTool extends Tool
 
     public function handle(Request $request): Response
     {
-        $request->validate(['board_id' => 'required|integer']);
+        $request->validate(['board_id' => 'required|string']);
 
-        $board = Board::find($request->get('board_id'));
+        $board = $this->resolvePublicId(Board::class, $request->get('board_id'));
 
         if (! $board || ! Gate::forUser($request->user())->allows('delete', $board)) {
             return Response::error('Board introuvable ou droits insuffisants (admin requis).');
@@ -37,7 +37,7 @@ class DeleteBoardTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'board_id' => $schema->integer()->description('The board id to delete.')->required(),
+            'board_id' => $schema->string()->description('The board public id (ULID) to delete.')->required(),
         ];
     }
 }

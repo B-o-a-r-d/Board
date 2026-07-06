@@ -17,9 +17,9 @@ class ArchiveCardTool extends Tool
 
     public function handle(Request $request): Response
     {
-        $request->validate(['card_id' => 'required|integer']);
+        $request->validate(['card_id' => 'required|string']);
 
-        $card = Card::find($request->get('card_id'));
+        $card = $this->resolvePublicId(Card::class, $request->get('card_id'));
 
         if ($error = $this->denyUnlessBoardAccess($request, $card?->board)) {
             return $error;
@@ -28,7 +28,7 @@ class ArchiveCardTool extends Tool
         $card->update(['archived_at' => now()]);
         $this->recordMcpActivity($card, $request->user(), 'card.archived', $this->mcpSource($request));
 
-        return Response::json(['id' => $card->id, 'archived' => true]);
+        return Response::json(['id' => $card->public_id, 'archived' => true]);
     }
 
     /**
@@ -37,7 +37,7 @@ class ArchiveCardTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'card_id' => $schema->integer()->description('The card id to archive.')->required(),
+            'card_id' => $schema->string()->description('The card public id (ULID) to archive.')->required(),
         ];
     }
 }

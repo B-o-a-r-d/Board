@@ -18,7 +18,7 @@ class CardController extends Controller
         $this->authorize('view', $list->board);
 
         return CardResource::collection(
-            $list->cards()->whereNull('archived_at')->orderBy('position')->with(['labels', 'members'])->get(),
+            $list->cards()->whereNull('archived_at')->orderBy('position')->with(['board', 'list', 'labels', 'members'])->get(),
         );
     }
 
@@ -41,14 +41,14 @@ class CardController extends Controller
             'position' => (int) $list->cards()->max('position') + 1,
         ]);
 
-        return (new CardResource($card))->response()->setStatusCode(201);
+        return (new CardResource($card->load(['board', 'list'])))->response()->setStatusCode(201);
     }
 
     public function show(Card $card): CardResource
     {
         $this->authorize('view', $card);
 
-        return new CardResource($card->load(['labels', 'members']));
+        return new CardResource($card->load(['board', 'list', 'labels', 'members']));
     }
 
     public function update(Request $request, Card $card): CardResource
@@ -71,7 +71,7 @@ class CardController extends Controller
 
         $card->update($update);
 
-        return new CardResource($card->load(['labels', 'members']));
+        return new CardResource($card->load(['board', 'list', 'labels', 'members']));
     }
 
     public function move(Request $request, Card $card): CardResource
@@ -79,18 +79,18 @@ class CardController extends Controller
         $this->authorize('update', $card);
 
         $data = $request->validate([
-            'list_id' => ['required', 'integer'],
+            'list_id' => ['required', 'string'],
             'position' => ['nullable', 'integer', 'min:0'],
         ]);
 
-        $list = $card->board->lists()->findOrFail($data['list_id']);
+        $list = $card->board->lists()->where('public_id', $data['list_id'])->firstOrFail();
 
         $card->update([
             'board_list_id' => $list->id,
             'position' => $data['position'] ?? (int) $list->cards()->max('position') + 1,
         ]);
 
-        return new CardResource($card);
+        return new CardResource($card->load(['board', 'list']));
     }
 
     public function destroy(Card $card): Response

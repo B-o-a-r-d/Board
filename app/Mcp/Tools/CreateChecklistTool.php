@@ -18,11 +18,11 @@ class CreateChecklistTool extends Tool
     public function handle(Request $request): Response
     {
         $request->validate([
-            'card_id' => 'required|integer',
+            'card_id' => 'required|string',
             'title' => 'required|string|max:255',
         ]);
 
-        $card = Card::find($request->get('card_id'));
+        $card = $this->resolvePublicId(Card::class, $request->get('card_id'));
 
         if ($error = $this->denyUnlessBoardAccess($request, $card?->board)) {
             return $error;
@@ -35,7 +35,7 @@ class CreateChecklistTool extends Tool
 
         $this->recordMcpActivity($card, $request->user(), 'checklist.created', $this->mcpSource($request));
 
-        return Response::json(['id' => $checklist->id, 'title' => $checklist->title, 'card_id' => $card->id]);
+        return Response::json(['id' => $checklist->public_id, 'title' => $checklist->title, 'card_id' => $card->public_id]);
     }
 
     /**
@@ -44,7 +44,7 @@ class CreateChecklistTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'card_id' => $schema->integer()->description('The card id.')->required(),
+            'card_id' => $schema->string()->description('The card public id (ULID).')->required(),
             'title' => $schema->string()->description('The checklist title.')->required(),
         ];
     }

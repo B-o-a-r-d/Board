@@ -23,12 +23,12 @@ class AttachFileFromUrlTool extends Tool
     public function handle(Request $request): Response
     {
         $request->validate([
-            'card_id' => 'required|integer',
+            'card_id' => 'required|string',
             'url' => 'required|url|max:2048',
             'name' => 'nullable|string|max:255',
         ]);
 
-        $card = Card::find($request->get('card_id'));
+        $card = $this->resolvePublicId(Card::class, $request->get('card_id'));
 
         if ($error = $this->denyUnlessBoardAccess($request, $card?->board)) {
             return $error;
@@ -81,7 +81,7 @@ class AttachFileFromUrlTool extends Tool
         $this->recordMcpActivity($card, $request->user(), 'attachment.added', $this->mcpSource($request), ['name' => $name]);
 
         return Response::json([
-            'id' => $attachment->id,
+            'id' => $attachment->public_id,
             'name' => $attachment->name,
             'url' => Storage::disk('public')->url($path),
         ]);
@@ -117,7 +117,7 @@ class AttachFileFromUrlTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'card_id' => $schema->integer()->description('The card id to attach the file to.')->required(),
+            'card_id' => $schema->string()->description('The card public id (ULID) to attach the file to.')->required(),
             'url' => $schema->string()->description('Public http(s) URL of an image or video.')->required(),
             'name' => $schema->string()->description('Optional file name.'),
         ];
