@@ -135,6 +135,16 @@ class CardDetail extends Component
         $this->touched('card.updated');
     }
 
+    public function saveDescription(string $markdown): void
+    {
+        $card = $this->guardedCard();
+
+        $markdown = trim($markdown);
+        $this->description = $markdown;
+        $card->update(['description' => $markdown ?: null]);
+        $this->touched('card.updated');
+    }
+
     public function toggleComplete(): void
     {
         $card = $this->guardedCard();

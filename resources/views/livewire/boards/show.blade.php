@@ -234,7 +234,7 @@
                                 <x-slot:menu>
                                     <x-context-menu.item icon="arrow-square-out" wire:click="$dispatch('open-card', { cardId: {{ $card->id }} })">Ouvrir</x-context-menu.item>
                                     <x-context-menu.item icon="copy" wire:click="duplicateCard({{ $card->id }})">Dupliquer</x-context-menu.item>
-                                    <x-context-menu.item icon="link" @click="navigator.clipboard?.writeText(@js(route('boards.show', ['board' => $board->id, 'card' => $card->id])))">Copier le lien</x-context-menu.item>
+                                    <x-context-menu.item icon="link" @click="navigator.clipboard?.writeText('{{ route('boards.show', ['board' => $board->id, 'card' => $card->id]) }}')">Copier le lien</x-context-menu.item>
                                     <x-context-menu.separator />
                                     <x-context-menu.item icon="archive" variant="danger" wire:click="archiveCard({{ $card->id }})">Archiver</x-context-menu.item>
                                 </x-slot:menu>

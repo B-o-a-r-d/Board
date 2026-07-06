@@ -91,6 +91,18 @@ test('a label can be created and is attached to the card', function () {
         ->and($card->labels()->whereKey($label->id)->exists())->toBeTrue();
 });
 
+test('the description is saved from the wysiwyg editor as markdown', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+
+    Livewire::actingAs($owner)
+        ->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->call('saveDescription', "## Titre\n\n**Gras** et une liste :\n\n- un\n- deux")
+        ->assertSet('description', "## Titre\n\n**Gras** et une liste :\n\n- un\n- deux");
+
+    expect($card->fresh()->description)->toContain('## Titre')->toContain('**Gras**');
+});
+
 test('a due date can be saved and cleared from the sidebar', function () {
     ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
 

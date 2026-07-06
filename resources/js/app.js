@@ -8,3 +8,4 @@
 
 import './echo';
 import './context-menu';
+import './markdown-editor';
