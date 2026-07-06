@@ -37,8 +37,8 @@
     >
         <x-phosphor-cloud-arrow-up class="h-7 w-7 text-neutral-400" />
         <span class="text-sm font-medium text-neutral-700 dark:text-neutral-200">
-            <span x-text="dragging ? 'Déposez le fichier' : 'Glissez un fichier ici'"></span>
-            <span x-show="! dragging" class="text-indigo-600 dark:text-indigo-400">ou parcourez</span>
+            <span x-text="dragging ? '{{ __('Déposez le fichier') }}' : '{{ __('Glissez un fichier ici') }}'"></span>
+            <span x-show="! dragging" class="text-indigo-600 dark:text-indigo-400">{{ __('ou parcourez') }}</span>
         </span>
         <span class="text-xs text-neutral-400">{{ $hint }}</span>
     </button>

@@ -75,7 +75,7 @@
 
                             <a href="{{ route('profile.edit') }}" wire:navigate @click="open = false" class="flex items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800">
                                 <x-phosphor-user class="h-4 w-4" />
-                                <span>Profil</span>
+                                <span>{{ __('Profil') }}</span>
                             </a>
 
                             {{-- Theme toggle (stays open) --}}
@@ -86,7 +86,7 @@
                             >
                                 <x-phosphor-moon class="h-4 w-4" x-show="! dark" />
                                 <x-phosphor-sun class="h-4 w-4" x-show="dark" x-cloak />
-                                <span x-text="dark ? 'Mode clair' : 'Mode sombre'"></span>
+                                <span x-text="dark ? '{{ __('Mode clair') }}' : '{{ __('Mode sombre') }}'"></span>
                                 <span class="relative ml-auto inline-flex h-5 w-9 items-center rounded-full transition" :class="dark ? 'bg-indigo-600' : 'bg-neutral-300 dark:bg-neutral-700'">
                                     <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition" :class="dark ? 'translate-x-4' : 'translate-x-0.5'"></span>
                                 </span>
@@ -98,7 +98,7 @@
                                 @csrf
                                 <button type="submit" class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10">
                                     <x-phosphor-sign-out class="h-4 w-4" />
-                                    <span>Se déconnecter</span>
+                                    <span>{{ __('Se déconnecter') }}</span>
                                 </button>
                             </form>
                         </div>

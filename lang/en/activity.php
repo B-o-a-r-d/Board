@@ -1,0 +1,26 @@
+<?php
+
+return [
+    'card.created' => 'created the card',
+    'card.moved' => 'moved the card',
+    'card.moved_to' => 'moved the card to “:list”',
+    'card.completed' => 'marked the card complete',
+    'card.archived' => 'archived the card',
+    'card.restored' => 'restored the card',
+    'card.duplicated' => 'duplicated the card',
+    'card.updated' => 'updated the card',
+    'card.members' => 'changed the members',
+    'card.labels' => 'changed the labels',
+    'card.cover' => 'changed the cover',
+    'comment.created' => 'commented',
+    'comment.deleted' => 'deleted a comment',
+    'member.assigned' => 'assigned :name',
+    'checklist.created' => 'added a checklist',
+    'checklist.deleted' => 'deleted a checklist',
+    'checklist.item.added' => 'added a checklist item',
+    'checklist.item.toggled' => 'checked/unchecked an item',
+    'checklist.item.deleted' => 'deleted a checklist item',
+    'attachment.added' => 'added an attachment',
+    'automation.run' => 'ran an automation',
+    'someone' => 'a member',
+];

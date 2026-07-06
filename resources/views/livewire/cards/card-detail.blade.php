@@ -23,7 +23,7 @@
                                 >
                                 @error('title') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                             </div>
-                            <button type="submit" class="mt-1 shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">Enregistrer</button>
+                            <button type="submit" class="mt-1 shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">{{ __('Enregistrer') }}</button>
                         </form>
 
                         {{-- Description : éditeur WYSIWYG (TipTap → markdown) --}}
@@ -31,38 +31,38 @@
                             $tbBtn = 'flex h-7 min-w-[1.75rem] items-center justify-center rounded px-1.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700';
                         @endphp
                         <div wire:key="desc-{{ $card->id }}" wire:ignore x-data="markdownEditor(@js((string) $card->description))">
-                            <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-neutral-500">Description</label>
+                            <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Description') }}</label>
 
                             {{-- Read mode --}}
                             <div x-ref="readview" x-show="! editing" @click="edit()" class="markdown min-h-[3rem] cursor-text rounded-lg border border-transparent bg-neutral-50 p-3 text-sm hover:border-neutral-300 dark:bg-neutral-800/50 dark:hover:border-neutral-700">
                                 @if (filled($card->description))
                                     {!! Str::markdown($card->description, ['html_input' => 'strip', 'allow_unsafe_links' => false]) !!}
                                 @else
-                                    <span class="text-neutral-400">Ajoutez une description… (cliquez pour éditer)</span>
+                                    <span class="text-neutral-400">{{ __("Ajoutez une description… (cliquez pour éditer)") }}</span>
                                 @endif
                             </div>
 
                             {{-- Edit mode --}}
                             <div x-show="editing" x-cloak class="rounded-lg border border-neutral-300 dark:border-neutral-700">
                                 <div class="flex flex-wrap items-center gap-0.5 border-b border-neutral-200 p-1 dark:border-neutral-700">
-                                    <button type="button" @click="run('toggleBold')" :class="isActive('bold') && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }} font-bold" title="Gras">B</button>
-                                    <button type="button" @click="run('toggleItalic')" :class="isActive('italic') && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }} italic" title="Italique">I</button>
-                                    <button type="button" @click="run('toggleStrike')" :class="isActive('strike') && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }} line-through" title="Barré">S</button>
+                                    <button type="button" @click="run('toggleBold')" :class="isActive('bold') && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }} font-bold" title="{{ __('Gras') }}">B</button>
+                                    <button type="button" @click="run('toggleItalic')" :class="isActive('italic') && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }} italic" title="{{ __('Italique') }}">I</button>
+                                    <button type="button" @click="run('toggleStrike')" :class="isActive('strike') && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }} line-through" title="{{ __('Barré') }}">S</button>
                                     <span class="mx-1 h-5 w-px bg-neutral-200 dark:bg-neutral-700"></span>
-                                    <button type="button" @click="run('toggleHeading', { level: 2 })" :class="isActive('heading', { level: 2 }) && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }} font-semibold" title="Titre">H2</button>
-                                    <button type="button" @click="run('toggleHeading', { level: 3 })" :class="isActive('heading', { level: 3 }) && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }} font-semibold" title="Sous-titre">H3</button>
+                                    <button type="button" @click="run('toggleHeading', { level: 2 })" :class="isActive('heading', { level: 2 }) && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }} font-semibold" title="{{ __('Titre') }}">H2</button>
+                                    <button type="button" @click="run('toggleHeading', { level: 3 })" :class="isActive('heading', { level: 3 }) && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }} font-semibold" title="{{ __('Sous-titre') }}">H3</button>
                                     <span class="mx-1 h-5 w-px bg-neutral-200 dark:bg-neutral-700"></span>
-                                    <button type="button" @click="run('toggleBulletList')" :class="isActive('bulletList') && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }}" title="Liste à puces"><x-phosphor-list-bullets class="h-4 w-4" /></button>
-                                    <button type="button" @click="run('toggleOrderedList')" :class="isActive('orderedList') && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }}" title="Liste numérotée"><x-phosphor-list-numbers class="h-4 w-4" /></button>
-                                    <button type="button" @click="run('toggleCodeBlock')" :class="isActive('codeBlock') && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }}" title="Bloc de code"><x-phosphor-code class="h-4 w-4" /></button>
-                                    <button type="button" @click="toggleLink()" :class="isActive('link') && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }}" title="Lien"><x-phosphor-link class="h-4 w-4" /></button>
+                                    <button type="button" @click="run('toggleBulletList')" :class="isActive('bulletList') && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }}" title="{{ __('Liste à puces') }}"><x-phosphor-list-bullets class="h-4 w-4" /></button>
+                                    <button type="button" @click="run('toggleOrderedList')" :class="isActive('orderedList') && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }}" title="{{ __('Liste numérotée') }}"><x-phosphor-list-numbers class="h-4 w-4" /></button>
+                                    <button type="button" @click="run('toggleCodeBlock')" :class="isActive('codeBlock') && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }}" title="{{ __('Bloc de code') }}"><x-phosphor-code class="h-4 w-4" /></button>
+                                    <button type="button" @click="toggleLink()" :class="isActive('link') && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }}" title="{{ __('Lien') }}"><x-phosphor-link class="h-4 w-4" /></button>
                                 </div>
 
                                 <div class="js-editor-mount" wire:ignore x-ignore></div>
 
                                 <div class="flex items-center justify-end gap-2 border-t border-neutral-200 p-1.5 dark:border-neutral-700">
-                                    <button type="button" @click="cancel()" class="rounded-lg px-3 py-1 text-sm text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800">Annuler</button>
-                                    <button type="button" @click="save()" class="rounded-lg bg-indigo-600 px-3 py-1 text-sm font-semibold text-white hover:bg-indigo-500">Enregistrer</button>
+                                    <button type="button" @click="cancel()" class="rounded-lg px-3 py-1 text-sm text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800">{{ __('Annuler') }}</button>
+                                    <button type="button" @click="save()" class="rounded-lg bg-indigo-600 px-3 py-1 text-sm font-semibold text-white hover:bg-indigo-500">{{ __('Enregistrer') }}</button>
                                 </div>
                             </div>
                         </div>
@@ -88,7 +88,7 @@
                                 <div wire:key="checklist-{{ $checklist->id }}" class="rounded-lg border border-neutral-200 p-3 dark:border-neutral-700">
                                     <div class="mb-2 flex items-center justify-between">
                                         <span class="text-sm font-medium">{{ $checklist->title }}</span>
-                                        <button type="button" wire:click="deleteChecklist({{ $checklist->id }})" class="text-xs text-neutral-400 hover:text-red-500">Supprimer</button>
+                                        <button type="button" wire:click="deleteChecklist({{ $checklist->id }})" class="text-xs text-neutral-400 hover:text-red-500">{{ __('Supprimer') }}</button>
                                     </div>
                                     <div class="mb-2 flex items-center gap-2">
                                         <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
@@ -105,14 +105,14 @@
                                         @endforeach
                                     </ul>
                                     <form wire:submit="addChecklistItem({{ $checklist->id }})" class="mt-2">
-                                        <input type="text" wire:model="newChecklistItem.{{ $checklist->id }}" placeholder="+ Ajouter un élément" class="w-full rounded border border-neutral-200 bg-white px-2 py-1 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                        <input type="text" wire:model="newChecklistItem.{{ $checklist->id }}" placeholder="{{ __('+ Ajouter un élément') }}" class="w-full rounded border border-neutral-200 bg-white px-2 py-1 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
                                     </form>
                                 </div>
                             @endforeach
 
                             <form wire:submit="addChecklist" class="flex gap-2">
-                                <input type="text" wire:model="newChecklistTitle" placeholder="Nouvelle checklist" class="flex-1 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
-                                <button type="submit" class="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">Ajouter</button>
+                                <input type="text" wire:model="newChecklistTitle" placeholder="{{ __('Nouvelle checklist') }}" class="flex-1 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                <button type="submit" class="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">{{ __('Ajouter') }}</button>
                             </form>
                         </div>
 
@@ -125,7 +125,7 @@
                             $mediaUrls = array_column($media, 'url');
                         @endphp
                         <div class="space-y-3">
-                            <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Pièces jointes</h3>
+                            <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Pièces jointes') }}</h3>
                             <div class="grid grid-cols-2 gap-3">
                                 @foreach ($card->attachments as $attachment)
                                     <div wire:key="att-{{ $attachment->id }}" class="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700">
@@ -143,7 +143,7 @@
                                             <span class="truncate text-xs" title="{{ $attachment->name }}">{{ $attachment->name }}</span>
                                             <div class="flex shrink-0 gap-1">
                                                 @if ($attachment->isImage())
-                                                    <button type="button" wire:click="setCover({{ $attachment->id }})" class="text-neutral-400 hover:text-amber-500" title="Définir comme couverture"><x-phosphor-star class="h-4 w-4" /></button>
+                                                    <button type="button" wire:click="setCover({{ $attachment->id }})" class="text-neutral-400 hover:text-amber-500" title="{{ __('Définir comme couverture') }}"><x-phosphor-star class="h-4 w-4" /></button>
                                                 @endif
                                                 <button type="button" wire:click="deleteAttachment({{ $attachment->id }})" class="text-xs text-neutral-400 hover:text-red-500"><x-phosphor-x class="h-3.5 w-3.5" /></button>
                                             </div>
@@ -243,7 +243,7 @@
                                 }
                             }'
                         >
-                            <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Commentaires</h3>
+                            <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Commentaires') }}</h3>
 
                             <form wire:submit="addComment" class="space-y-2">
                                 <div class="relative">
@@ -254,7 +254,7 @@
                                         @keydown="onKeydown($event)"
                                         @blur="setTimeout(() => showList = false, 150)"
                                         rows="2"
-                                        placeholder="Écrire un commentaire… (mentionnez avec @nom)"
+                                        placeholder="{{ __('Écrire un commentaire… (mentionnez avec @nom)') }}"
                                         class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800"
                                     ></textarea>
 
@@ -282,7 +282,7 @@
 
                                 <div class="flex items-center justify-between">
                                     <span class="text-xs text-indigo-500" x-text="typingText"></span>
-                                    <button type="submit" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">Commenter</button>
+                                    <button type="submit" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">{{ __('Commenter') }}</button>
                                 </div>
                                 @error('newComment') <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                             </form>
@@ -299,9 +299,9 @@
                                                 <span class="text-sm font-medium">{{ $comment->user?->name ?? 'Utilisateur supprimé' }}</span>
                                                 <span class="text-xs text-neutral-400">{{ $comment->created_at->diffForHumans() }}</span>
                                                 <div class="ml-auto flex items-center gap-2" x-data="{ copied: false }">
-                                                    <button type="button" @click="navigator.clipboard?.writeText('{{ route('boards.show', ['board' => $board, 'card' => $card->public_id]) }}#comment-{{ $comment->id }}'); copied = true; setTimeout(() => copied = false, 1500)" class="text-xs text-neutral-300 opacity-0 transition hover:text-indigo-500 group-hover/comment:opacity-100" title="Copier le lien du commentaire"><span x-text="copied ? 'Copié !' : 'Lien'"></span></button>
+                                                    <button type="button" @click="navigator.clipboard?.writeText('{{ route('boards.show', ['board' => $board, 'card' => $card->public_id]) }}#comment-{{ $comment->id }}'); copied = true; setTimeout(() => copied = false, 1500)" class="text-xs text-neutral-300 opacity-0 transition hover:text-indigo-500 group-hover/comment:opacity-100" title="{{ __('Copier le lien du commentaire') }}"><span x-text="copied ? 'Copié !' : 'Lien'"></span></button>
                                                     @if ($canDelete)
-                                                        <button type="button" wire:click="deleteComment({{ $comment->id }})" class="text-xs text-neutral-300 opacity-0 transition hover:text-red-500 group-hover/comment:opacity-100">Supprimer</button>
+                                                        <button type="button" wire:click="deleteComment({{ $comment->id }})" class="text-xs text-neutral-300 opacity-0 transition hover:text-red-500 group-hover/comment:opacity-100">{{ __('Supprimer') }}</button>
                                                     @endif
                                                 </div>
                                             </div>
@@ -322,20 +322,22 @@
 
                         {{-- Activity feed --}}
                         <div class="space-y-2">
-                            <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Activité</h3>
+                            <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Activité') }}</h3>
                             @forelse ($card->activities->take(12) as $activity)
                                 @php
-                                    $label = match ($activity->type) {
-                                        'card.created' => 'a créé la carte',
-                                        'card.moved' => 'a déplacé la carte' . (! empty($activity->properties['to_list']) ? ' vers « ' . $activity->properties['to_list'] . ' »' : ''),
-                                        'card.completed' => 'a marqué la carte terminée',
-                                        'comment.created' => 'a commenté',
-                                        'member.assigned' => 'a assigné ' . ($activity->properties['user_name'] ?? 'un membre'),
-                                        default => $activity->type,
-                                    };
+                                    $props = $activity->properties ?? [];
+                                    if ($activity->type === 'card.moved' && ! empty($props['to_list'])) {
+                                        $label = __('activity.card.moved_to', ['list' => $props['to_list']]);
+                                    } elseif ($activity->type === 'member.assigned') {
+                                        $label = __('activity.member.assigned', ['name' => $props['user_name'] ?? __('activity.someone')]);
+                                    } else {
+                                        $key = 'activity.' . $activity->type;
+                                        $label = trans($key);
+                                        $label = $label === $key ? $activity->type : $label;
+                                    }
                                 @endphp
                                 <div wire:key="activity-{{ $activity->id }}" class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                                    <span class="font-medium text-neutral-700 dark:text-neutral-300">{{ $activity->user?->name ?? 'Quelqu\'un' }}</span>
+                                    <span class="font-medium text-neutral-700 dark:text-neutral-300">{{ $activity->user?->name ?? __('Quelqu\'un') }}</span>
                                     <span>{{ $label }}</span>
                                     @if (Str::startsWith((string) $activity->source, 'mcp:'))
                                         <span class="inline-flex items-center gap-0.5 rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300"><x-phosphor-robot class="h-3 w-3" /> {{ Str::after($activity->source, 'mcp:') }}</span>
@@ -343,7 +345,7 @@
                                     <span class="text-neutral-400">· {{ $activity->created_at->diffForHumans() }}</span>
                                 </div>
                             @empty
-                                <p class="text-xs text-neutral-400">Aucune activité pour le moment.</p>
+                                <p class="text-xs text-neutral-400">{{ __('Aucune activité pour le moment.') }}</p>
                             @endforelse
                         </div>
                     </div>
@@ -351,19 +353,19 @@
                     {{-- Sidebar --}}
                     <div class="space-y-5">
                         <button type="button" wire:click="toggleComplete" class="w-full rounded-lg px-3 py-2 text-sm font-medium {{ $card->completed_at ? 'bg-green-600 text-white hover:bg-green-500' : 'border border-neutral-300 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800' }}">
-                            {{ $card->completed_at ? 'Terminée' : 'Marquer terminée' }}
+                            {{ $card->completed_at ? __('Terminée') : __('Marquer terminée') }}
                         </button>
 
                         @can('admin')
                             <button type="button" wire:click="saveAsTemplate" class="flex w-full items-center justify-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">
-                                <x-phosphor-stack class="h-4 w-4" /> Enregistrer comme modèle
+                                <x-phosphor-stack class="h-4 w-4" /> {{ __('Enregistrer comme modèle') }}
                             </button>
                         @endcan
 
                         {{-- Manual automation buttons --}}
                         @if ($cardButtons->isNotEmpty())
                             <div class="space-y-1.5">
-                                <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Actions rapides</h3>
+                                <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Actions rapides') }}</h3>
                                 @foreach ($cardButtons as $button)
                                     <button type="button" wire:click="runAutomation({{ $button->id }})" wire:key="cardbtn-{{ $button->id }}" class="flex w-full items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">
                                         <x-phosphor-lightning class="h-4 w-4 text-amber-500" /> {{ $button->name }}
@@ -375,12 +377,12 @@
                         {{-- Cover: solid color, or an uploaded image --}}
                         @php $coverPalette = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b']; @endphp
                         <div>
-                            <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Couverture</h3>
+                            <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Couverture') }}</h3>
 
                             @if ($card->cover_path)
                                 <div class="relative mb-2 overflow-hidden rounded-lg">
                                     <img src="{{ Storage::disk('public')->url($card->cover_path) }}" alt="" class="h-24 w-full object-cover">
-                                    <button type="button" wire:click="clearCover" class="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70" title="Retirer la couverture"><x-phosphor-x class="h-3.5 w-3.5" /></button>
+                                    <button type="button" wire:click="clearCover" class="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70" title="{{ __('Retirer la couverture') }}"><x-phosphor-x class="h-3.5 w-3.5" /></button>
                                 </div>
                             @endif
 
@@ -389,12 +391,12 @@
                                     <button type="button" wire:click="setCoverColor('{{ $swatch }}')" class="h-6 w-6 rounded-md ring-offset-1 hover:ring-2 hover:ring-neutral-400 dark:ring-offset-neutral-900 {{ $card->cover_color === $swatch ? 'ring-2 ring-indigo-500' : '' }}" style="background-color: {{ $swatch }}" title="{{ $swatch }}"></button>
                                 @endforeach
                                 @if ($card->cover_color && ! $card->cover_path)
-                                    <button type="button" wire:click="clearCover" class="flex h-6 items-center gap-1 rounded-md border border-neutral-300 px-2 text-xs text-neutral-500 hover:text-neutral-700 dark:border-neutral-700 dark:hover:text-neutral-200" title="Retirer la couverture"><x-phosphor-x class="h-3 w-3" /> Retirer</button>
+                                    <button type="button" wire:click="clearCover" class="flex h-6 items-center gap-1 rounded-md border border-neutral-300 px-2 text-xs text-neutral-500 hover:text-neutral-700 dark:border-neutral-700 dark:hover:text-neutral-200" title="{{ __('Retirer la couverture') }}"><x-phosphor-x class="h-3 w-3" /> {{ __('Retirer') }}</button>
                                 @endif
                             </div>
 
                             <div class="mt-2">
-                                <x-dropzone model="coverUpload" action="uploadCover" accept="image/*" hint="Image de couverture · 10 Mo max" />
+                                <x-dropzone model="coverUpload" action="uploadCover" accept="image/*" hint="{{ __('Image de couverture · 10 Mo max') }}" />
                             </div>
                         </div>
 
@@ -402,11 +404,11 @@
                         @php $dueOverdue = $card->due_at && ! $card->completed_at && $card->due_at->isPast(); @endphp
                         <div x-data="{ enabled: @js((bool) $card->due_at) }">
                             <div class="mb-2 flex items-center justify-between">
-                                <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">Échéance</h3>
+                                <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Échéance') }}</h3>
                                 <button
                                     type="button"
                                     role="switch"
-                                    aria-label="Activer l'échéance"
+                                    aria-label="{{ __('Activer l\'échéance') }}"
                                     :aria-checked="enabled"
                                     @click="enabled = ! enabled; if (! enabled) { $wire.clearDueDate() }"
                                     class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition"
@@ -420,9 +422,9 @@
                                 @if ($card->due_at)
                                     <div class="flex items-center justify-between text-xs">
                                         <span class="{{ $dueOverdue ? 'font-medium text-red-600 dark:text-red-400' : 'text-neutral-500' }}">
-                                            {{ $card->due_at->translatedFormat('d M Y \à H:i') }}{{ $dueOverdue ? ' · en retard' : '' }}
+                                            {{ $card->due_at->translatedFormat('d M Y \à H:i') }}{{ $dueOverdue ? __(' · en retard') : '' }}
                                         </span>
-                                        <button type="button" wire:click="clearDueDate" @click="enabled = false" class="text-neutral-400 hover:text-red-500">Retirer</button>
+                                        <button type="button" wire:click="clearDueDate" @click="enabled = false" class="text-neutral-400 hover:text-red-500">{{ __('Retirer') }}</button>
                                     </div>
                                 @endif
                             </div>
@@ -430,7 +432,7 @@
 
                         {{-- Members --}}
                         <div>
-                            <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Membres</h3>
+                            <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Membres') }}</h3>
                             <div class="space-y-1">
                                 @foreach ($boardMembers as $member)
                                     @php $assigned = $card->members->contains($member->id); @endphp
@@ -447,7 +449,7 @@
 
                         {{-- Labels --}}
                         <div>
-                            <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Labels</h3>
+                            <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Labels') }}</h3>
                             @php $labelPalette = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b']; @endphp
                             <div class="space-y-2">
                                 @foreach ($boardLabels as $label)
@@ -458,7 +460,7 @@
                                                 <span class="h-3 w-6 shrink-0 rounded-full" style="background-color: {{ $label->color }}"></span>
                                                 <span class="truncate">{{ $label->name ?? '—' }}</span>
                                             </button>
-                                            <button type="button" @click="openAt($event.clientX, $event.clientY)" class="shrink-0 rounded p-1 text-neutral-400 opacity-0 transition hover:bg-neutral-100 hover:text-neutral-700 group-hover/label:opacity-100 dark:hover:bg-neutral-800 dark:hover:text-neutral-200" title="Options du label (clic droit aussi)"><x-phosphor-dots-three class="h-4 w-4" /></button>
+                                            <button type="button" @click="openAt($event.clientX, $event.clientY)" class="shrink-0 rounded p-1 text-neutral-400 opacity-0 transition hover:bg-neutral-100 hover:text-neutral-700 group-hover/label:opacity-100 dark:hover:bg-neutral-800 dark:hover:text-neutral-200" title="{{ __('Options du label (clic droit aussi)') }}"><x-phosphor-dots-three class="h-4 w-4" /></button>
                                         </x-slot:trigger>
                                         <x-slot:menu>
                                             <div class="p-1" x-data="{ name: @js($label->name) }" @click.stop>
@@ -466,7 +468,7 @@
                                                     type="text"
                                                     x-model="name"
                                                     @keydown.enter="$wire.renameLabel({{ $label->id }}, name); shown = false"
-                                                    placeholder="Nom du label"
+                                                    placeholder="{{ __('Nom du label') }}"
                                                     class="w-full rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900"
                                                 >
                                             </div>
@@ -476,15 +478,15 @@
                                                 @endforeach
                                             </div>
                                             <x-context-menu.separator />
-                                            <x-context-menu.item icon="hash" @click="navigator.clipboard?.writeText('{{ $label->public_id }}')">Copier l'ID</x-context-menu.item>
-                                            <x-context-menu.item icon="trash" variant="danger" @click="$store.confirm.open({ title: 'Supprimer le label', message: 'Supprimer ce label du board ?', confirmLabel: 'Supprimer', danger: true }).then(ok => ok && $wire.deleteLabel({{ $label->id }}))">Supprimer</x-context-menu.item>
+                                            <x-context-menu.item icon="hash" @click="navigator.clipboard?.writeText('{{ $label->public_id }}'); window.toast('{{ __('ID copié') }}', { type: 'success' })">{{ __("Copier l'ID") }}</x-context-menu.item>
+                                            <x-context-menu.item icon="trash" variant="danger" @click="$store.confirm.open({ title: '{{ __('Supprimer le label') }}', message: '{{ __('Supprimer ce label du board ?') }}', confirmLabel: '{{ __('Supprimer') }}', danger: true }).then(ok => ok && $wire.deleteLabel({{ $label->id }}))">{{ __('Supprimer') }}</x-context-menu.item>
                                         </x-slot:menu>
                                     </x-context-menu>
                                 @endforeach
                             </div>
                             <form wire:submit="createLabel" class="mt-2 flex items-center gap-2">
                                 <input type="color" wire:model="newLabelColor" class="h-8 w-8 rounded border border-neutral-300 dark:border-neutral-700">
-                                <input type="text" wire:model="newLabelName" placeholder="Nouveau label" class="flex-1 rounded-lg border border-neutral-300 bg-white px-2 py-1 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                <input type="text" wire:model="newLabelName" placeholder="{{ __('Nouveau label') }}" class="flex-1 rounded-lg border border-neutral-300 bg-white px-2 py-1 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
                                 <button type="submit" class="rounded-lg border border-neutral-300 px-2 py-1 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">+</button>
                             </form>
                         </div>

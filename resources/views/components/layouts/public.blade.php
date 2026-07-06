@@ -33,7 +33,7 @@
 
                 <div class="flex items-center gap-3">
                     <span class="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
-                        <x-phosphor-eye class="h-3.5 w-3.5" /> Lecture seule
+                        <x-phosphor-eye class="h-3.5 w-3.5" /> {{ __('Lecture seule') }}
                     </span>
 
                     <button
@@ -41,7 +41,7 @@
                         x-data="{ dark: document.documentElement.classList.contains('dark') }"
                         @click="dark = ! dark; document.documentElement.classList.toggle('dark', dark); localStorage.setItem('theme', dark ? 'dark' : 'light')"
                         class="flex h-9 w-9 items-center justify-center rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                        title="Basculer le thème"
+                        title="{{ __('Basculer le thème') }}"
                     >
                         <x-phosphor-moon class="h-5 w-5 text-neutral-600" x-show="! dark" />
                         <x-phosphor-sun class="h-5 w-5 text-neutral-300" x-show="dark" x-cloak />

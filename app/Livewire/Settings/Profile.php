@@ -4,6 +4,7 @@ namespace App\Livewire\Settings;
 
 use App\Actions\Fortify\UpdateUserPassword;
 use App\Actions\Fortify\UpdateUserProfileInformation;
+use App\Http\Middleware\SetLocale;
 use App\Models\Setting;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
@@ -31,13 +32,26 @@ class Profile extends Component
 
     public bool $mcpEnabled = false;
 
+    public string $locale = '';
+
     public function mount(): void
     {
         $user = Auth::user();
 
         $this->name = $user->name;
         $this->email = $user->email;
+        $this->locale = $user->locale ?: app()->getLocale();
         $this->mcpEnabled = Setting::mcpEnabled();
+    }
+
+    public function updateLocale(string $locale): void
+    {
+        abort_unless(in_array($locale, SetLocale::SUPPORTED, true), 422);
+
+        Auth::user()->update(['locale' => $locale]);
+        $this->locale = $locale;
+        app()->setLocale($locale);
+        $this->dispatch('toast', message: __('Langue mise à jour'), type: 'success');
     }
 
     public function toggleMcp(): void

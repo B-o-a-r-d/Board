@@ -3,7 +3,7 @@
     <div class="mb-4 flex items-start justify-between gap-4">
         <div>
             <a href="{{ route('dashboard') }}" wire:navigate class="flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200">
-                <x-phosphor-arrow-left class="h-4 w-4" /> Tableau de bord
+                <x-phosphor-arrow-left class="h-4 w-4" /> {{ __('Tableau de bord') }}
             </a>
             @if ($renamingBoard)
                 <input
@@ -49,8 +49,8 @@
                 </template>
             </div>
 
-            <button type="button" wire:click="toggleTrash" class="flex items-center gap-1 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800" title="Corbeille du board">
-                <x-phosphor-trash class="h-4 w-4" /> Corbeille
+            <button type="button" wire:click="toggleTrash" class="flex items-center gap-1 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800" title="{{ __('Corbeille du board') }}">
+                <x-phosphor-trash class="h-4 w-4" /> {{ __('Corbeille') }}
             </button>
 
             @can('update', $board)
@@ -60,27 +60,27 @@
             @can('update', $board)
                 <x-context-menu>
                     <x-slot:trigger>
-                        <button type="button" @click="openAt($event.clientX, $event.clientY)" class="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800" title="Options du board (clic droit aussi)">
+                        <button type="button" @click="openAt($event.clientX, $event.clientY)" class="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800" title="{{ __('Options du board (clic droit aussi)') }}">
                             <x-phosphor-dots-three-vertical class="h-4 w-4" />
                         </button>
                     </x-slot:trigger>
                     <x-slot:menu>
-                        <x-context-menu.item icon="pencil-simple" wire:click="startRenameBoard">Renommer</x-context-menu.item>
-                        <x-context-menu.item icon="hash" @click="navigator.clipboard?.writeText('{{ $board->public_id }}')">Copier l'ID du board</x-context-menu.item>
+                        <x-context-menu.item icon="pencil-simple" wire:click="startRenameBoard">{{ __('Renommer') }}</x-context-menu.item>
+                        <x-context-menu.item icon="hash" @click="navigator.clipboard?.writeText('{{ $board->public_id }}'); window.toast('{{ __('ID copié') }}', { type: 'success' })">{{ __("Copier l'ID du board") }}</x-context-menu.item>
                         @if (config('board.public_sharing'))
-                            <x-context-menu.item icon="share-network" wire:click="openShare">Partager…</x-context-menu.item>
+                            <x-context-menu.item icon="share-network" wire:click="openShare">{{ __('Partager…') }}</x-context-menu.item>
                         @endif
                         @can('admin')
-                            <x-context-menu.item icon="stack" wire:click="toggleTemplate">{{ $board->is_template ? 'Retirer des modèles' : 'Définir comme modèle' }}</x-context-menu.item>
+                            <x-context-menu.item icon="stack" wire:click="toggleTemplate">{{ $board->is_template ? __('Retirer des modèles') : __('Définir comme modèle') }}</x-context-menu.item>
                         @endcan
-                        <x-context-menu.item icon="image" wire:click="openBackground">Fond du tableau…</x-context-menu.item>
+                        <x-context-menu.item icon="image" wire:click="openBackground">{{ __('Fond du tableau…') }}</x-context-menu.item>
                         <x-context-menu.separator />
-                        <x-context-menu.item icon="file-csv" @click="window.location.href = '{{ route('boards.export', ['board' => $board->id, 'format' => 'csv']) }}'">Exporter en CSV</x-context-menu.item>
-                        <x-context-menu.item icon="file-xls" @click="window.location.href = '{{ route('boards.export', ['board' => $board->id, 'format' => 'xlsx']) }}'">Exporter en XLSX</x-context-menu.item>
-                        <x-context-menu.item icon="download-simple" @click="window.location.href = '{{ route('boards.export', ['board' => $board->id, 'format' => 'json']) }}'">Exporter en JSON</x-context-menu.item>
+                        <x-context-menu.item icon="file-csv" @click="window.location.href = '{{ route('boards.export', ['board' => $board->id, 'format' => 'csv']) }}'">{{ __('Exporter en CSV') }}</x-context-menu.item>
+                        <x-context-menu.item icon="file-xls" @click="window.location.href = '{{ route('boards.export', ['board' => $board->id, 'format' => 'xlsx']) }}'">{{ __('Exporter en XLSX') }}</x-context-menu.item>
+                        <x-context-menu.item icon="download-simple" @click="window.location.href = '{{ route('boards.export', ['board' => $board->id, 'format' => 'json']) }}'">{{ __('Exporter en JSON') }}</x-context-menu.item>
                         @can('delete', $board)
                             <x-context-menu.separator />
-                            <x-context-menu.item icon="trash" variant="danger" @click="$store.confirm.open({ title: 'Supprimer le board', message: 'Supprimer définitivement ce board et tout son contenu ? Cette action est irréversible.', confirmLabel: 'Supprimer', danger: true }).then(ok => ok && $wire.deleteBoard())">Supprimer le board</x-context-menu.item>
+                            <x-context-menu.item icon="trash" variant="danger" @click="$store.confirm.open({ title: '{{ __('Supprimer le board') }}', message: '{{ __('Supprimer définitivement ce board et tout son contenu ? Cette action est irréversible.') }}', confirmLabel: '{{ __('Supprimer') }}', danger: true }).then(ok => ok && $wire.deleteBoard())">{{ __('Supprimer le board') }}</x-context-menu.item>
                         @endcan
                     </x-slot:menu>
                 </x-context-menu>
@@ -95,36 +95,36 @@
             <input
                 type="search"
                 wire:model.live.debounce.300ms="search"
-                placeholder="Rechercher une carte…"
+                placeholder="{{ __('Rechercher une carte…') }}"
                 class="w-56 rounded-lg border border-neutral-300 bg-white py-1.5 pl-8 pr-8 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800"
             >
             <x-phosphor-spinner-gap wire:loading wire:target="search" class="absolute right-2 top-2 h-4 w-4 animate-spin text-neutral-400" />
         </div>
 
         <select wire:model.live="filterLabel" class="rounded-lg border border-neutral-300 bg-white py-1.5 pl-3 pr-8 text-sm shadow-sm focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
-            <option value="">Tous les labels</option>
+            <option value="">{{ __('Tous les labels') }}</option>
             @foreach ($labels as $label)
-                <option value="{{ $label->id }}">{{ $label->name ?? 'Sans nom' }}</option>
+                <option value="{{ $label->id }}">{{ $label->name ?? __('Sans nom') }}</option>
             @endforeach
         </select>
 
         <select wire:model.live="filterMember" class="rounded-lg border border-neutral-300 bg-white py-1.5 pl-3 pr-8 text-sm shadow-sm focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
-            <option value="">Tous les membres</option>
+            <option value="">{{ __('Tous les membres') }}</option>
             @foreach ($members as $member)
                 <option value="{{ $member->id }}">{{ $member->name }}</option>
             @endforeach
         </select>
 
         <select wire:model.live="filterDue" class="rounded-lg border border-neutral-300 bg-white py-1.5 pl-3 pr-8 text-sm shadow-sm focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
-            <option value="">Échéance : toutes</option>
-            <option value="overdue">En retard</option>
-            <option value="due">Avec échéance</option>
-            <option value="none">Sans échéance</option>
+            <option value="">{{ __('Échéance : toutes') }}</option>
+            <option value="overdue">{{ __('En retard') }}</option>
+            <option value="due">{{ __('Avec échéance') }}</option>
+            <option value="none">{{ __('Sans échéance') }}</option>
         </select>
 
         @if ($this->hasActiveFilters())
             <button type="button" wire:click="resetFilters" class="rounded-lg px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-500/10">
-                Réinitialiser
+                {{ __('Réinitialiser') }}
             </button>
         @endif
     </div>
@@ -172,24 +172,24 @@
                             >
                             <span class="shrink-0 rounded-full bg-neutral-300/70 px-1.5 py-0.5 text-xs font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400" x-text="cardCount">{{ $list->cards->count() }}</span>
                         </div>
-                        <button type="button" wire:sort:ignore @click="openAt($event.clientX, $event.clientY)" class="shrink-0 rounded p-1 text-neutral-400 hover:bg-neutral-300 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200" title="Options de la liste (clic droit aussi)"><x-phosphor-dots-three class="h-4 w-4" /></button>
+                        <button type="button" wire:sort:ignore @click="openAt($event.clientX, $event.clientY)" class="shrink-0 rounded p-1 text-neutral-400 hover:bg-neutral-300 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200" title="{{ __('Options de la liste (clic droit aussi)') }}"><x-phosphor-dots-three class="h-4 w-4" /></button>
                     </x-slot:trigger>
                     <x-slot:menu>
-                        <x-context-menu.item icon="pencil-simple" @click="document.getElementById('list-name-{{ $list->id }}')?.focus()">Renommer</x-context-menu.item>
-                        <x-context-menu.item icon="hash" @click="navigator.clipboard?.writeText('{{ $list->public_id }}')">Copier l'ID de la liste</x-context-menu.item>
-                        <x-context-menu.item icon="copy" wire:click="duplicateList({{ $list->id }})">Dupliquer</x-context-menu.item>
+                        <x-context-menu.item icon="pencil-simple" @click="document.getElementById('list-name-{{ $list->id }}')?.focus()">{{ __('Renommer') }}</x-context-menu.item>
+                        <x-context-menu.item icon="hash" @click="navigator.clipboard?.writeText('{{ $list->public_id }}'); window.toast('{{ __('ID copié') }}', { type: 'success' })">{{ __("Copier l'ID de la liste") }}</x-context-menu.item>
+                        <x-context-menu.item icon="copy" wire:click="duplicateList({{ $list->id }})">{{ __('Dupliquer') }}</x-context-menu.item>
                         <x-context-menu.separator />
                         <div class="px-2 py-1.5">
-                            <p class="mb-1.5 text-xs text-neutral-500">Couleur de la liste</p>
+                            <p class="mb-1.5 text-xs text-neutral-500">{{ __('Couleur de la liste') }}</p>
                             <div class="flex flex-wrap gap-1.5">
                                 @foreach ($coverPalette as $swatch)
                                     <button type="button" wire:click="setListColor({{ $list->id }}, '{{ $swatch }}')" class="h-5 w-5 rounded-full ring-offset-1 hover:ring-2 hover:ring-neutral-400 dark:ring-offset-neutral-800" style="background-color: {{ $swatch }}" title="{{ $swatch }}"></button>
                                 @endforeach
-                                <button type="button" wire:click="setListColor({{ $list->id }}, null)" class="flex h-5 w-5 items-center justify-center rounded-full border border-neutral-300 text-neutral-400 hover:text-neutral-700 dark:border-neutral-600 dark:hover:text-neutral-200" title="Aucune couleur"><x-phosphor-x class="h-3 w-3" /></button>
+                                <button type="button" wire:click="setListColor({{ $list->id }}, null)" class="flex h-5 w-5 items-center justify-center rounded-full border border-neutral-300 text-neutral-400 hover:text-neutral-700 dark:border-neutral-600 dark:hover:text-neutral-200" title="{{ __('Aucune couleur') }}"><x-phosphor-x class="h-3 w-3" /></button>
                             </div>
                         </div>
                         <x-context-menu.separator />
-                        <x-context-menu.item icon="archive" variant="danger" @click="$store.confirm.open({ title: 'Archiver la liste', message: 'Archiver cette liste et ses cartes ?', confirmLabel: 'Archiver' }).then(ok => ok && $wire.archiveList({{ $list->id }}))">Archiver</x-context-menu.item>
+                        <x-context-menu.item icon="archive" variant="danger" @click="$store.confirm.open({ title: '{{ __('Archiver la liste') }}', message: '{{ __('Archiver cette liste et ses cartes ?') }}', confirmLabel: '{{ __('Archiver') }}' }).then(ok => ok && $wire.archiveList({{ $list->id }}))">{{ __('Archiver') }}</x-context-menu.item>
                     </x-slot:menu>
                 </x-context-menu>
 
@@ -234,14 +234,14 @@
                                             <button type="button" wire:click="$dispatch('open-card', { cardId: {{ $card->id }} })" class="break-words text-left hover:text-indigo-600 dark:hover:text-indigo-400">
                                                 {{ $card->title }}
                                             </button>
-                                            <button type="button" wire:sort:ignore @click="openAt($event.clientX, $event.clientY)" class="shrink-0 text-neutral-400 opacity-0 transition hover:text-neutral-700 group-hover:opacity-100 dark:hover:text-neutral-200" title="Options de la carte (clic droit aussi)"><x-phosphor-dots-three class="h-4 w-4" /></button>
+                                            <button type="button" wire:sort:ignore @click="openAt($event.clientX, $event.clientY)" class="shrink-0 text-neutral-400 opacity-0 transition hover:text-neutral-700 group-hover:opacity-100 dark:hover:text-neutral-200" title="{{ __('Options de la carte (clic droit aussi)') }}"><x-phosphor-dots-three class="h-4 w-4" /></button>
                                         </div>
 
                                         {{-- Badges --}}
                                         @if ($card->due_at || $itemsTotal > 0 || $card->attachments_count > 0 || $card->completed_at)
                                             <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
                                                 @if ($card->completed_at)
-                                                    <span class="rounded bg-green-100 px-1.5 py-0.5 text-green-700 dark:bg-green-500/15 dark:text-green-400">Terminée</span>
+                                                    <span class="rounded bg-green-100 px-1.5 py-0.5 text-green-700 dark:bg-green-500/15 dark:text-green-400">{{ __('Terminée') }}</span>
                                                 @endif
                                                 @if ($card->due_at)
                                                     <span class="rounded px-1.5 py-0.5 {{ $overdue ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400' : 'bg-neutral-100 dark:bg-neutral-700/50' }}">
@@ -269,12 +269,12 @@
                                     </div>
                                 </x-slot:trigger>
                                 <x-slot:menu>
-                                    <x-context-menu.item icon="arrow-square-out" wire:click="$dispatch('open-card', { cardId: {{ $card->id }} })">Ouvrir</x-context-menu.item>
-                                    <x-context-menu.item icon="copy" wire:click="duplicateCard({{ $card->id }})">Dupliquer</x-context-menu.item>
-                                    <x-context-menu.item icon="link" @click="navigator.clipboard?.writeText('{{ route('boards.show', ['board' => $board, 'card' => $card->public_id]) }}')">Copier le lien</x-context-menu.item>
-                                    <x-context-menu.item icon="hash" @click="navigator.clipboard?.writeText('{{ $card->public_id }}')">Copier l'ID</x-context-menu.item>
+                                    <x-context-menu.item icon="arrow-square-out" wire:click="$dispatch('open-card', { cardId: {{ $card->id }} })">{{ __('Ouvrir') }}</x-context-menu.item>
+                                    <x-context-menu.item icon="copy" wire:click="duplicateCard({{ $card->id }})">{{ __('Dupliquer') }}</x-context-menu.item>
+                                    <x-context-menu.item icon="link" @click="navigator.clipboard?.writeText('{{ route('boards.show', ['board' => $board, 'card' => $card->public_id]) }}'); window.toast('{{ __('Lien copié') }}', { type: 'success' })">{{ __('Copier le lien') }}</x-context-menu.item>
+                                    <x-context-menu.item icon="hash" @click="navigator.clipboard?.writeText('{{ $card->public_id }}'); window.toast('{{ __('ID copié') }}', { type: 'success' })">{{ __("Copier l'ID") }}</x-context-menu.item>
                                     <x-context-menu.separator />
-                                    <x-context-menu.item icon="archive" variant="danger" wire:click="archiveCard({{ $card->id }})">Archiver</x-context-menu.item>
+                                    <x-context-menu.item icon="archive" variant="danger" wire:click="archiveCard({{ $card->id }})">{{ __('Archiver') }}</x-context-menu.item>
                                 </x-slot:menu>
                             </x-context-menu>
                         </li>
@@ -287,7 +287,7 @@
                         <input
                             type="text"
                             wire:model="newCardTitle.{{ $list->id }}"
-                            placeholder="+ Ajouter une carte"
+                            placeholder="{{ __('+ Ajouter une carte') }}"
                             class="w-full rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-sm placeholder-neutral-500 hover:bg-white focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:hover:bg-neutral-800 dark:focus:bg-neutral-800"
                         >
                     </form>
@@ -295,12 +295,12 @@
                     @if ($cardTemplates->isNotEmpty())
                         <x-context-menu class="shrink-0">
                             <x-slot:trigger>
-                                <button type="button" @click="openAt($event.clientX, $event.clientY)" class="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-300 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200" title="Ajouter depuis un modèle">
+                                <button type="button" @click="openAt($event.clientX, $event.clientY)" class="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-300 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200" title="{{ __('Ajouter depuis un modèle') }}">
                                     <x-phosphor-stack class="h-4 w-4" />
                                 </button>
                             </x-slot:trigger>
                             <x-slot:menu>
-                                <p class="px-2 py-1 text-xs font-medium uppercase tracking-wide text-neutral-400">Depuis un modèle</p>
+                                <p class="px-2 py-1 text-xs font-medium uppercase tracking-wide text-neutral-400">{{ __('Depuis un modèle') }}</p>
                                 @foreach ($cardTemplates as $template)
                                     <x-context-menu.item icon="cards" wire:click="addCardFromTemplate({{ $list->id }}, {{ $template->id }})">{{ $template->name }}</x-context-menu.item>
                                 @endforeach
@@ -316,7 +316,7 @@
             <input
                 type="text"
                 wire:model="newListName"
-                placeholder="+ Ajouter une liste"
+                placeholder="{{ __('+ Ajouter une liste') }}"
                 class="w-full rounded-xl border border-dashed border-neutral-300 bg-white/50 px-3 py-2 text-sm placeholder-neutral-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900/50"
             >
             @error('newListName') <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
@@ -325,27 +325,27 @@
 
     {{-- Trash / archive panel --}}
     @if ($showTrash)
-        <x-modal title="Corbeille" max-width="2xl" on-close="$wire.toggleTrash()">
+        <x-modal title="{{ __('Corbeille') }}" max-width="2xl" on-close="$wire.toggleTrash()">
                 <div class="max-h-[70vh] space-y-6 overflow-y-auto p-5">
                     {{-- Archived lists --}}
                     <div>
-                        <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Listes archivées</h3>
+                        <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Listes archivées') }}</h3>
                         @forelse ($archivedLists as $list)
                             <div wire:key="arch-list-{{ $list->id }}" class="flex items-center justify-between gap-2 border-b border-neutral-50 py-2 text-sm dark:border-neutral-800/50">
                                 <span class="font-medium">{{ $list->name }}</span>
                                 <div class="flex shrink-0 gap-3">
-                                    <button type="button" wire:click="restoreList({{ $list->id }})" class="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">Restaurer</button>
-                                    <button type="button" @click="$store.confirm.open({ title: 'Supprimer la liste', message: 'Supprimer définitivement cette liste et ses cartes ?', confirmLabel: 'Supprimer', danger: true }).then(ok => ok && $wire.deleteListPermanently({{ $list->id }}))" class="text-xs text-neutral-400 hover:text-red-500">Supprimer définitivement</button>
+                                    <button type="button" wire:click="restoreList({{ $list->id }})" class="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">{{ __('Restaurer') }}</button>
+                                    <button type="button" @click="$store.confirm.open({ title: '{{ __('Supprimer la liste') }}', message: '{{ __('Supprimer définitivement cette liste et ses cartes ?') }}', confirmLabel: '{{ __('Supprimer') }}', danger: true }).then(ok => ok && $wire.deleteListPermanently({{ $list->id }}))" class="text-xs text-neutral-400 hover:text-red-500">{{ __('Supprimer définitivement') }}</button>
                                 </div>
                             </div>
                         @empty
-                            <p class="text-sm text-neutral-400">Aucune liste archivée.</p>
+                            <p class="text-sm text-neutral-400">{{ __('Aucune liste archivée.') }}</p>
                         @endforelse
                     </div>
 
                     {{-- Archived cards --}}
                     <div>
-                        <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Cartes archivées</h3>
+                        <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Cartes archivées') }}</h3>
                         @forelse ($archivedCards as $card)
                             <div wire:key="arch-card-{{ $card->id }}" class="flex items-center justify-between gap-2 border-b border-neutral-50 py-2 text-sm dark:border-neutral-800/50">
                                 <div class="min-w-0">
@@ -353,12 +353,12 @@
                                     <p class="truncate text-xs text-neutral-400">{{ $card->list?->name }}</p>
                                 </div>
                                 <div class="flex shrink-0 gap-3">
-                                    <button type="button" wire:click="restoreCard({{ $card->id }})" class="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">Restaurer</button>
-                                    <button type="button" @click="$store.confirm.open({ title: 'Supprimer la carte', message: 'Supprimer définitivement cette carte ?', confirmLabel: 'Supprimer', danger: true }).then(ok => ok && $wire.deleteCardPermanently({{ $card->id }}))" class="text-xs text-neutral-400 hover:text-red-500">Supprimer définitivement</button>
+                                    <button type="button" wire:click="restoreCard({{ $card->id }})" class="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">{{ __('Restaurer') }}</button>
+                                    <button type="button" @click="$store.confirm.open({ title: '{{ __('Supprimer la carte') }}', message: '{{ __('Supprimer définitivement cette carte ?') }}', confirmLabel: '{{ __('Supprimer') }}', danger: true }).then(ok => ok && $wire.deleteCardPermanently({{ $card->id }}))" class="text-xs text-neutral-400 hover:text-red-500">{{ __('Supprimer définitivement') }}</button>
                                 </div>
                             </div>
                         @empty
-                            <p class="text-sm text-neutral-400">Aucune carte archivée.</p>
+                            <p class="text-sm text-neutral-400">{{ __('Aucune carte archivée.') }}</p>
                         @endforelse
                     </div>
                 </div>
@@ -369,19 +369,19 @@
     @if ($showShare)
         <x-modal max-width="lg" on-close="$wire.$set('showShare', false)" wire:key="share-modal">
             <x-slot:header>
-                <span class="flex items-center gap-2"><x-phosphor-share-network class="h-5 w-5" /> Partager le tableau</span>
+                <span class="flex items-center gap-2"><x-phosphor-share-network class="h-5 w-5" /> {{ __('Partager le tableau') }}</span>
             </x-slot:header>
 
                 <div class="space-y-4 p-5">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <p class="text-sm font-medium">Lien public en lecture seule</p>
-                            <p class="text-xs text-neutral-500 dark:text-neutral-400">Toute personne disposant du lien peut consulter ce tableau et ses cartes, sans compte.</p>
+                            <p class="text-sm font-medium">{{ __('Lien public en lecture seule') }}</p>
+                            <p class="text-xs text-neutral-500 dark:text-neutral-400">{{ __('Toute personne disposant du lien peut consulter ce tableau et ses cartes, sans compte.') }}</p>
                         </div>
                         <button
                             type="button"
                             role="switch"
-                            aria-label="Activer le partage public en lecture seule"
+                            aria-label="{{ __('Activer le partage public en lecture seule') }}"
                             aria-checked="{{ $board->isShared() ? 'true' : 'false' }}"
                             wire:click="toggleShare"
                             class="relative mt-0.5 inline-flex h-5 w-9 shrink-0 items-center rounded-full transition {{ $board->isShared() ? 'bg-indigo-600' : 'bg-neutral-300 dark:bg-neutral-700' }}"
@@ -404,10 +404,10 @@
                             </button>
                         </div>
                         <a href="{{ $shareUrl }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">
-                            <x-phosphor-arrow-square-out class="h-3.5 w-3.5" /> Ouvrir dans un nouvel onglet
+                            <x-phosphor-arrow-square-out class="h-3.5 w-3.5" /> {{ __('Ouvrir dans un nouvel onglet') }}
                         </a>
                     @else
-                        <p class="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-500 dark:bg-neutral-800/50 dark:text-neutral-400">Activez le partage pour générer un lien. Le désactiver invalide immédiatement l'ancien lien.</p>
+                        <p class="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-500 dark:bg-neutral-800/50 dark:text-neutral-400">{{ __("Activez le partage pour générer un lien. Le désactiver invalide immédiatement l'ancien lien.") }}</p>
                     @endif
                 </div>
         </x-modal>
@@ -417,30 +417,30 @@
     @if ($showBackground)
         <x-modal max-width="lg" on-close="$wire.$set('showBackground', false)">
             <x-slot:header>
-                <span class="flex items-center gap-2"><x-phosphor-image class="h-5 w-5" /> Fond du tableau</span>
+                <span class="flex items-center gap-2"><x-phosphor-image class="h-5 w-5" /> {{ __('Fond du tableau') }}</span>
             </x-slot:header>
 
             <div class="space-y-4 p-5">
                 @if ($board->background_image)
                     <div class="relative overflow-hidden rounded-lg">
                         <img src="{{ Storage::disk('public')->url($board->background_image) }}" alt="" class="h-32 w-full object-cover">
-                        <button type="button" wire:click="setBackground(null)" class="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70" title="Retirer l'image"><x-phosphor-x class="h-4 w-4" /></button>
+                        <button type="button" wire:click="setBackground(null)" class="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70" title="{{ __('Retirer l\'image') }}"><x-phosphor-x class="h-4 w-4" /></button>
                     </div>
                 @endif
 
                 <div>
-                    <p class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Dégradés</p>
+                    <p class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Dégradés') }}</p>
                     <div class="flex flex-wrap gap-2">
                         @foreach (config('board.backgrounds') as $bgKey => $bgCss)
                             <button type="button" wire:click="setBackground('{{ $bgKey }}')" class="h-9 w-9 rounded-lg ring-offset-2 hover:ring-2 hover:ring-neutral-400 dark:ring-offset-neutral-900 {{ $board->background === $bgKey ? 'ring-2 ring-indigo-500' : '' }}" style="background: {{ $bgCss }}" title="{{ ucfirst($bgKey) }}"></button>
                         @endforeach
-                        <button type="button" wire:click="setBackground(null)" class="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-400 hover:text-neutral-700 dark:border-neutral-600 dark:hover:text-neutral-200" title="Aucun fond"><x-phosphor-x class="h-4 w-4" /></button>
+                        <button type="button" wire:click="setBackground(null)" class="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-400 hover:text-neutral-700 dark:border-neutral-600 dark:hover:text-neutral-200" title="{{ __('Aucun fond') }}"><x-phosphor-x class="h-4 w-4" /></button>
                     </div>
                 </div>
 
                 <div>
-                    <p class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Image personnalisée</p>
-                    <x-dropzone model="backgroundUpload" action="uploadBackground" accept="image/*" hint="Image de fond · 10 Mo max" />
+                    <p class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Image personnalisée') }}</p>
+                    <x-dropzone model="backgroundUpload" action="uploadBackground" accept="image/*" hint="{{ __('Image de fond · 10 Mo max') }}" />
                 </div>
             </div>
         </x-modal>

@@ -1,8 +1,8 @@
-<x-layouts.guest title="Mot de passe oublié">
+<x-layouts.guest title="{{ __('Mot de passe oublié') }}">
     <div class="mb-6">
-        <h1 class="text-xl font-semibold">Mot de passe oublié</h1>
+        <h1 class="text-xl font-semibold">{{ __('Mot de passe oublié') }}</h1>
         <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-            Indiquez votre e-mail, nous vous enverrons un lien de réinitialisation.
+            {{ __('Indiquez votre e-mail, nous vous enverrons un lien de réinitialisation.') }}
         </p>
     </div>
 
@@ -16,7 +16,7 @@
         @csrf
 
         <div>
-            <label for="email" class="mb-1 block text-sm font-medium">Adresse e-mail</label>
+            <label for="email" class="mb-1 block text-sm font-medium">{{ __('Adresse e-mail') }}</label>
             <input
                 id="email"
                 name="email"
@@ -31,11 +31,11 @@
         </div>
 
         <button type="submit" class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none">
-            Envoyer le lien
+            {{ __('Envoyer le lien') }}
         </button>
     </form>
 
     <p class="mt-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
-        <a href="{{ route('login') }}" class="font-medium text-indigo-600 hover:underline dark:text-indigo-400">Retour à la connexion</a>
+        <a href="{{ route('login') }}" class="font-medium text-indigo-600 hover:underline dark:text-indigo-400">{{ __('Retour à la connexion') }}</a>
     </p>
 </x-layouts.guest>

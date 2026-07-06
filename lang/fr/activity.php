@@ -1,0 +1,26 @@
+<?php
+
+return [
+    'card.created' => 'a créé la carte',
+    'card.moved' => 'a déplacé la carte',
+    'card.moved_to' => 'a déplacé la carte vers « :list »',
+    'card.completed' => 'a marqué la carte terminée',
+    'card.archived' => 'a archivé la carte',
+    'card.restored' => 'a restauré la carte',
+    'card.duplicated' => 'a dupliqué la carte',
+    'card.updated' => 'a mis à jour la carte',
+    'card.members' => 'a modifié les membres',
+    'card.labels' => 'a modifié les labels',
+    'card.cover' => 'a changé la couverture',
+    'comment.created' => 'a commenté',
+    'comment.deleted' => 'a supprimé un commentaire',
+    'member.assigned' => 'a assigné :name',
+    'checklist.created' => 'a ajouté une checklist',
+    'checklist.deleted' => 'a supprimé une checklist',
+    'checklist.item.added' => 'a ajouté un élément de checklist',
+    'checklist.item.toggled' => 'a coché/décoché un élément',
+    'checklist.item.deleted' => 'a supprimé un élément de checklist',
+    'attachment.added' => 'a ajouté une pièce jointe',
+    'automation.run' => 'a exécuté une automation',
+    'someone' => 'un membre',
+];

@@ -33,7 +33,7 @@
             type="button"
             wire:click="{{ $wireToggle }}"
             class="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/80 text-neutral-400 shadow-sm hover:text-neutral-700 dark:bg-neutral-900/80 dark:hover:text-neutral-200"
-            title="Masquer l'aperçu (pour tout le monde)"
+            title="{{ __('Masquer l\'aperçu (pour tout le monde)') }}"
         >
             <x-phosphor-x class="h-3.5 w-3.5" />
         </button>
@@ -45,6 +45,6 @@
         class="mt-1 inline-flex items-center gap-1 text-xs text-neutral-400 transition-colors hover:text-indigo-600 dark:hover:text-indigo-400"
         title="Afficher l'aperçu de {{ $host }}"
     >
-        <x-phosphor-image class="h-3.5 w-3.5" /> Afficher l'aperçu
+        <x-phosphor-image class="h-3.5 w-3.5" /> {{ __("Afficher l'aperçu") }}
     </button>
 @endunless

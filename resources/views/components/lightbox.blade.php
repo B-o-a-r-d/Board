@@ -27,7 +27,7 @@
                 type="button"
                 @click="$store.lightbox.close()"
                 class="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
-                title="Fermer (Échap)"
+                title="{{ __('Fermer (Échap)') }}"
             >
                 <x-phosphor-x class="h-5 w-5" />
             </button>
@@ -45,7 +45,7 @@
                 x-show="$store.lightbox.items.length > 1"
                 @click.stop="$store.lightbox.prev()"
                 class="absolute left-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
-                title="Précédent (←)"
+                title="{{ __('Précédent (←)') }}"
             >
                 <x-phosphor-caret-left class="h-6 w-6" />
             </button>
@@ -145,7 +145,7 @@
                 x-show="$store.lightbox.items.length > 1"
                 @click.stop="$store.lightbox.next()"
                 class="absolute right-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
-                title="Suivant (→)"
+                title="{{ __('Suivant (→)') }}"
             >
                 <x-phosphor-caret-right class="h-6 w-6" />
             </button>

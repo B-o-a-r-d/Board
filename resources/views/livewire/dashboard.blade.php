@@ -1,19 +1,19 @@
 <div class="space-y-8">
     <div class="flex items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-semibold tracking-tight">Tableau de bord</h1>
-            <p class="text-sm text-neutral-500 dark:text-neutral-400">Vos workspaces et vos boards.</p>
+            <h1 class="text-2xl font-semibold tracking-tight">{{ __('Tableau de bord') }}</h1>
+            <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ __('Vos workspaces et vos boards.') }}</p>
         </div>
 
         <form wire:submit="createWorkspace" class="flex items-center gap-2">
             <input
                 type="text"
                 wire:model="newWorkspaceName"
-                placeholder="Nouveau workspace"
+                placeholder="{{ __('Nouveau workspace') }}"
                 class="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800"
             >
             <button type="submit" class="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none">
-                Créer
+                {{ __('Créer') }}
             </button>
         </form>
     </div>
@@ -43,21 +43,21 @@
 
                     <div class="ml-auto flex items-center gap-3">
                         @can('view', $workspace)
-                            <a href="{{ route('workspaces.settings', $workspace) }}" wire:navigate class="flex items-center gap-1 text-xs text-neutral-500 hover:text-indigo-600 dark:text-neutral-400 dark:hover:text-indigo-400" title="Paramètres du workspace">
-                                <x-phosphor-gear class="h-4 w-4" /> Membres
+                            <a href="{{ route('workspaces.settings', $workspace) }}" wire:navigate class="flex items-center gap-1 text-xs text-neutral-500 hover:text-indigo-600 dark:text-neutral-400 dark:hover:text-indigo-400" title="{{ __('Paramètres du workspace') }}">
+                                <x-phosphor-gear class="h-4 w-4" /> {{ __('Membres') }}
                             </a>
                         @endcan
                         @can('update', $workspace)
-                            <button type="button" @click="openAt($event.clientX, $event.clientY)" class="rounded p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200" title="Options du workspace (clic droit aussi)"><x-phosphor-dots-three-vertical class="h-4 w-4" /></button>
+                            <button type="button" @click="openAt($event.clientX, $event.clientY)" class="rounded p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200" title="{{ __('Options du workspace (clic droit aussi)') }}"><x-phosphor-dots-three-vertical class="h-4 w-4" /></button>
                         @endcan
                     </div>
                 </x-slot:trigger>
                 <x-slot:menu>
-                    <x-context-menu.item icon="pencil-simple" wire:click="startRenameWorkspace({{ $workspace->id }})">Renommer</x-context-menu.item>
-                    <x-context-menu.item icon="hash" @click="navigator.clipboard?.writeText('{{ $workspace->public_id }}')">Copier l'ID du workspace</x-context-menu.item>
+                    <x-context-menu.item icon="pencil-simple" wire:click="startRenameWorkspace({{ $workspace->id }})">{{ __('Renommer') }}</x-context-menu.item>
+                    <x-context-menu.item icon="hash" @click="navigator.clipboard?.writeText('{{ $workspace->public_id }}'); window.toast('{{ __('ID copié') }}', { type: 'success' })">{{ __("Copier l'ID du workspace") }}</x-context-menu.item>
                     @can('delete', $workspace)
                         <x-context-menu.separator />
-                        <x-context-menu.item icon="trash" variant="danger" @click="$store.confirm.open({ title: 'Supprimer le workspace', message: 'Supprimer ce workspace et tous ses boards ? Cette action est irréversible.', confirmLabel: 'Supprimer', danger: true }).then(ok => ok && $wire.deleteWorkspace({{ $workspace->id }}))">Supprimer</x-context-menu.item>
+                        <x-context-menu.item icon="trash" variant="danger" @click="$store.confirm.open({ title: '{{ __('Supprimer le workspace') }}', message: '{{ __('Supprimer ce workspace et tous ses boards ? Cette action est irréversible.') }}', confirmLabel: '{{ __('Supprimer') }}', danger: true }).then(ok => ok && $wire.deleteWorkspace({{ $workspace->id }}))">{{ __('Supprimer') }}</x-context-menu.item>
                     @endcan
                 </x-slot:menu>
             </x-context-menu>
@@ -80,7 +80,7 @@
                     <input
                         type="text"
                         wire:model="newBoardName.{{ $workspace->id }}"
-                        placeholder="+ Nouveau board"
+                        placeholder="{{ __('+ Nouveau board') }}"
                         class="w-full bg-transparent text-sm placeholder-neutral-500 focus:outline-none"
                     >
                 </form>
@@ -88,7 +88,7 @@
         </section>
     @empty
         <div class="rounded-2xl border border-dashed border-neutral-300 bg-white p-12 text-center dark:border-neutral-700 dark:bg-neutral-900">
-            <p class="text-sm text-neutral-500 dark:text-neutral-400">Vous n'avez pas encore de workspace. Créez-en un pour démarrer.</p>
+            <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ __("Vous n'avez pas encore de workspace. Créez-en un pour démarrer.") }}</p>
         </div>
     @endforelse
 
@@ -97,8 +97,8 @@
         <section class="space-y-3">
             <div class="flex items-center gap-2">
                 <x-phosphor-stack class="h-5 w-5 text-neutral-500" />
-                <h2 class="text-base font-semibold">Modèles</h2>
-                <span class="rounded-full bg-neutral-200 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">Global</span>
+                <h2 class="text-base font-semibold">{{ __('Modèles') }}</h2>
+                <span class="rounded-full bg-neutral-200 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">{{ __('Global') }}</span>
             </div>
 
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -112,7 +112,7 @@
                         @if ($bg) style="background: {{ $bg }};" @endif
                     >
                         <span class="font-medium {{ $bg ? 'text-white' : 'group-hover:text-indigo-600 dark:group-hover:text-indigo-400' }}">{{ $template->name }}</span>
-                        <span class="inline-flex items-center gap-1 text-xs {{ $bg ? 'text-white/80' : 'text-neutral-400' }}"><x-phosphor-copy class="h-3.5 w-3.5" /> Utiliser ce modèle</span>
+                        <span class="inline-flex items-center gap-1 text-xs {{ $bg ? 'text-white/80' : 'text-neutral-400' }}"><x-phosphor-copy class="h-3.5 w-3.5" /> {{ __('Utiliser ce modèle') }}</span>
                     </button>
                 @endforeach
             </div>
@@ -121,15 +121,15 @@
 
     {{-- Use-template modal --}}
     @if ($templateToUse !== null)
-        <x-modal title="Créer depuis un modèle" max-width="md" on-close="$wire.$set('templateToUse', null)">
+        <x-modal title="{{ __('Créer depuis un modèle') }}" max-width="md" on-close="$wire.$set('templateToUse', null)">
             <form wire:submit="createFromTemplate" class="space-y-4 p-5">
                 <div>
-                    <label class="mb-1 block text-sm font-medium">Nom du board</label>
+                    <label class="mb-1 block text-sm font-medium">{{ __('Nom du board') }}</label>
                     <input type="text" wire:model="templateBoardName" class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
                     @error('templateBoardName') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                 </div>
                 <div>
-                    <label class="mb-1 block text-sm font-medium">Workspace de destination</label>
+                    <label class="mb-1 block text-sm font-medium">{{ __('Workspace de destination') }}</label>
                     <select wire:model="templateWorkspaceId" class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
                         @foreach ($workspaces as $workspace)
                             <option value="{{ $workspace->id }}">{{ $workspace->name }}</option>
@@ -137,8 +137,8 @@
                     </select>
                 </div>
                 <div class="flex justify-end gap-2">
-                    <button type="button" @click="$wire.$set('templateToUse', null)" class="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">Annuler</button>
-                    <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Créer le board</button>
+                    <button type="button" @click="$wire.$set('templateToUse', null)" class="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">{{ __('Annuler') }}</button>
+                    <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">{{ __('Créer le board') }}</button>
                 </div>
             </form>
         </x-modal>

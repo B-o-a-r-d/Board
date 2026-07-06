@@ -3,7 +3,7 @@
     <div class="mb-4 flex items-start justify-between gap-4">
         <div>
             <h1 class="text-2xl font-semibold tracking-tight">{{ $board->name }}</h1>
-            <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ $board->workspace->name }} · Tableau partagé en lecture seule</p>
+            <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ $board->workspace->name }} · {{ __('Tableau partagé en lecture seule') }}</p>
         </div>
 
         {{-- Everyone currently on this board (members + anonymous guests) --}}
@@ -77,7 +77,7 @@
                                 @if ($card->due_at || $itemsTotal > 0 || $card->completed_at)
                                     <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
                                         @if ($card->completed_at)
-                                            <span class="rounded bg-green-100 px-1.5 py-0.5 text-green-700 dark:bg-green-500/15 dark:text-green-400">Terminée</span>
+                                            <span class="rounded bg-green-100 px-1.5 py-0.5 text-green-700 dark:bg-green-500/15 dark:text-green-400">{{ __('Terminée') }}</span>
                                         @endif
                                         @if ($card->due_at)
                                             <span class="rounded px-1.5 py-0.5 {{ $overdue ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400' : 'bg-neutral-100 dark:bg-neutral-700/50' }}">
@@ -105,7 +105,7 @@
                 </ul>
             </div>
         @empty
-            <p class="text-sm text-neutral-400">Ce tableau ne contient aucune liste.</p>
+            <p class="text-sm text-neutral-400">{{ __('Ce tableau ne contient aucune liste.') }}</p>
         @endforelse
     </div>
 </div>

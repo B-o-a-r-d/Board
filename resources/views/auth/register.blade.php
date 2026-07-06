@@ -1,11 +1,11 @@
-<x-layouts.guest title="Créer un compte">
+<x-layouts.guest title="{{ __('Créer un compte') }}">
     <div class="mb-6">
-        <h1 class="text-xl font-semibold">Créer un compte</h1>
+        <h1 class="text-xl font-semibold">{{ __('Créer un compte') }}</h1>
         <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
             @if (! empty($invitationEmail))
-                Vous avez été invité à rejoindre {{ config('app.name') }}. Choisissez un mot de passe pour créer votre compte.
+                {{ __('Vous avez été invité à rejoindre :app. Choisissez un mot de passe pour créer votre compte.', ['app' => config('app.name')]) }}
             @else
-                Commencez à organiser vos boards.
+                {{ __('Commencez à organiser vos boards.') }}
             @endif
         </p>
     </div>
@@ -14,7 +14,7 @@
         @csrf
 
         <div>
-            <label for="name" class="mb-1 block text-sm font-medium">Nom</label>
+            <label for="name" class="mb-1 block text-sm font-medium">{{ __('Nom') }}</label>
             <input
                 id="name"
                 name="name"
@@ -29,7 +29,7 @@
         </div>
 
         <div>
-            <label for="email" class="mb-1 block text-sm font-medium">Adresse e-mail</label>
+            <label for="email" class="mb-1 block text-sm font-medium">{{ __('Adresse e-mail') }}</label>
             <input
                 id="email"
                 name="email"
@@ -44,7 +44,7 @@
         </div>
 
         <div>
-            <label for="password" class="mb-1 block text-sm font-medium">Mot de passe</label>
+            <label for="password" class="mb-1 block text-sm font-medium">{{ __('Mot de passe') }}</label>
             <input
                 id="password"
                 name="password"
@@ -57,7 +57,7 @@
         </div>
 
         <div>
-            <label for="password_confirmation" class="mb-1 block text-sm font-medium">Confirmer le mot de passe</label>
+            <label for="password_confirmation" class="mb-1 block text-sm font-medium">{{ __('Confirmer le mot de passe') }}</label>
             <input
                 id="password_confirmation"
                 name="password_confirmation"
@@ -69,12 +69,12 @@
         </div>
 
         <button type="submit" class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none">
-            Créer mon compte
+            {{ __('Créer mon compte') }}
         </button>
     </form>
 
     <p class="mt-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
-        Déjà un compte ?
-        <a href="{{ route('login') }}" class="font-medium text-indigo-600 hover:underline dark:text-indigo-400">Se connecter</a>
+        {{ __('Déjà un compte ?') }}
+        <a href="{{ route('login') }}" class="font-medium text-indigo-600 hover:underline dark:text-indigo-400">{{ __('Se connecter') }}</a>
     </p>
 </x-layouts.guest>

@@ -1,0 +1,26 @@
+<?php
+
+return [
+    'card.created' => 'creó la tarjeta',
+    'card.moved' => 'movió la tarjeta',
+    'card.moved_to' => 'movió la tarjeta a «:list»',
+    'card.completed' => 'marcó la tarjeta como completada',
+    'card.archived' => 'archivó la tarjeta',
+    'card.restored' => 'restauró la tarjeta',
+    'card.duplicated' => 'duplicó la tarjeta',
+    'card.updated' => 'actualizó la tarjeta',
+    'card.members' => 'cambió los miembros',
+    'card.labels' => 'cambió las etiquetas',
+    'card.cover' => 'cambió la portada',
+    'comment.created' => 'comentó',
+    'comment.deleted' => 'eliminó un comentario',
+    'member.assigned' => 'asignó a :name',
+    'checklist.created' => 'añadió una checklist',
+    'checklist.deleted' => 'eliminó una checklist',
+    'checklist.item.added' => 'añadió un elemento de checklist',
+    'checklist.item.toggled' => 'marcó/desmarcó un elemento',
+    'checklist.item.deleted' => 'eliminó un elemento de checklist',
+    'attachment.added' => 'añadió un adjunto',
+    'automation.run' => 'ejecutó una automatización',
+    'someone' => 'un miembro',
+];

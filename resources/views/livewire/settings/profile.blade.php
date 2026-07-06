@@ -1,12 +1,28 @@
 <div class="mx-auto max-w-2xl space-y-8">
     <div>
-        <h1 class="text-2xl font-semibold tracking-tight">Profil</h1>
-        <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Gérez vos informations personnelles et votre mot de passe.</p>
+        <h1 class="text-2xl font-semibold tracking-tight">{{ __('Profil') }}</h1>
+        <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{{ __('Gérez vos informations personnelles et votre mot de passe.') }}</p>
     </div>
+
+    {{-- Language --}}
+    <section class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+        <h2 class="text-base font-semibold">{{ __('Langue') }}</h2>
+        <div class="mt-3 flex flex-wrap gap-2">
+            @foreach (['fr' => 'Français', 'en' => 'English', 'es' => 'Español'] as $code => $name)
+                <button
+                    type="button"
+                    wire:click="updateLocale('{{ $code }}')"
+                    class="rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $locale === $code ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300' : 'border-neutral-300 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800' }}"
+                >
+                    {{ $name }}
+                </button>
+            @endforeach
+        </div>
+    </section>
 
     {{-- Profile information --}}
     <section class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-        <h2 class="text-base font-semibold">Informations</h2>
+        <h2 class="text-base font-semibold">{{ __('Informations') }}</h2>
 
         @if (session('profile-status'))
             <div class="mt-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-500/10 dark:text-green-400">
@@ -16,35 +32,35 @@
 
         <form wire:submit="updateProfileInformation" class="mt-4 space-y-4">
             <div>
-                <label for="name" class="mb-1 block text-sm font-medium">Nom</label>
+                <label for="name" class="mb-1 block text-sm font-medium">{{ __('Nom') }}</label>
                 <input id="name" type="text" wire:model="name" class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
                 @error('name') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
             </div>
 
             <div>
-                <label for="email" class="mb-1 block text-sm font-medium">Adresse e-mail</label>
+                <label for="email" class="mb-1 block text-sm font-medium">{{ __('Adresse e-mail') }}</label>
                 <input id="email" type="email" wire:model="email" class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
                 @error('email') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
 
                 @if (! auth()->user()->hasVerifiedEmail())
                     <p class="mt-2 text-sm text-amber-600 dark:text-amber-400">
-                        Votre adresse e-mail n'est pas vérifiée.
+                        {{ __("Votre adresse e-mail n'est pas vérifiée.") }}
                     </p>
                 @endif
             </div>
 
             <div class="flex items-center gap-3">
                 <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none">
-                    Enregistrer
+                    {{ __('Enregistrer') }}
                 </button>
-                <span wire:loading wire:target="updateProfileInformation" class="text-sm text-neutral-500">Enregistrement…</span>
+                <span wire:loading wire:target="updateProfileInformation" class="text-sm text-neutral-500">{{ __('Enregistrement…') }}</span>
             </div>
         </form>
     </section>
 
     {{-- Password --}}
     <section class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-        <h2 class="text-base font-semibold">Mot de passe</h2>
+        <h2 class="text-base font-semibold">{{ __('Mot de passe') }}</h2>
 
         @if (session('password-status'))
             <div class="mt-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-500/10 dark:text-green-400">
@@ -54,53 +70,53 @@
 
         <form wire:submit="updatePassword" class="mt-4 space-y-4">
             <div>
-                <label for="current_password" class="mb-1 block text-sm font-medium">Mot de passe actuel</label>
+                <label for="current_password" class="mb-1 block text-sm font-medium">{{ __('Mot de passe actuel') }}</label>
                 <input id="current_password" type="password" wire:model="current_password" autocomplete="current-password" class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
                 @error('current_password') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
             </div>
 
             <div>
-                <label for="new_password" class="mb-1 block text-sm font-medium">Nouveau mot de passe</label>
+                <label for="new_password" class="mb-1 block text-sm font-medium">{{ __('Nouveau mot de passe') }}</label>
                 <input id="new_password" type="password" wire:model="password" autocomplete="new-password" class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
                 @error('password') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
             </div>
 
             <div>
-                <label for="password_confirmation" class="mb-1 block text-sm font-medium">Confirmer le nouveau mot de passe</label>
+                <label for="password_confirmation" class="mb-1 block text-sm font-medium">{{ __('Confirmer le nouveau mot de passe') }}</label>
                 <input id="password_confirmation" type="password" wire:model="password_confirmation" autocomplete="new-password" class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
             </div>
 
             <div class="flex items-center gap-3">
                 <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none">
-                    Mettre à jour
+                    {{ __('Mettre à jour') }}
                 </button>
-                <span wire:loading wire:target="updatePassword" class="text-sm text-neutral-500">Mise à jour…</span>
+                <span wire:loading wire:target="updatePassword" class="text-sm text-neutral-500">{{ __('Mise à jour…') }}</span>
             </div>
         </form>
     </section>
 
     {{-- API tokens (Sanctum) --}}
     <section class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-        <h2 class="text-base font-semibold">Jetons d'API</h2>
+        <h2 class="text-base font-semibold">{{ __("Jetons d'API") }}</h2>
         <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Créez des jetons pour accéder à l'API REST (<code class="text-xs">/api/v1</code>) via l'en-tête <code class="text-xs">Authorization: Bearer &lt;token&gt;</code>.</p>
 
         @if ($newToken)
             <div class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-500/40 dark:bg-amber-500/10">
-                <p class="text-xs font-medium text-amber-700 dark:text-amber-400">Copiez ce jeton maintenant — il ne sera plus affiché.</p>
+                <p class="text-xs font-medium text-amber-700 dark:text-amber-400">{{ __('Copiez ce jeton maintenant — il ne sera plus affiché.') }}</p>
                 <div class="mt-2 flex items-center gap-2" x-data="{ copied: false }">
                     <input type="text" readonly value="{{ $newToken }}" @focus="$el.select()" class="flex-1 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 font-mono text-xs dark:border-neutral-700 dark:bg-neutral-800">
-                    <button type="button" @click="navigator.clipboard?.writeText('{{ $newToken }}'); copied = true; setTimeout(() => copied = false, 1500)" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500"><span x-text="copied ? 'Copié !' : 'Copier'"></span></button>
+                    <button type="button" @click="navigator.clipboard?.writeText('{{ $newToken }}'); copied = true; setTimeout(() => copied = false, 1500)" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500"><span x-text="copied ? '{{ __('Copié !') }}' : '{{ __('Copier') }}'"></span></button>
                 </div>
             </div>
         @endif
 
         <form wire:submit="createToken" class="mt-4 flex items-end gap-2">
             <div class="flex-1">
-                <label for="token_name" class="mb-1 block text-sm font-medium">Nom du jeton</label>
-                <input id="token_name" type="text" wire:model="tokenName" placeholder="Ex : Script de synchro" class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                <label for="token_name" class="mb-1 block text-sm font-medium">{{ __('Nom du jeton') }}</label>
+                <input id="token_name" type="text" wire:model="tokenName" placeholder="{{ __('Ex : Script de synchro') }}" class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
                 @error('tokenName') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
             </div>
-            <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Créer</button>
+            <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">{{ __('Créer') }}</button>
         </form>
 
         <div class="mt-4 space-y-2">
@@ -110,10 +126,10 @@
                         <p class="truncate font-medium">{{ $token->name }}</p>
                         <p class="text-xs text-neutral-400">Créé {{ $token->created_at->diffForHumans() }}@if ($token->last_used_at) · utilisé {{ $token->last_used_at->diffForHumans() }}@endif</p>
                     </div>
-                    <button type="button" wire:click="revokeToken({{ $token->id }})" class="shrink-0 text-xs text-neutral-400 hover:text-red-500">Révoquer</button>
+                    <button type="button" wire:click="revokeToken({{ $token->id }})" class="shrink-0 text-xs text-neutral-400 hover:text-red-500">{{ __('Révoquer') }}</button>
                 </div>
             @empty
-                <p class="text-sm text-neutral-400">Aucun jeton d'API.</p>
+                <p class="text-sm text-neutral-400">{{ __("Aucun jeton d'API.") }}</p>
             @endforelse
         </div>
     </section>
@@ -122,11 +138,11 @@
     <section class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
         <div class="flex items-start justify-between gap-4">
             <div>
-                <h2 class="flex items-center gap-2 text-base font-semibold"><x-phosphor-robot class="h-5 w-5" /> Connexion IA (MCP)</h2>
-                <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Branchez un assistant IA (Claude, Codex, Cursor…) sur vos boards via le protocole MCP. Les actions de l'IA respectent vos droits et apparaissent en temps réel dans l'activité.</p>
+                <h2 class="flex items-center gap-2 text-base font-semibold"><x-phosphor-robot class="h-5 w-5" /> {{ __('Connexion IA (MCP)') }}</h2>
+                <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{{ __("Branchez un assistant IA (Claude, Codex, Cursor…) sur vos boards via le protocole MCP. Les actions de l'IA respectent vos droits et apparaissent en temps réel dans l'activité.") }}</p>
             </div>
             @can('admin')
-                <button type="button" role="switch" aria-label="Activer le MCP pour l'instance" :aria-checked="@js($mcpEnabled)" wire:click="toggleMcp" class="relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition {{ $mcpEnabled ? 'bg-indigo-600' : 'bg-neutral-300 dark:bg-neutral-700' }}">
+                <button type="button" role="switch" aria-label="{{ __('Activer le MCP pour l\'instance') }}" :aria-checked="@js($mcpEnabled)" wire:click="toggleMcp" class="relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition {{ $mcpEnabled ? 'bg-indigo-600' : 'bg-neutral-300 dark:bg-neutral-700' }}">
                     <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition {{ $mcpEnabled ? 'translate-x-5' : 'translate-x-0.5' }}"></span>
                 </button>
             @endcan
@@ -178,7 +194,7 @@ args = ["-y", "mcp-remote", "'.$mcpEndpoint.'", "--header", "Authorization: Bear
                     <div x-data="{ copied: false }">
                         <div class="mb-1 flex items-center justify-between">
                             <span class="text-xs font-semibold uppercase tracking-wide text-neutral-500">{{ $label }}</span>
-                            <button type="button" @click="navigator.clipboard?.writeText($refs.code.textContent); copied = true; setTimeout(() => copied = false, 1500)" class="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"><span x-text="copied ? 'Copié !' : 'Copier'"></span></button>
+                            <button type="button" @click="navigator.clipboard?.writeText($refs.code.textContent); copied = true; setTimeout(() => copied = false, 1500)" class="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"><span x-text="copied ? '{{ __('Copié !') }}' : '{{ __('Copier') }}'"></span></button>
                         </div>
                         <pre x-ref="code" class="overflow-x-auto rounded-lg bg-neutral-900 p-3 font-mono text-xs text-neutral-100 dark:bg-neutral-950">{{ $snippet }}</pre>
                     </div>

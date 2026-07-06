@@ -3,7 +3,7 @@
         type="button"
         @click="expanded = ! expanded"
         class="relative flex h-9 w-9 items-center justify-center rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800"
-        title="Notifications"
+        title="{{ __('Notifications') }}"
         aria-label="Notifications{{ $unreadCount > 0 ? ' ('.$unreadCount.' non lues)' : '' }}"
         :aria-expanded="expanded"
     >
@@ -25,14 +25,14 @@
     >
         {{-- Header --}}
         <div class="flex shrink-0 items-center justify-between border-b border-neutral-100 px-4 py-2 dark:border-neutral-800">
-            <span class="text-sm font-semibold">Notifications</span>
+            <span class="text-sm font-semibold">{{ __('Notifications') }}</span>
             @if ($notifications->isNotEmpty())
                 <button
                     type="button"
-                    @click="$store.confirm.open({ title: 'Tout effacer', message: 'Supprimer toutes les notifications ?', confirmLabel: 'Effacer', danger: true }).then(ok => ok && $wire.deleteAll())"
+                    @click="$store.confirm.open({ title: '{{ __('Tout effacer') }}', message: '{{ __('Supprimer toutes les notifications ?') }}', confirmLabel: '{{ __('Effacer') }}', danger: true }).then(ok => ok && $wire.deleteAll())"
                     class="flex items-center gap-1 text-xs text-neutral-400 transition-colors hover:text-red-500"
                 >
-                    <x-phosphor-trash class="h-3.5 w-3.5" /> Tout effacer
+                    <x-phosphor-trash class="h-3.5 w-3.5" /> {{ __('Tout effacer') }}
                 </button>
             @endif
         </div>
@@ -70,7 +70,7 @@
                             type="button"
                             wire:click.stop="toggleRead('{{ $notification->id }}')"
                             class="rounded p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
-                            title="{{ $notification->read_at ? 'Marquer comme non lu' : 'Marquer comme lu' }}"
+                            title="{{ $notification->read_at ? __('Marquer comme non lu') : __('Marquer comme lu') }}"
                         >
                             @if ($notification->read_at)
                                 <x-phosphor-envelope class="h-4 w-4" />
@@ -82,14 +82,14 @@
                             type="button"
                             wire:click.stop="deleteNotification('{{ $notification->id }}')"
                             class="rounded p-1 text-neutral-400 hover:bg-neutral-200 hover:text-red-500 dark:hover:bg-neutral-700"
-                            title="Supprimer"
+                            title="{{ __('Supprimer') }}"
                         >
                             <x-phosphor-x class="h-4 w-4" />
                         </button>
                     </div>
                 </div>
             @empty
-                <p class="px-4 py-8 text-center text-sm text-neutral-500 dark:text-neutral-400">Aucune notification.</p>
+                <p class="px-4 py-8 text-center text-sm text-neutral-500 dark:text-neutral-400">{{ __('Aucune notification.') }}</p>
             @endforelse
         </div>
 
@@ -101,7 +101,7 @@
                     wire:click="markAllRead"
                     class="flex w-full items-center justify-center gap-1.5 rounded-lg bg-neutral-100 px-3 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
                 >
-                    <x-phosphor-check-circle class="h-4 w-4" /> Tout marquer comme lu
+                    <x-phosphor-check-circle class="h-4 w-4" /> {{ __('Tout marquer comme lu') }}
                 </button>
             </div>
         @endif
