@@ -46,7 +46,14 @@ services:
     env_file: .env
     environment:
       CONTAINER_ROLE: reverb
-    command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
+      # Bind Reverb in plain HTTP on 8080; Dokploy/Traefik terminates TLS upstream.
+      # Empty SSL paths prevent Reverb from falling back to config defaults and
+      # attempting a TLS listener on 8080 (connection KO behind the proxy).
+      REVERB_SERVER_HOST: 0.0.0.0
+      REVERB_SERVER_PORT: "8080"
+      REVERB_SSL_CERT: ""
+      REVERB_SSL_KEY: ""
+    command: ["sh", "-c", "php artisan config:clear && php artisan reverb:start --host=0.0.0.0 --port=8080 --no-interaction"]
     depends_on:
       - app
     volumes:

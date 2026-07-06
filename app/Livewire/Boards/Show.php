@@ -35,11 +35,13 @@ class Show extends Component
     {
         return [
             "echo-private:board.{$this->board->id},.board.activity" => 'onBoardActivity',
+            'board-refresh' => 'onBoardActivity',
         ];
     }
 
     /**
-     * Broadcast events simply trigger a re-render, which re-queries fresh data.
+     * Both remote broadcasts and local card edits simply trigger a re-render,
+     * which re-queries fresh data.
      */
     public function onBoardActivity(): void {}
 
@@ -194,9 +196,10 @@ class Show extends Component
     {
         $lists = $this->board->lists()
             ->with([
-                'cards' => fn ($query) => $query->orderBy('position'),
+                'cards' => fn ($query) => $query->orderBy('position')->withCount('attachments'),
                 'cards.members',
                 'cards.labels',
+                'cards.checklists.items',
             ])
             ->orderBy('position')
             ->get();

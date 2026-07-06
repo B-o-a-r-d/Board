@@ -44,35 +44,69 @@
                     class="flex min-h-2 flex-col gap-2 overflow-y-auto px-2"
                 >
                     @foreach ($list->cards as $card)
+                        @php
+                            $items = $card->checklists->flatMap->items;
+                            $itemsTotal = $items->count();
+                            $itemsDone = $items->where('is_completed', true)->count();
+                            $overdue = $card->due_at && ! $card->completed_at && $card->due_at->isPast();
+                        @endphp
                         <li
                             wire:key="card-{{ $card->id }}"
                             wire:sort:item="{{ $card->id }}"
-                            class="group cursor-grab rounded-lg border border-neutral-200 bg-white p-2.5 text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-800"
+                            class="group cursor-grab overflow-hidden rounded-lg border border-neutral-200 bg-white text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-800"
                         >
-                            @if ($card->labels->isNotEmpty())
-                                <div class="mb-1.5 flex flex-wrap gap-1">
-                                    @foreach ($card->labels as $label)
-                                        <span class="h-1.5 w-8 rounded-full" style="background-color: {{ $label->color }}" title="{{ $label->name }}"></span>
-                                    @endforeach
-                                </div>
+                            @if ($card->cover_path)
+                                <img src="{{ Storage::disk('public')->url($card->cover_path) }}" alt="" class="h-24 w-full object-cover">
                             @endif
 
-                            <div class="flex items-start justify-between gap-2">
-                                <span class="break-words">{{ $card->title }}</span>
-                                <div wire:sort:ignore>
-                                    <button type="button" wire:click="deleteCard({{ $card->id }})" class="opacity-0 transition group-hover:opacity-100 text-neutral-400 hover:text-red-500" title="Supprimer la carte">✕</button>
+                            <div class="p-2.5">
+                                @if ($card->labels->isNotEmpty())
+                                    <div class="mb-1.5 flex flex-wrap gap-1">
+                                        @foreach ($card->labels as $label)
+                                            <span class="h-1.5 w-8 rounded-full" style="background-color: {{ $label->color }}" title="{{ $label->name }}"></span>
+                                        @endforeach
+                                    </div>
+                                @endif
+
+                                <div class="flex items-start justify-between gap-2">
+                                    <button type="button" wire:click="$dispatch('open-card', { cardId: {{ $card->id }} })" class="break-words text-left hover:text-indigo-600 dark:hover:text-indigo-400">
+                                        {{ $card->title }}
+                                    </button>
+                                    <div wire:sort:ignore>
+                                        <button type="button" wire:click="deleteCard({{ $card->id }})" class="text-neutral-400 opacity-0 transition hover:text-red-500 group-hover:opacity-100" title="Supprimer la carte">✕</button>
+                                    </div>
                                 </div>
+
+                                {{-- Badges --}}
+                                @if ($card->due_at || $itemsTotal > 0 || $card->attachments_count > 0 || $card->completed_at)
+                                    <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+                                        @if ($card->completed_at)
+                                            <span class="rounded bg-green-100 px-1.5 py-0.5 text-green-700 dark:bg-green-500/15 dark:text-green-400">✓ Terminée</span>
+                                        @endif
+                                        @if ($card->due_at)
+                                            <span class="rounded px-1.5 py-0.5 {{ $overdue ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400' : 'bg-neutral-100 dark:bg-neutral-700/50' }}">
+                                                🕒 {{ $card->due_at->translatedFormat('d M') }}
+                                            </span>
+                                        @endif
+                                        @if ($itemsTotal > 0)
+                                            <span class="{{ $itemsDone === $itemsTotal ? 'text-green-600 dark:text-green-400' : '' }}">☑ {{ $itemsDone }}/{{ $itemsTotal }}</span>
+                                        @endif
+                                        @if ($card->attachments_count > 0)
+                                            <span>📎 {{ $card->attachments_count }}</span>
+                                        @endif
+                                    </div>
+                                @endif
+
+                                @if ($card->members->isNotEmpty())
+                                    <div class="mt-2 flex -space-x-1.5">
+                                        @foreach ($card->members as $member)
+                                            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-semibold text-indigo-700 ring-2 ring-white dark:bg-indigo-500/20 dark:text-indigo-300 dark:ring-neutral-800" title="{{ $member->name }}">
+                                                {{ Str::of($member->name)->substr(0, 1)->upper() }}
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                @endif
                             </div>
-
-                            @if ($card->members->isNotEmpty())
-                                <div class="mt-2 flex -space-x-1.5">
-                                    @foreach ($card->members as $member)
-                                        <span class="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-semibold text-indigo-700 ring-2 ring-white dark:bg-indigo-500/20 dark:text-indigo-300 dark:ring-neutral-800" title="{{ $member->name }}">
-                                            {{ Str::of($member->name)->substr(0, 1)->upper() }}
-                                        </span>
-                                    @endforeach
-                                </div>
-                            @endif
                         </li>
                     @endforeach
                 </ul>
@@ -100,4 +134,6 @@
             @error('newListName') <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
         </form>
     </div>
+
+    <livewire:cards.card-detail :board="$board" wire:key="card-detail-{{ $board->id }}" />
 </div>
