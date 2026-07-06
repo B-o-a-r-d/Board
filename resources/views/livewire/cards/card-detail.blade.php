@@ -323,13 +323,37 @@
                         {{-- Labels --}}
                         <div>
                             <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">Labels</h3>
+                            @php $labelPalette = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b']; @endphp
                             <div class="space-y-2">
                                 @foreach ($boardLabels as $label)
                                     @php $on = $card->labels->contains($label->id); @endphp
-                                    <button type="button" wire:click="toggleLabel({{ $label->id }})" class="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-sm {{ $on ? 'ring-2 ring-indigo-400' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800' }}">
-                                        <span class="h-3 w-6 rounded-full" style="background-color: {{ $label->color }}"></span>
-                                        <span class="truncate">{{ $label->name ?? '—' }}</span>
-                                    </button>
+                                    <x-context-menu wire:key="label-{{ $label->id }}" class="group/label flex items-center gap-1">
+                                        <x-slot:trigger>
+                                            <button type="button" wire:click="toggleLabel({{ $label->id }})" class="flex flex-1 items-center gap-2 rounded-lg px-2 py-1 text-left text-sm {{ $on ? 'ring-2 ring-indigo-400' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800' }}">
+                                                <span class="h-3 w-6 shrink-0 rounded-full" style="background-color: {{ $label->color }}"></span>
+                                                <span class="truncate">{{ $label->name ?? '—' }}</span>
+                                            </button>
+                                            <button type="button" @click="openAt($event.clientX, $event.clientY)" class="shrink-0 rounded p-1 text-neutral-400 opacity-0 transition hover:bg-neutral-100 hover:text-neutral-700 group-hover/label:opacity-100 dark:hover:bg-neutral-800 dark:hover:text-neutral-200" title="Options du label (clic droit aussi)"><x-phosphor-dots-three class="h-4 w-4" /></button>
+                                        </x-slot:trigger>
+                                        <x-slot:menu>
+                                            <div class="p-1" x-data="{ name: @js($label->name) }">
+                                                <input
+                                                    type="text"
+                                                    x-model="name"
+                                                    @keydown.enter="$wire.renameLabel({{ $label->id }}, name); shown = false"
+                                                    placeholder="Nom du label"
+                                                    class="w-full rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900"
+                                                >
+                                            </div>
+                                            <div class="flex flex-wrap gap-1.5 px-2 py-1.5">
+                                                @foreach ($labelPalette as $swatch)
+                                                    <button type="button" @click="$wire.recolorLabel({{ $label->id }}, '{{ $swatch }}'); shown = false" class="h-5 w-5 rounded-full ring-offset-1 hover:ring-2 hover:ring-neutral-400 dark:ring-offset-neutral-800" style="background-color: {{ $swatch }}" title="{{ $swatch }}"></button>
+                                                @endforeach
+                                            </div>
+                                            <x-context-menu.separator />
+                                            <x-context-menu.item icon="trash" variant="danger" wire:click="deleteLabel({{ $label->id }})" wire:confirm="Supprimer ce label du board ?">Supprimer</x-context-menu.item>
+                                        </x-slot:menu>
+                                    </x-context-menu>
                                 @endforeach
                             </div>
                             <form wire:submit="createLabel" class="mt-2 flex items-center gap-2">

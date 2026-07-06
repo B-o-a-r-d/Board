@@ -62,6 +62,54 @@ test('a user can create a board with default lists', function () {
         ->and($board->memberRole($user))->toBe(Role::Owner);
 });
 
+test('an owner can rename their workspace', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['owner_id' => $user->id]);
+    $workspace->members()->attach($user, ['role' => Role::Owner->value]);
+
+    Livewire::actingAs($user)
+        ->test(Dashboard::class)
+        ->call('startRenameWorkspace', $workspace->id)
+        ->assertSet('renamingWorkspaceId', $workspace->id)
+        ->set('workspaceNameDraft', 'Renommé')
+        ->call('renameWorkspace')
+        ->assertSet('renamingWorkspaceId', null);
+
+    expect($workspace->fresh()->name)->toBe('Renommé');
+});
+
+test('an owner can delete their workspace', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['owner_id' => $user->id]);
+    $workspace->members()->attach($user, ['role' => Role::Owner->value]);
+
+    Livewire::actingAs($user)
+        ->test(Dashboard::class)
+        ->call('deleteWorkspace', $workspace->id);
+
+    expect(Workspace::whereKey($workspace->id)->exists())->toBeFalse();
+});
+
+test('a non-admin member cannot rename or delete a workspace', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+    $workspace = Workspace::factory()->create(['owner_id' => $owner->id]);
+    $workspace->members()->attach($owner, ['role' => Role::Owner->value]);
+    $workspace->members()->attach($member, ['role' => Role::Member->value]);
+
+    Livewire::actingAs($member)
+        ->test(Dashboard::class)
+        ->call('startRenameWorkspace', $workspace->id)
+        ->assertForbidden();
+
+    Livewire::actingAs($member)
+        ->test(Dashboard::class)
+        ->call('deleteWorkspace', $workspace->id)
+        ->assertForbidden();
+
+    expect(Workspace::whereKey($workspace->id)->exists())->toBeTrue();
+});
+
 test('a user cannot create a board in a workspace they do not belong to', function () {
     $user = User::factory()->create();
     $otherWorkspace = Workspace::factory()->create();

@@ -162,6 +162,33 @@ class Show extends Component
         $this->broadcastActivity('list.deleted');
     }
 
+    public function duplicateList(int $listId): void
+    {
+        $this->authorize('view', $this->board);
+
+        $source = $this->board->lists()->with(['cards' => fn ($q) => $q->whereNull('archived_at')->orderBy('position'), 'cards.labels', 'cards.members'])->findOrFail($listId);
+
+        $copy = $this->board->lists()->create([
+            'name' => $source->name.' (copie)',
+            'position' => (int) $this->board->lists()->max('position') + 1,
+        ]);
+
+        foreach ($source->cards as $index => $card) {
+            $newCard = $copy->cards()->create([
+                'board_id' => $this->board->id,
+                'created_by' => Auth::id(),
+                'title' => $card->title,
+                'description' => $card->description,
+                'due_at' => $card->due_at,
+                'position' => $index,
+            ]);
+            $newCard->labels()->attach($card->labels->pluck('id'));
+            $newCard->members()->attach($card->members->pluck('id'));
+        }
+
+        $this->broadcastActivity('list.duplicated');
+    }
+
     public function reorderLists(int $id, int $position): void
     {
         $this->authorize('view', $this->board);
@@ -230,6 +257,29 @@ class Show extends Component
 
         $this->board->cards()->whereKey($cardId)->delete();
         $this->broadcastActivity('card.deleted');
+    }
+
+    public function duplicateCard(int $cardId): void
+    {
+        $this->authorize('view', $this->board);
+
+        $card = $this->board->cards()->with(['labels', 'members'])->findOrFail($cardId);
+
+        $copy = $card->list->cards()->create([
+            'board_id' => $this->board->id,
+            'created_by' => Auth::id(),
+            'title' => $card->title.' (copie)',
+            'description' => $card->description,
+            'cover_path' => $card->cover_path,
+            'due_at' => $card->due_at,
+            'position' => (int) $card->list->cards()->max('position') + 1,
+        ]);
+
+        $copy->labels()->attach($card->labels->pluck('id'));
+        $copy->members()->attach($card->members->pluck('id'));
+
+        $this->logActivity('card.duplicated', $copy->id, ['from' => $card->id]);
+        $this->broadcastActivity('card.duplicated');
     }
 
     public function moveCard(int $id, int $position, int $listId): void

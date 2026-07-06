@@ -91,6 +91,26 @@ test('a label can be created and is attached to the card', function () {
         ->and($card->labels()->whereKey($label->id)->exists())->toBeTrue();
 });
 
+test('a label can be renamed, recolored and deleted from the board', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+    $label = $board->labels()->create(['name' => 'Ancien', 'color' => '#000000']);
+    $card->labels()->attach($label);
+
+    $component = Livewire::actingAs($owner)
+        ->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id);
+
+    $component->call('renameLabel', $label->id, 'Nouveau');
+    expect($label->fresh()->name)->toBe('Nouveau');
+
+    $component->call('recolorLabel', $label->id, '#22c55e');
+    expect($label->fresh()->color)->toBe('#22c55e');
+
+    $component->call('deleteLabel', $label->id);
+    expect($board->labels()->whereKey($label->id)->exists())->toBeFalse()
+        ->and($card->labels()->whereKey($label->id)->exists())->toBeFalse();
+});
+
 test('checklists and items with completion can be managed', function () {
     ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
 

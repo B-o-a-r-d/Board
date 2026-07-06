@@ -177,6 +177,51 @@ test('a plain board member cannot delete the board', function () {
     expect(Board::whereKey($board->id)->exists())->toBeTrue();
 });
 
+test('a member can duplicate a list with its cards, labels and members', function () {
+    ['board' => $board, 'owner' => $owner] = makeBoard();
+    $list = BoardList::factory()->create(['board_id' => $board->id, 'name' => 'Backlog', 'position' => 0]);
+
+    $label = $board->labels()->create(['name' => 'Bug', 'color' => '#ef4444']);
+    $card = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id, 'position' => 0]);
+    $card->labels()->attach($label);
+    $card->members()->attach($owner);
+
+    Livewire::actingAs($owner)
+        ->test(Show::class, ['board' => $board])
+        ->call('duplicateList', $list->id);
+
+    $copy = $board->lists()->where('name', 'Backlog (copie)')->firstOrFail();
+
+    expect($copy->position)->toBe(1)
+        ->and($copy->cards()->count())->toBe(1);
+
+    $copiedCard = $copy->cards()->firstOrFail();
+    expect($copiedCard->title)->toBe((string) $card->title)
+        ->and($copiedCard->labels->pluck('id')->all())->toBe([$label->id])
+        ->and($copiedCard->members->pluck('id')->all())->toBe([$owner->id]);
+});
+
+test('a member can duplicate a card within the same list', function () {
+    ['board' => $board, 'owner' => $owner] = makeBoard();
+    $list = BoardList::factory()->create(['board_id' => $board->id]);
+
+    $label = $board->labels()->create(['name' => 'Urgent', 'color' => '#f97316']);
+    $card = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id, 'position' => 0, 'title' => 'Tâche']);
+    $card->labels()->attach($label);
+    $card->members()->attach($owner);
+
+    Livewire::actingAs($owner)
+        ->test(Show::class, ['board' => $board])
+        ->call('duplicateCard', $card->id);
+
+    $copy = $list->cards()->where('title', 'Tâche (copie)')->firstOrFail();
+
+    expect($list->cards()->count())->toBe(2)
+        ->and($copy->position)->toBe(1)
+        ->and($copy->labels->pluck('id')->all())->toBe([$label->id])
+        ->and($copy->members->pluck('id')->all())->toBe([$owner->id]);
+});
+
 test('outsiders are forbidden from the board component', function () {
     ['board' => $board, 'outsider' => $outsider] = makeBoard();
 

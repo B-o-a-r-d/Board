@@ -39,6 +39,45 @@ class Dashboard extends Component
         $this->newWorkspaceName = '';
     }
 
+    public ?int $renamingWorkspaceId = null;
+
+    public string $workspaceNameDraft = '';
+
+    public function startRenameWorkspace(int $workspaceId): void
+    {
+        $workspace = Auth::user()->workspaces()->findOrFail($workspaceId);
+        $this->authorize('update', $workspace);
+
+        $this->renamingWorkspaceId = $workspaceId;
+        $this->workspaceNameDraft = $workspace->name;
+    }
+
+    public function renameWorkspace(): void
+    {
+        if ($this->renamingWorkspaceId === null) {
+            return;
+        }
+
+        $workspace = Auth::user()->workspaces()->findOrFail($this->renamingWorkspaceId);
+        $this->authorize('update', $workspace);
+
+        $name = trim($this->workspaceNameDraft);
+
+        if ($name !== '') {
+            $workspace->update(['name' => $name]);
+        }
+
+        $this->renamingWorkspaceId = null;
+    }
+
+    public function deleteWorkspace(int $workspaceId): void
+    {
+        $workspace = Auth::user()->workspaces()->findOrFail($workspaceId);
+        $this->authorize('delete', $workspace);
+
+        $workspace->delete();
+    }
+
     public function createBoard(int $workspaceId): mixed
     {
         $workspace = Auth::user()->workspaces()->findOrFail($workspaceId);

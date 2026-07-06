@@ -180,6 +180,30 @@ class CardDetail extends Component
         $this->touched('label.created');
     }
 
+    public function renameLabel(int $labelId, string $name): void
+    {
+        $this->authorize('view', $this->board);
+
+        $this->board->labels()->findOrFail($labelId)->update(['name' => trim($name) ?: null]);
+        $this->touched('label.renamed');
+    }
+
+    public function recolorLabel(int $labelId, string $color): void
+    {
+        $this->authorize('view', $this->board);
+
+        $this->board->labels()->whereKey($labelId)->update(['color' => $color]);
+        $this->touched('label.recolored');
+    }
+
+    public function deleteLabel(int $labelId): void
+    {
+        $this->authorize('view', $this->board);
+
+        $this->board->labels()->whereKey($labelId)->delete();
+        $this->touched('label.deleted');
+    }
+
     public function addChecklist(): void
     {
         $card = $this->guardedCard();
