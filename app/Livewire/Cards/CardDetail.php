@@ -14,7 +14,10 @@ use App\Models\ChecklistItem;
 use App\Models\LinkPreview;
 use App\Models\User;
 use App\Notifications\CardNotification;
+use App\Plugins\PluginActivity;
 use App\Services\UrlPreviewService;
+use Board\PluginSdk\Contracts\EnrichesCards;
+use Board\PluginSdk\PluginRegistry;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -64,6 +67,13 @@ class CardDetail extends Component
     public ?int $editingCommentId = null;
 
     public string $editingCommentBody = '';
+
+    /** Add-a-plugin-reference form (card enrichment). */
+    public ?int $refBoardPluginId = null;
+
+    public string $refType = '';
+
+    public string $refRaw = '';
 
     public function mount(Board $board): void
     {
@@ -212,6 +222,111 @@ class CardDetail extends Component
         }
 
         $this->touched('card.updated');
+    }
+
+    /**
+     * Attach an external plugin reference (e.g. a GitHub commit) to the card:
+     * the plugin resolves the raw ref into a widget payload we snapshot, and a
+     * plugin activity is logged (shown under the plugin's slide-over tab).
+     */
+    public function addPluginRef(int $boardPluginId, string $type, string $raw): void
+    {
+        $card = $this->guardedCard();
+        $raw = trim($raw);
+
+        if ($raw === '') {
+            return;
+        }
+
+        $instance = $this->board->plugins()->where('is_active', true)->find($boardPluginId);
+        $plugin = $instance ? app(PluginRegistry::class)->get($instance->plugin_key) : null;
+
+        if (! $plugin instanceof EnrichesCards) {
+            return;
+        }
+
+        if (! in_array($type, collect($plugin->cardRefTypes())->pluck('key')->all(), true)) {
+            return;
+        }
+
+        $payload = $plugin->resolveCardRef($instance->config ?? [], $type, $raw);
+
+        if ($payload === null || empty($payload['ref_id'])) {
+            $this->dispatch('toast', message: __('Référence introuvable.'), type: 'error');
+
+            return;
+        }
+
+        $card->pluginRefs()->updateOrCreate(
+            ['plugin_key' => $instance->plugin_key, 'ref_type' => $type, 'ref_id' => (string) $payload['ref_id']],
+            ['board_plugin_id' => $instance->id, 'payload' => $payload, 'created_by' => Auth::id()],
+        );
+
+        PluginActivity::log($instance, $card, $instance->plugin_key.'.ref_linked', [
+            'card_title' => $card->title,
+            'ref_type' => $type,
+            'ref_id' => (string) $payload['ref_id'],
+            'title' => $payload['title'] ?? (string) $payload['ref_id'],
+            'url' => $payload['url'] ?? null,
+        ]);
+
+        $this->reset('refRaw');
+        $this->touched('card.plugin_ref');
+        $this->dispatch('toast', message: __('Référence liée'), type: 'success');
+    }
+
+    /**
+     * Form wrapper: resolve sensible defaults for the chosen plugin/type.
+     */
+    public function submitPluginRef(): void
+    {
+        $refPlugins = $this->cardRefPlugins();
+
+        if ($refPlugins === []) {
+            return;
+        }
+
+        $selected = collect($refPlugins)->firstWhere('board_plugin_id', $this->refBoardPluginId) ?? $refPlugins[0];
+        $type = $this->refType !== '' ? $this->refType : ($selected['types'][0]['key'] ?? '');
+
+        if ($type === '') {
+            return;
+        }
+
+        $this->addPluginRef($selected['board_plugin_id'], $type, $this->refRaw);
+    }
+
+    public function removePluginRef(int $refId): void
+    {
+        $card = $this->guardedCard();
+
+        $card->pluginRefs()->whereKey($refId)->delete();
+        $this->touched('card.plugin_ref');
+    }
+
+    /**
+     * Active board plugins that can enrich cards, with their reference types.
+     *
+     * @return array<int, array{board_plugin_id: int, name: string, plugin_key: string, types: array<int, array{key: string, label: string}>}>
+     */
+    private function cardRefPlugins(): array
+    {
+        $out = [];
+
+        foreach ($this->board->plugins()->where('is_active', true)->get() as $instance) {
+            $plugin = app(PluginRegistry::class)->get($instance->plugin_key);
+
+            if ($plugin instanceof EnrichesCards) {
+                $out[] = [
+                    'board_plugin_id' => $instance->id,
+                    'name' => $instance->name,
+                    'plugin_key' => $instance->plugin_key,
+                    'types' => $plugin->cardRefTypes(),
+                ];
+            }
+        }
+
+        return $out;
     }
 
     public function saveDescription(string $markdown): void
@@ -826,7 +941,7 @@ class CardDetail extends Component
     {
         $card = $this->cardId
             ? $this->board->cards()
-                ->with(['members', 'watchers', 'labels', 'checklists.items', 'attachments.uploader', 'comments.user', 'comments.reactions', 'activities.user', 'customFieldValues'])
+                ->with(['members', 'watchers', 'labels', 'checklists.items', 'attachments.uploader', 'comments.user', 'comments.reactions', 'activities.user', 'customFieldValues', 'pluginRefs'])
                 ->find($this->cardId)
             : null;
 
@@ -864,6 +979,7 @@ class CardDetail extends Component
             'cardLinks' => $cardLinks,
             'linkCandidates' => $linkCandidates,
             'customFields' => $this->board->customFields,
+            'refPlugins' => $this->cardRefPlugins(),
         ]);
     }
 }

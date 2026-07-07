@@ -11,7 +11,7 @@ use App\Models\Board;
 use App\Models\BoardList;
 use App\Models\Card;
 use App\Models\CardTemplate;
-use App\Plugins\PluginEngine;
+use Board\PluginSdk\Contracts\DefinesActivities;
 use Board\PluginSdk\Contracts\ProvidesListSource;
 use Board\PluginSdk\PluginRegistry;
 use Illuminate\Contracts\View\View;
@@ -316,25 +316,6 @@ class Show extends Component
     }
 
     /**
-     * Manually refresh a plugin list's items and let other viewers update live.
-     */
-    public function refreshPluginList(int $listId): void
-    {
-        $this->authorize('view', $this->board);
-
-        $list = $this->board->lists()->findOrFail($listId);
-
-        if (! $list->isPluginList()) {
-            return;
-        }
-
-        app(PluginEngine::class)->refresh($list);
-
-        broadcast(new BoardActivity($this->board->id, 'plugin.refreshed', Auth::id()))->toOthers();
-        $this->dispatch('toast', message: __('Liste actualisée'), type: 'success');
-    }
-
-    /**
      * Add a workspace member to this board so they become assignable/mentionable.
      */
     public function addBoardMember(int $userId): void
@@ -385,6 +366,14 @@ class Show extends Component
         $this->broadcastActivity('board.members');
     }
 
+    /**
+     * Whether classic-list cards have been loaded. Starts false so the board
+     * paints instantly with a skeleton, then `wire:init="loadCards"` flips it.
+     * Eager in tests (no JS to fire wire:init) so rendered assertions still see
+     * cards; the deferred path is covered by a dedicated test.
+     */
+    public bool $cardsReady = false;
+
     public function mount(Board $board): void
     {
         $this->authorize('view', $board);
@@ -398,6 +387,13 @@ class Show extends Component
         if (! in_array($this->view, ['board', 'calendar'], true)) {
             $this->view = 'board';
         }
+
+        $this->cardsReady = app()->runningUnitTests();
+    }
+
+    public function loadCards(): void
+    {
+        $this->cardsReady = true;
     }
 
     public function setView(string $view): void
@@ -1108,7 +1104,13 @@ class Show extends Component
         $lists = $this->view === 'board'
             ? $this->board->lists()
                 ->whereNull('archived_at')
-                ->with([
+                // Counts stay available (and cheap) even while cards lazy-load.
+                ->withCount(['cards' => function ($query) {
+                    $query->whereNull('archived_at');
+                    $this->applyCardFilters($query);
+                }])
+                // Cards themselves are deferred until loadCards() (skeleton first).
+                ->when($this->cardsReady, fn ($q) => $q->with([
                     'cards' => function ($query) {
                         $query->whereNull('archived_at')->orderBy('position')->withCount('attachments');
                         $this->applyCardFilters($query);
@@ -1117,20 +1119,24 @@ class Show extends Component
                     'cards.labels',
                     'cards.checklists.items',
                     'cards.customFieldValues',
-                    'sourcePlugin',
-                ])
+                ]))
                 ->orderBy('position')
                 ->get()
             : collect();
 
-        // Read-only virtual items for plugin-sourced lists (cached per list).
-        $pluginItems = $lists
-            ->filter(fn (BoardList $list): bool => $list->isPluginList())
-            ->mapWithKeys(fn (BoardList $list): array => [
-                $list->id => app(PluginEngine::class)->listItems($list),
-            ]);
-
         $boardMembers = $this->board->members()->orderBy('name')->get();
+
+        // Dedicated slide-over tabs for plugins that have logged activity here.
+        $activityTabs = [];
+
+        if ($this->showActivity) {
+            foreach (app(PluginRegistry::class)->all() as $key => $plugin) {
+                if ($plugin instanceof DefinesActivities
+                    && $this->board->activities()->whereIn('type', $plugin->activityTypes())->exists()) {
+                    $activityTabs[] = ['plugin_key' => $key, 'label' => $plugin->activityTab()['label']];
+                }
+            }
+        }
 
         return view('livewire.boards.show', [
             'lists' => $lists,
@@ -1149,8 +1155,8 @@ class Show extends Component
             'activities' => $this->showActivity
                 ? $this->board->activities()->with(['user', 'card'])->latest()->limit(60)->get()
                 : collect(),
+            'activityTabs' => $activityTabs,
             'customFields' => $this->board->customFields,
-            'pluginItems' => $pluginItems,
             'pluginRegistry' => app(PluginRegistry::class),
             'availablePlugins' => $this->showPlugins ? app(PluginRegistry::class)->all() : [],
             'installedPlugins' => $this->showPlugins ? $this->board->plugins()->get() : collect(),

@@ -32,6 +32,8 @@ use App\Mcp\Tools\UpdateBoardTool;
 use App\Mcp\Tools\UpdateCardTool;
 use App\Mcp\Tools\UpdateLabelTool;
 use App\Mcp\Tools\UpdateListTool;
+use Board\PluginSdk\Contracts\ProvidesMcpTools;
+use Board\PluginSdk\PluginRegistry;
 use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Instructions;
 use Laravel\Mcp\Server\Attributes\Name;
@@ -86,6 +88,22 @@ class BoardServer extends Server
         ListAutomationsTool::class,
         RunAutomationTool::class,
     ];
+
+    /**
+     * Merge MCP tools contributed by installed plugins (Power-Ups) — a plugin
+     * that implements ProvidesMcpTools exposes its tools through this server
+     * with no core changes.
+     */
+    protected function boot(): void
+    {
+        parent::boot();
+
+        foreach (app(PluginRegistry::class)->all() as $plugin) {
+            if ($plugin instanceof ProvidesMcpTools) {
+                $this->tools = array_merge($this->tools, $plugin->mcpTools());
+            }
+        }
+    }
 
     /**
      * @var array<int, class-string<Server\Resource>>

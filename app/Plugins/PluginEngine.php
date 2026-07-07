@@ -18,27 +18,30 @@ class PluginEngine
 {
     private const TTL_MINUTES = 5;
 
+    public const DEFAULT_LIMIT = 15;
+
     public function __construct(private readonly PluginRegistry $registry) {}
 
     /**
-     * Cached items for a plugin list (empty for a normal list).
+     * Cached items for a plugin list (empty for a normal list). `$limit` is the
+     * current page size driven by the list's infinite scroll.
      *
      * Only plain arrays are cached (never live objects) so the value survives
      * any cache driver's serialization; the DTOs are rehydrated on read.
      *
      * @return Collection<int, PluginListItem>
      */
-    public function listItems(BoardList $list): Collection
+    public function listItems(BoardList $list, int $limit = self::DEFAULT_LIMIT): Collection
     {
         if (! $list->isPluginList()) {
             return collect();
         }
 
-        $key = $this->cacheKey($list);
+        $key = $this->cacheKey($list, $limit);
         $cached = Cache::get($key);
 
         if (! is_array($cached)) {
-            $cached = $this->fetch($list)->map->toArray()->all();
+            $cached = $this->fetch($list, $limit)->map->toArray()->all();
             Cache::put($key, $cached, now()->addMinutes(self::TTL_MINUTES));
         }
 
@@ -55,19 +58,21 @@ class PluginEngine
     }
 
     /**
-     * Drop the cached items and re-fetch immediately.
+     * Drop every cached page for this list and re-warm the current one.
      */
-    public function refresh(BoardList $list): void
+    public function refresh(BoardList $list, int $limit = self::DEFAULT_LIMIT): void
     {
-        Cache::forget($this->cacheKey($list));
+        for ($page = self::DEFAULT_LIMIT; $page <= 600; $page += self::DEFAULT_LIMIT) {
+            Cache::forget($this->cacheKey($list, $page));
+        }
 
-        $this->listItems($list);
+        $this->listItems($list, $limit);
     }
 
     /**
      * @return Collection<int, PluginListItem>
      */
-    private function fetch(BoardList $list): Collection
+    private function fetch(BoardList $list, int $limit): Collection
     {
         $instance = $list->sourcePlugin;
 
@@ -85,7 +90,7 @@ class PluginEngine
             return $plugin->items(
                 $instance->config ?? [],
                 (string) $list->source_mode,
-                $list->source_config ?? [],
+                array_merge($list->source_config ?? [], ['limit' => $limit]),
             );
         } catch (\Throwable $e) {
             report($e);
@@ -94,8 +99,8 @@ class PluginEngine
         }
     }
 
-    private function cacheKey(BoardList $list): string
+    private function cacheKey(BoardList $list, int $limit): string
     {
-        return "plugin-list:{$list->id}";
+        return "plugin-list:{$list->id}:{$limit}";
     }
 }

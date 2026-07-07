@@ -194,6 +194,68 @@
                             </div>
                         </div>
 
+                        {{-- Plugin references (card enrichment, e.g. GitHub commits) --}}
+                        @if ($card->pluginRefs->isNotEmpty() || ! empty($refPlugins))
+                            @php
+                                $refBadgeColors = [
+                                    'green' => 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400',
+                                    'red' => 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400',
+                                    'amber' => 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
+                                    'indigo' => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300',
+                                    'neutral' => 'bg-neutral-200 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300',
+                                ];
+                            @endphp
+                            <div>
+                                <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Liens externes') }}</h3>
+
+                                @if ($card->pluginRefs->isNotEmpty())
+                                    <div class="mb-2 space-y-2">
+                                        @foreach ($card->pluginRefs as $ref)
+                                            @php $p = $ref->payload ?? []; @endphp
+                                            <div wire:key="ref-{{ $ref->id }}" class="group/ref flex items-start gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800">
+                                                @if (! empty($p['icon']))
+                                                    <x-dynamic-component :component="'phosphor-'.$p['icon']" class="mt-0.5 h-4 w-4 shrink-0 text-neutral-400"/>
+                                                @endif
+                                                <div class="min-w-0 flex-1">
+                                                    <div class="flex items-center gap-2">
+                                                        <a @if (! empty($p['url'])) href="{{ $p['url'] }}" target="_blank" rel="noopener noreferrer" @endif class="min-w-0 flex-1 truncate font-medium hover:underline">{{ $p['title'] ?? $ref->ref_id }}</a>
+                                                        @if (! empty($p['badge']))
+                                                            <span class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium {{ $refBadgeColors[$p['badge_color'] ?? 'neutral'] ?? $refBadgeColors['neutral'] }}">{{ $p['badge'] }}</span>
+                                                        @endif
+                                                        <button type="button" wire:click="removePluginRef({{ $ref->id }})" class="shrink-0 rounded p-1 text-neutral-400 opacity-100 transition hover:text-red-500 sm:opacity-0 sm:group-hover/ref:opacity-100" title="{{ __('Retirer') }}"><x-phosphor-x class="h-3.5 w-3.5"/></button>
+                                                    </div>
+                                                    @if (! empty($p['subtitle']))
+                                                        <p class="truncate text-xs text-neutral-500 dark:text-neutral-400">{{ $p['subtitle'] }}</p>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+
+                                @if (! empty($refPlugins))
+                                    @php $selRef = collect($refPlugins)->firstWhere('board_plugin_id', $refBoardPluginId) ?? $refPlugins[0]; @endphp
+                                    <form wire:submit="submitPluginRef" class="flex flex-wrap items-center gap-2">
+                                        @if (count($refPlugins) > 1)
+                                            <select wire:model.live="refBoardPluginId" class="shrink-0 rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-sm focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                                @foreach ($refPlugins as $rp)
+                                                    <option value="{{ $rp['board_plugin_id'] }}">{{ $rp['name'] }}</option>
+                                                @endforeach
+                                            </select>
+                                        @endif
+                                        <select wire:model="refType" class="shrink-0 rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-sm focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                            @foreach ($selRef['types'] as $t)
+                                                <option value="{{ $t['key'] }}">{{ $t['label'] }}</option>
+                                            @endforeach
+                                        </select>
+                                        <input type="text" wire:model="refRaw" placeholder="{{ __('Coller un lien / sha…') }}"
+                                               class="min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                        <button type="submit" class="shrink-0 rounded-lg border border-neutral-300 px-2 py-1.5 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">+</button>
+                                    </form>
+                                @endif
+                            </div>
+                        @endif
+
                         {{-- Attachments --}}
                         @php
                             $media = $card->attachments

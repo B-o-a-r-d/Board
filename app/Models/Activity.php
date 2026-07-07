@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Board\PluginSdk\Contracts\DefinesActivities;
+use Board\PluginSdk\PluginRegistry;
 use Database\Factories\ActivityFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -49,6 +51,17 @@ class Activity extends Model
     }
 
     /**
+     * The plugin key that emitted this activity (from `source = "plugin:<key>"`),
+     * or null for a native activity.
+     */
+    public function pluginKey(): ?string
+    {
+        return $this->source !== null && str_starts_with($this->source, 'plugin:')
+            ? substr($this->source, strlen('plugin:'))
+            : null;
+    }
+
+    /**
      * Where clicking this activity in the slide-over should take the user: the
      * card to open plus an optional element to focus within it (a specific
      * comment, or a named sidebar section). `card` is null when the target no
@@ -75,6 +88,20 @@ class Activity extends Model
     public function describe(): string
     {
         $props = $this->properties ?? [];
+
+        // Plugin-emitted activities describe themselves (localized in the plugin).
+        if (($pluginKey = $this->pluginKey()) !== null) {
+            $plugin = app(PluginRegistry::class)->get($pluginKey);
+
+            if ($plugin instanceof DefinesActivities) {
+                $described = $plugin->describeActivity($this->type, $props);
+
+                if ($described !== null) {
+                    return $described;
+                }
+            }
+        }
+
         $card = $this->card?->title ?? ($props['card_title'] ?? '#'.($props['number'] ?? '?'));
 
         $type = $this->type;

@@ -8,6 +8,7 @@
         else if ($event.key === '?') { helpOpen = true; }
      "
      @open-shortcuts.window="helpOpen = true"
+     wire:init="loadCards"
      class="flex h-[calc(100dvh-8rem)] flex-col">
     {{-- Board header --}}
     <div class="mb-3 flex flex-col gap-3 sm:mb-4 sm:flex-row sm:items-start sm:justify-between">
@@ -286,7 +287,7 @@
             <div
                 wire:key="list-{{ $list->id }}"
                 wire:sort:item="{{ $list->id }}"
-                x-data="{ cardCount: {{ $list->cards->count() }}, wipLimit: {{ $list->wip_limit ?? 'null' }}, collapsed: JSON.parse(localStorage.getItem('board-list-collapsed:{{ $list->public_id }}') ?? 'false') }"
+                x-data="{ cardCount: {{ $list->cards_count }}, wipLimit: {{ $list->wip_limit ?? 'null' }}, collapsed: JSON.parse(localStorage.getItem('board-list-collapsed:{{ $list->public_id }}') ?? 'false') }"
                 x-init="
                     $watch('collapsed', v => localStorage.setItem('board-list-collapsed:{{ $list->public_id }}', JSON.stringify(v)));
                     $nextTick(() => {
@@ -311,16 +312,16 @@
                     @elseif ($list->cover_color)
                         <span class="h-6 w-1.5 shrink-0 rounded-full" style="background-color: {{ $list->cover_color }}"></span>
                     @endif
-                    <span class="shrink-0 rounded-full bg-neutral-300/70 px-1.5 py-0.5 text-[10px] font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400" x-text="wipLimit ? cardCount + '/' + wipLimit : cardCount">{{ $list->cards->count() }}</span>
+                    <span class="shrink-0 rounded-full bg-neutral-300/70 px-1.5 py-0.5 text-[10px] font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400" x-text="wipLimit ? cardCount + '/' + wipLimit : cardCount">{{ $list->cards_count }}</span>
                     <span class="mt-1 min-h-0 flex-1 overflow-hidden text-sm font-semibold tracking-wide [writing-mode:vertical-rl]">{{ Str::limit($list->name, 40) }}</span>
                 </div>
 
                 {{-- Expanded content --}}
                 <div x-show="! collapsed" class="flex min-h-0 flex-1 flex-col overflow-hidden">
                 @if ($list->cover_path)
-                    <img src="{{ Storage::disk('public')->url($list->cover_path) }}" alt="" class="h-16 w-full object-cover">
+                    <img src="{{ Storage::disk('public')->url($list->cover_path) }}" alt="" class="h-16 w-full shrink-0 object-cover">
                 @elseif ($list->cover_color)
-                    <div class="h-2 w-full" style="background-color: {{ $list->cover_color }}"></div>
+                    <div class="h-2 w-full shrink-0" style="background-color: {{ $list->cover_color }}"></div>
                 @endif
 
                 {{-- List header (drag handle for column reordering) --}}
@@ -334,15 +335,13 @@
                                 wire:change="renameList({{ $list->id }}, $event.target.value)"
                                 class="w-full min-w-0 truncate rounded bg-transparent px-1 py-0.5 text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:focus:bg-neutral-800"
                             >
-                            @if ($list->isPluginList())
-                                <span class="shrink-0 rounded-full bg-neutral-300/70 px-1.5 py-0.5 text-xs font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">{{ ($pluginItems[$list->id] ?? collect())->count() }}</span>
-                            @else
+                            @unless ($list->isPluginList())
                                 <span
                                     class="shrink-0 rounded-full px-1.5 py-0.5 text-xs font-medium transition-colors"
                                     :class="wipLimit && cardCount > wipLimit ? 'bg-red-200 text-red-700 dark:bg-red-500/25 dark:text-red-300' : 'bg-neutral-300/70 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'"
                                     :title="wipLimit && cardCount > wipLimit ? '{{ __('Limite WIP dépassée') }}' : ''"
-                                    x-text="wipLimit ? cardCount + '/' + wipLimit : cardCount">{{ $list->cards->count() }}{{ $list->wip_limit ? '/'.$list->wip_limit : '' }}</span>
-                            @endif
+                                    x-text="wipLimit ? cardCount + '/' + wipLimit : cardCount">{{ $list->cards_count }}{{ $list->wip_limit ? '/'.$list->wip_limit : '' }}</span>
+                            @endunless
                         </div>
                         <button type="button" wire:sort:ignore @click="openAt($event.clientX, $event.clientY)"
                                 class="shrink-0 rounded p-1 text-neutral-400 hover:bg-neutral-300 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
@@ -395,6 +394,7 @@
 
                 @if (! $list->isPluginList())
                 {{-- Cards --}}
+                @if ($cardsReady)
                 <ul
                     x-ref="cards"
                     wire:sort="moveCard"
@@ -558,6 +558,20 @@
                         </li>
                     @endforeach
                 </ul>
+                @else
+                    {{-- Cards skeleton (shown until wire:init loads them) --}}
+                    <ul class="flex flex-col gap-2 overflow-hidden px-2">
+                        @foreach (range(1, min(3, max(1, (int) $list->cards_count))) as $i)
+                            <li class="rounded-lg border border-neutral-200 bg-white px-3 py-2.5 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
+                                <div class="h-3.5 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" style="width: {{ [80, 60, 72][($i - 1) % 3] }}%"></div>
+                                <div class="mt-2 flex gap-2">
+                                    <div class="h-2.5 w-10 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700"></div>
+                                    <div class="h-2.5 w-8 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700"></div>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
 
                 {{-- Add card --}}
                 <div class="flex items-center gap-1 p-2">
@@ -590,57 +604,8 @@
                     @endif
                 </div>
                 @else
-                    {{-- Plugin-sourced list: read-only virtual cards --}}
-                    @php
-                        $pItems = $pluginItems[$list->id] ?? collect();
-                        $pDef = $pluginRegistry->get(optional($list->sourcePlugin)->plugin_key);
-                        $badgeColors = [
-                            'green' => 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400',
-                            'red' => 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400',
-                            'amber' => 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
-                            'indigo' => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300',
-                            'neutral' => 'bg-neutral-200 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300',
-                        ];
-                    @endphp
-                    <div class="flex items-center justify-between gap-2 px-3 pb-1.5 text-xs text-neutral-500 dark:text-neutral-400">
-                        <span class="inline-flex min-w-0 items-center gap-1 truncate">
-                            <x-dynamic-component :component="'phosphor-'.($pDef?->icon() ?? 'puzzle-piece')" class="h-3.5 w-3.5 shrink-0"/>
-                            <span class="truncate">{{ optional($list->sourcePlugin)->name }}</span>
-                            @unless (optional($list->sourcePlugin)->is_active)
-                                <span class="shrink-0 rounded bg-neutral-200 px-1 text-[10px] dark:bg-neutral-700">{{ __('inactif') }}</span>
-                            @endunless
-                        </span>
-                        <button type="button" wire:click="refreshPluginList({{ $list->id }})"
-                                class="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 hover:bg-neutral-200 dark:hover:bg-neutral-800"
-                                title="{{ __('Rafraîchir') }}">
-                            <x-phosphor-arrows-clockwise class="h-3.5 w-3.5" wire:loading.class="animate-spin" wire:target="refreshPluginList({{ $list->id }})"/>
-                        </button>
-                    </div>
-                    <ul class="flex min-h-2 flex-col gap-2 overflow-y-auto px-2 pb-2">
-                        @forelse ($pItems as $item)
-                            <li>
-                                <a @if ($item->url) href="{{ $item->url }}" target="_blank" rel="noopener noreferrer" @endif
-                                   class="flex flex-col gap-1 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm shadow-sm transition hover:border-indigo-300 dark:border-neutral-700 dark:bg-neutral-800 dark:hover:border-indigo-500/50">
-                                    <div class="flex items-start gap-2">
-                                        @if ($item->icon)
-                                            <x-dynamic-component :component="'phosphor-'.$item->icon" class="mt-0.5 h-4 w-4 shrink-0 text-neutral-400"/>
-                                        @endif
-                                        <span class="min-w-0 flex-1 font-medium leading-snug">{{ $item->title }}</span>
-                                        @if ($item->badge)
-                                            <span class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium {{ $badgeColors[$item->badgeColor] ?? $badgeColors['neutral'] }}">{{ $item->badge }}</span>
-                                        @endif
-                                    </div>
-                                    @if ($item->subtitle)
-                                        <span class="truncate text-xs text-neutral-500 dark:text-neutral-400">{{ $item->subtitle }}</span>
-                                    @endif
-                                </a>
-                            </li>
-                        @empty
-                            <li class="px-2 py-6 text-center text-xs text-neutral-400 dark:text-neutral-500">
-                                {{ optional($list->sourcePlugin)->is_active ? __('Aucun élément.') : __('Plugin désactivé.') }}
-                            </li>
-                        @endforelse
-                    </ul>
+                    {{-- Plugin-sourced list: rendered by a lazy child (skeleton until loaded). --}}
+                    <livewire:boards.plugin-list :list="$list" wire:key="plugin-list-{{ $list->id }}"/>
                 @endif
                 </div>
             </div>
@@ -1247,6 +1212,13 @@
                         :class="tab === 'comments' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'">
                     {{ __('Commentaires') }}
                 </button>
+                @foreach ($activityTabs as $pTab)
+                    <button type="button" @click="tab = 'plugin:{{ $pTab['plugin_key'] }}'"
+                            class="rounded-lg px-3 py-1 text-sm font-medium transition"
+                            :class="tab === 'plugin:{{ $pTab['plugin_key'] }}' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'">
+                        {{ $pTab['label'] }}
+                    </button>
+                @endforeach
             </div>
 
             <div class="flex-1 overflow-y-auto px-4 py-3">
@@ -1255,9 +1227,10 @@
                         $ft = $activity->focusTarget();
                         $sectionArg = $ft['section'] ? "'".$ft['section']."'" : 'null';
                         $commentArg = $ft['comment'] ?? 'null';
+                        $rowTab = $activity->isComment() ? 'comments' : ($activity->pluginKey() ? 'plugin:'.$activity->pluginKey() : null);
                     @endphp
                     <div class="flex gap-3 rounded-lg py-2.5 {{ $ft['card'] ? '-mx-2 cursor-pointer px-2 transition hover:bg-neutral-50 dark:hover:bg-neutral-800/60' : '' }}"
-                         @if ($activity->isComment()) x-show="true" @else x-show="tab === 'all'" @endif
+                         x-show="tab === 'all'@if ($rowTab) || tab === '{{ $rowTab }}'@endif"
                          @if ($ft['card'])
                              role="button" tabindex="0"
                              wire:click="focusActivity({{ $ft['card'] }}, {{ $sectionArg }}, {{ $commentArg }})"

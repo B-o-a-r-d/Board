@@ -1,13 +1,22 @@
 <?php
 
 use App\Enums\Role;
+use App\Livewire\Boards\PluginList;
 use App\Livewire\Boards\Show;
+use App\Livewire\Cards\CardDetail;
+use App\Mcp\Servers\BoardServer;
+use App\Models\Activity;
 use App\Models\Board;
 use App\Models\BoardList;
 use App\Models\BoardPlugin;
+use App\Models\Card;
 use App\Models\User;
 use App\Models\Workspace;
+use Board\PluginGithub\Mcp\GithubCommitsTool;
+use Board\PluginSdk\Contracts\DefinesActivities;
+use Board\PluginSdk\Contracts\EnrichesCards;
 use Board\PluginSdk\Contracts\ProvidesListSource;
+use Board\PluginSdk\Contracts\ProvidesMcpTools;
 use Board\PluginSdk\PluginListItem;
 use Board\PluginSdk\PluginRegistry;
 use Illuminate\Support\Facades\Cache;
@@ -35,6 +44,23 @@ function makePluginBoard(): array
     return compact('board', 'owner', 'member');
 }
 
+test('classic list cards are lazy-loaded behind an animated skeleton', function () {
+    ['board' => $board, 'owner' => $owner] = makePluginBoard();
+    $list = BoardList::factory()->create(['board_id' => $board->id]);
+    Card::factory()->create(['board_id' => $board->id, 'board_list_id' => $list->id, 'title' => 'Ma carte lazy']);
+
+    $component = Livewire::actingAs($owner)->test(Show::class, ['board' => $board]);
+
+    // Force the pre-load state the browser sees before wire:init fires.
+    $component->set('cardsReady', false)
+        ->assertSee('animate-pulse', false)
+        ->assertDontSee('Ma carte lazy');
+
+    $component->call('loadCards')
+        ->assertSet('cardsReady', true)
+        ->assertSee('Ma carte lazy');
+});
+
 test('the github plugin auto-registers into the registry via its package', function () {
     $registry = app(PluginRegistry::class);
     $plugin = $registry->get('github');
@@ -42,7 +68,123 @@ test('the github plugin auto-registers into the registry via its package', funct
     expect($plugin)->not->toBeNull()
         ->and($plugin->label())->toBe('GitHub')
         ->and($plugin->requiresOAuth())->toBeTrue()
-        ->and($plugin)->toBeInstanceOf(ProvidesListSource::class);
+        ->and($plugin)->toBeInstanceOf(ProvidesListSource::class)
+        ->and($plugin)->toBeInstanceOf(DefinesActivities::class)
+        ->and($plugin)->toBeInstanceOf(EnrichesCards::class)
+        ->and($plugin)->toBeInstanceOf(ProvidesMcpTools::class);
+});
+
+test('the github plugin ships its own file translations', function () {
+    $plugin = app(PluginRegistry::class)->get('github');
+
+    app()->setLocale('en');
+    expect($plugin->description())->toBe('Read-only lists of a GitHub repository\'s commits, pull requests and issues.')
+        ->and(trans('github::messages.mode.commits'))->toBe('Recent commits');
+
+    app()->setLocale('fr');
+    expect(trans('github::messages.mode.commits'))->toBe('Derniers commits');
+});
+
+test('activity describe() delegates to the plugin for its own types', function () {
+    app()->setLocale('en');
+
+    $activity = new Activity([
+        'type' => 'github.ref_linked',
+        'source' => 'plugin:github',
+        'properties' => ['ref_type' => 'commit', 'title' => 'Fix the bug'],
+    ]);
+
+    expect($activity->describe())->toBe('linked the commit "Fix the bug"')
+        ->and($activity->pluginKey())->toBe('github');
+});
+
+test('linking a github commit to a card stores a ref and logs a plugin activity', function () {
+    Http::fake([
+        'api.github.com/repos/*/commits/*' => Http::response([
+            'sha' => 'abc1234567890',
+            'html_url' => 'https://github.com/o/r/commit/abc1234',
+            'commit' => ['message' => "Fix the bug\n\nbody", 'author' => ['name' => 'Octo', 'date' => '2026-07-07T10:00:00Z']],
+        ]),
+    ]);
+
+    ['board' => $board, 'owner' => $owner] = makePluginBoard();
+    $instance = $board->plugins()->create([
+        'plugin_key' => 'github', 'name' => 'GitHub', 'config' => ['token' => 't'], 'is_active' => true,
+    ]);
+    $list = BoardList::factory()->create(['board_id' => $board->id]);
+    $card = Card::factory()->create(['board_id' => $board->id, 'board_list_id' => $list->id]);
+
+    Livewire::actingAs($owner)->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->call('addPluginRef', $instance->id, 'commit', 'https://github.com/o/r/commit/abc1234567890')
+        ->assertHasNoErrors();
+
+    $ref = $card->pluginRefs()->firstOrFail();
+    expect($ref->plugin_key)->toBe('github')
+        ->and($ref->ref_type)->toBe('commit')
+        ->and($ref->ref_id)->toBe('abc1234567890')
+        ->and($ref->payload['title'])->toBe('Fix the bug');
+
+    $activity = Activity::where('type', 'github.ref_linked')->latest('id')->firstOrFail();
+    expect($activity->source)->toBe('plugin:github')
+        ->and($activity->card_id)->toBe($card->id);
+});
+
+test('an unresolvable ref shows an error and stores nothing', function () {
+    Http::fake(['api.github.com/*' => Http::response([], 404)]);
+
+    ['board' => $board, 'owner' => $owner] = makePluginBoard();
+    $instance = $board->plugins()->create([
+        'plugin_key' => 'github', 'name' => 'GitHub', 'config' => ['token' => 't'], 'is_active' => true,
+    ]);
+    $list = BoardList::factory()->create(['board_id' => $board->id]);
+    $card = Card::factory()->create(['board_id' => $board->id, 'board_list_id' => $list->id]);
+
+    Livewire::actingAs($owner)->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->call('addPluginRef', $instance->id, 'commit', 'garbage-input');
+
+    expect($card->pluginRefs()->count())->toBe(0);
+});
+
+test('the slide-over shows a plugin tab only when that plugin has activity', function () {
+    ['board' => $board, 'owner' => $owner] = makePluginBoard();
+    $instance = $board->plugins()->create([
+        'plugin_key' => 'github', 'name' => 'GitHub', 'config' => ['token' => 't'], 'is_active' => true,
+    ]);
+
+    // No github activity yet → no github tab.
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+        ->set('showActivity', true)
+        ->assertViewHas('activityTabs', fn ($tabs) => collect($tabs)->doesntContain(fn ($t) => $t['plugin_key'] === 'github'));
+
+    Activity::create([
+        'board_id' => $board->id, 'type' => 'github.ref_linked', 'source' => 'plugin:github',
+        'properties' => ['ref_type' => 'commit', 'title' => 'x'],
+    ]);
+
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+        ->set('showActivity', true)
+        ->assertViewHas('activityTabs', fn ($tabs) => collect($tabs)->contains(fn ($t) => $t['plugin_key'] === 'github'));
+});
+
+test('the plugin mcp tool lists commits through the board server', function () {
+    Http::fake([
+        'api.github.com/repos/*/commits*' => Http::response([
+            ['sha' => 'deadbeef', 'html_url' => 'https://github.com/o/r/commit/deadbeef',
+                'commit' => ['message' => 'Hello from MCP', 'author' => ['name' => 'Dev', 'date' => '2026-07-07T10:00:00Z']]],
+        ]),
+    ]);
+
+    ['board' => $board, 'owner' => $owner] = makePluginBoard();
+    $board->plugins()->create([
+        'plugin_key' => 'github', 'name' => 'GitHub', 'config' => ['token' => 't'], 'is_active' => true,
+    ]);
+
+    BoardServer::actingAs($owner)->tool(GithubCommitsTool::class, [
+        'board_id' => $board->public_id,
+        'repository' => 'o/r',
+    ])->assertOk()->assertSee('Hello from MCP');
 });
 
 test('an installed plugin config is encrypted at rest', function () {
@@ -128,7 +270,9 @@ test('an invalid source mode is rejected', function () {
     expect($board->lists()->whereNotNull('source_plugin_id')->count())->toBe(0);
 });
 
-test('a plugin list renders read-only items fetched from github', function () {
+test('the lazy plugin list renders read-only items with the commit time', function () {
+    config(['app.timezone' => 'Europe/Paris']); // commit time is shown in the app timezone
+
     Http::fake([
         'api.github.com/repos/*/commits*' => Http::response([
             [
@@ -143,7 +287,7 @@ test('a plugin list renders read-only items fetched from github', function () {
     $instance = $board->plugins()->create([
         'plugin_key' => 'github', 'name' => 'GitHub', 'config' => ['token' => 't'], 'is_active' => true,
     ]);
-    BoardList::factory()->create([
+    $list = BoardList::factory()->create([
         'board_id' => $board->id,
         'name' => 'Commits',
         'source_plugin_id' => $instance->id,
@@ -151,9 +295,29 @@ test('a plugin list renders read-only items fetched from github', function () {
         'source_config' => ['repository' => 'o/r'],
     ]);
 
-    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+    Livewire::withoutLazyLoading()
+        ->actingAs($owner)
+        ->test(PluginList::class, ['list' => $list])
         ->assertSee('Fix the widget')
-        ->assertSee('Octo Cat · abc1234');
+        ->assertSee('Octo Cat · abc1234')
+        ->assertSee('12:00'); // 10:00 UTC shown in Europe/Paris
+});
+
+test('the lazy plugin list shows a skeleton placeholder before loading', function () {
+    ['board' => $board, 'owner' => $owner] = makePluginBoard();
+    $instance = $board->plugins()->create([
+        'plugin_key' => 'github', 'name' => 'GitHub', 'config' => ['token' => 't'], 'is_active' => true,
+    ]);
+    $list = BoardList::factory()->create([
+        'board_id' => $board->id,
+        'source_plugin_id' => $instance->id,
+        'source_mode' => 'commits',
+        'source_config' => ['repository' => 'o/r'],
+    ]);
+
+    // With lazy loading enabled, the component renders its placeholder first.
+    Livewire::actingAs($owner)->test(PluginList::class, ['list' => $list])
+        ->assertSee('animate-pulse', false);
 });
 
 test('refreshing a plugin list busts the cache and broadcasts', function () {
@@ -171,18 +335,58 @@ test('refreshing a plugin list busts the cache and broadcasts', function () {
     ]);
 
     Cache::put(
-        "plugin-list:{$list->id}",
+        "plugin-list:{$list->id}:15",
         [(new PluginListItem(externalRef: 'x', title: 'STALE'))->toArray()],
         now()->addMinutes(5),
     );
 
-    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
-        ->assertSee('STALE')
-        ->call('refreshPluginList', $list->id)
+    Livewire::withoutLazyLoading()
+        ->actingAs($owner)
+        ->test(PluginList::class, ['list' => $list])
+        ->call('refresh')
         ->assertHasNoErrors();
 
     // The stale sentinel is gone (cache was busted and re-fetched as empty).
-    expect(Cache::get("plugin-list:{$list->id}"))->toBe([]);
+    expect(Cache::get("plugin-list:{$list->id}:15"))->toBe([]);
+});
+
+test('a plugin list lazy-loads more commits on demand', function () {
+    $all = collect(range(1, 40))->map(fn (int $n): array => [
+        'sha' => str_pad((string) $n, 7, '0', STR_PAD_LEFT).'abcdef',
+        'html_url' => "https://github.com/o/r/commit/{$n}",
+        'commit' => ['message' => "Commit number {$n}", 'author' => ['name' => 'Dev', 'date' => '2026-07-07T10:00:00Z']],
+    ])->all();
+
+    Http::fake([
+        'api.github.com/repos/*/commits*' => function ($request) use ($all) {
+            parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $q);
+            $perPage = (int) ($q['per_page'] ?? 30);
+            $page = (int) ($q['page'] ?? 1);
+
+            return Http::response(array_slice($all, ($page - 1) * $perPage, $perPage));
+        },
+    ]);
+
+    ['board' => $board, 'owner' => $owner] = makePluginBoard();
+    $instance = $board->plugins()->create([
+        'plugin_key' => 'github', 'name' => 'GitHub', 'config' => ['token' => 't'], 'is_active' => true,
+    ]);
+    $list = BoardList::factory()->create([
+        'board_id' => $board->id,
+        'source_plugin_id' => $instance->id,
+        'source_mode' => 'commits',
+        'source_config' => ['repository' => 'o/r'],
+    ]);
+
+    Livewire::withoutLazyLoading()
+        ->actingAs($owner)
+        ->test(PluginList::class, ['list' => $list])
+        ->assertSee('Commit number 15')
+        ->assertDontSee('Commit number 16')
+        ->call('loadMore')
+        ->assertSet('limit', 30)
+        ->assertSee('Commit number 16')
+        ->assertSee('Commit number 30');
 });
 
 test('the github oauth callback stores an encrypted token', function () {

@@ -6,6 +6,8 @@ use App\Automations\Actions;
 use App\Automations\AutomationRegistry;
 use App\Automations\Triggers;
 use App\Models\User;
+use App\Plugins\PluginContext;
+use Board\PluginSdk\Contracts\PluginContext as PluginContextContract;
 use Board\PluginSdk\PluginRegistry;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -50,6 +52,9 @@ class AppServiceProvider extends ServiceProvider
         // own package service providers (Laravel auto-discovery), so installing
         // a plugin is just `composer require`.
         $this->app->singleton(PluginRegistry::class, fn (): PluginRegistry => new PluginRegistry);
+
+        // Bridge decoupled plugin code (MCP tools) back to host state.
+        $this->app->singleton(PluginContextContract::class, PluginContext::class);
     }
 
     /**

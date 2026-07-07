@@ -11,8 +11,8 @@
     "require": {
         "php": "^8.3",
         "blade-ui-kit/blade-icons": "^1.10",
-        "board/plugin-github": "^0.1",
-        "board/plugin-sdk": "^0.1",
+        "board/plugin-github": "^0.2",
+        "board/plugin-sdk": "^0.2",
         "codeat3/blade-phosphor-icons": "^2.4",
         "laravel/fortify": "^1.36",
         "laravel/framework": "^13.8",
