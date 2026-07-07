@@ -394,6 +394,16 @@
                             {{ $card->completed_at ? __('Terminée') : __('Marquer terminée') }}
                         </button>
 
+                        @php $isWatching = $card->watchers->contains(fn ($w) => $w->id === auth()->id()); @endphp
+                        <button type="button" wire:click="toggleWatch"
+                                class="flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition {{ $isWatching ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'border border-neutral-300 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800' }}">
+                            <x-dynamic-component :component="$isWatching ? 'phosphor-eye' : 'phosphor-eye-slash'" class="h-4 w-4" />
+                            {{ $isWatching ? __('Suivi') : __('Suivre') }}
+                            @if ($card->watchers->isNotEmpty())
+                                <span class="rounded-full px-1.5 text-xs {{ $isWatching ? 'bg-white/20' : 'bg-neutral-200 dark:bg-neutral-700' }}">{{ $card->watchers->count() }}</span>
+                            @endif
+                        </button>
+
                         @can('admin')
                             <button type="button" wire:click="saveAsTemplate" class="flex w-full items-center justify-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">
                                 <x-phosphor-stack class="h-4 w-4" /> {{ __('Enregistrer comme modèle') }}

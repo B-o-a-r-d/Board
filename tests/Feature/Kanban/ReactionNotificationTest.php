@@ -89,3 +89,54 @@ test('mentions-only mode drops plain comments but keeps mentions', function () {
     expect((new CardNotification($card, 'comment', $actor))->via($user))->toBe([])
         ->and((new CardNotification($card, 'mention', $actor))->via($user))->toBe(['database', 'broadcast']);
 });
+
+test('watching a card is toggled on and off', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+
+    Livewire::actingAs($owner)->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->call('toggleWatch');
+    expect($card->watchers()->whereKey($owner->id)->exists())->toBeTrue();
+
+    Livewire::actingAs($owner)->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->call('toggleWatch');
+    expect($card->watchers()->count())->toBe(0);
+});
+
+test('commenting subscribes you to the card', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+
+    Livewire::actingAs($owner)->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->set('newComment', 'Je note')
+        ->call('addComment');
+
+    expect($card->watchers()->whereKey($owner->id)->exists())->toBeTrue();
+});
+
+test('a watcher who is not a card member is notified of comments', function () {
+    Notification::fake();
+    ['board' => $board, 'owner' => $owner, 'member' => $member, 'card' => $card] = makeCardContext();
+    $card->watchers()->attach($member->id);
+
+    Livewire::actingAs($owner)->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->set('newComment', 'Nouveau commentaire')
+        ->call('addComment');
+
+    Notification::assertSentTo($member, CardNotification::class);
+    expect($card->members()->whereKey($member->id)->exists())->toBeFalse();
+});
+
+test('a board member who neither watches nor is assigned is not notified of comments', function () {
+    Notification::fake();
+    ['board' => $board, 'owner' => $owner, 'member' => $member, 'card' => $card] = makeCardContext();
+
+    Livewire::actingAs($owner)->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->set('newComment', 'Coucou')
+        ->call('addComment');
+
+    Notification::assertNotSentTo($member, CardNotification::class);
+});

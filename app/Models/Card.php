@@ -51,6 +51,11 @@ class Card extends Model
         return $this->belongsToMany(User::class)->withTimestamps();
     }
 
+    public function watchers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'card_watchers')->withTimestamps();
+    }
+
     public function labels(): BelongsToMany
     {
         return $this->belongsToMany(Label::class);

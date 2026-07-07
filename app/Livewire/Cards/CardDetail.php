@@ -184,6 +184,17 @@ class CardDetail extends Component
         $this->touched('card.completed');
     }
 
+    /**
+     * Toggle whether the current user watches this card (personal subscription:
+     * receive comment notifications without being assigned).
+     */
+    public function toggleWatch(): void
+    {
+        $card = $this->guardedCard();
+
+        $card->watchers()->toggle(Auth::id());
+    }
+
     public function toggleMember(int $userId): void
     {
         $card = $this->guardedCard();
@@ -447,6 +458,9 @@ class CardDetail extends Component
             'body' => $data['newComment'],
         ]);
 
+        // Commenting subscribes you to the card so you follow the thread.
+        $card->watchers()->syncWithoutDetaching([Auth::id()]);
+
         $this->logActivity($card, 'comment.created');
         $this->notifyForComment($card, $data['newComment']);
 
@@ -455,8 +469,8 @@ class CardDetail extends Component
     }
 
     /**
-     * Notify mentioned members (as mentions) and other card members (as a comment),
-     * excluding the comment author.
+     * Notify mentioned users (as mentions) and the card's members + watchers
+     * (as a comment), excluding the comment author and the mentioned users.
      */
     private function notifyForComment(Card $card, string $body): void
     {
@@ -467,10 +481,14 @@ class CardDetail extends Component
 
         $mentioned->each(fn (User $user) => $user->notify(new CardNotification($card, 'mention', $actor, $excerpt)));
 
-        $mentionedIds = $mentioned->pluck('id')->push($actor->getKey())->all();
+        $mentionedIds = $mentioned->pluck('id')->push($actor->getKey());
 
-        $card->members()
-            ->whereKeyNot($mentionedIds)
+        $recipientIds = $card->members()->pluck('users.id')
+            ->merge($card->watchers()->pluck('users.id'))
+            ->unique()
+            ->diff($mentionedIds);
+
+        User::whereKey($recipientIds)
             ->get()
             ->each(fn (User $user) => $user->notify(new CardNotification($card, 'comment', $actor, $excerpt)));
     }
@@ -701,7 +719,7 @@ class CardDetail extends Component
     {
         $card = $this->cardId
             ? $this->board->cards()
-                ->with(['members', 'labels', 'checklists.items', 'attachments.uploader', 'comments.user', 'comments.reactions', 'activities.user'])
+                ->with(['members', 'watchers', 'labels', 'checklists.items', 'attachments.uploader', 'comments.user', 'comments.reactions', 'activities.user'])
                 ->find($this->cardId)
             : null;
 
