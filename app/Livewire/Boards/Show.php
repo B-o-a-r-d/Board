@@ -65,6 +65,15 @@ class Show extends Component
         $this->showMembers = ! $this->showMembers;
     }
 
+    public bool $showActivity = false;
+
+    public function toggleActivity(): void
+    {
+        $this->authorize('view', $this->board);
+
+        $this->showActivity = ! $this->showActivity;
+    }
+
     /**
      * Add a workspace member to this board so they become assignable/mentionable.
      */
@@ -541,7 +550,7 @@ class Show extends Component
             'position' => (int) $list->cards()->max('position') + 1,
         ]);
 
-        $this->logActivity('card.created', $card->id, ['title' => $card->title]);
+        $this->logActivity('card.created', $card->id, ['card_title' => $card->title, 'list' => $list->name]);
 
         app(AutomationEngine::class)->fire('card.created', $card, ['list_id' => $list->id]);
 
@@ -576,7 +585,7 @@ class Show extends Component
             }
         }
 
-        $this->logActivity('card.created', $card->id, ['title' => $card->title, 'from_template' => true]);
+        $this->logActivity('card.created', $card->id, ['card_title' => $card->title, 'list' => $list->name, 'from_template' => true]);
         $this->broadcastActivity('card.created');
         $this->dispatch('toast', message: 'Carte créée depuis le modèle', type: 'success');
     }
@@ -585,8 +594,9 @@ class Show extends Component
     {
         $this->authorize('view', $this->board);
 
-        $this->cardForBoard($cardId)->update(['archived_at' => now()]);
-        $this->logActivity('card.archived', $cardId);
+        $card = $this->cardForBoard($cardId);
+        $card->update(['archived_at' => now()]);
+        $this->logActivity('card.archived', $cardId, ['card_title' => $card->title, 'list' => $card->list?->name]);
         $this->broadcastActivity('card.archived');
     }
 
@@ -594,7 +604,9 @@ class Show extends Component
     {
         $this->authorize('view', $this->board);
 
-        $this->board->cards()->whereKey($cardId)->update(['archived_at' => null]);
+        $card = $this->cardForBoard($cardId);
+        $card->update(['archived_at' => null]);
+        $this->logActivity('card.restored', $cardId, ['card_title' => $card->title, 'list' => $card->list?->name]);
         $this->broadcastActivity('card.restored');
     }
 
@@ -602,7 +614,17 @@ class Show extends Component
     {
         $this->authorize('view', $this->board);
 
-        $this->board->cards()->whereKey($cardId)->delete();
+        $card = $this->cardForBoard($cardId);
+
+        // The activities.card_id FK is cascadeOnDelete, so a deletion log must
+        // NOT reference the card — keep the context in the properties instead.
+        $this->logActivity('card.deleted', null, [
+            'number' => $card->id,
+            'card_title' => $card->title,
+            'list' => $card->list?->name,
+        ]);
+
+        $card->delete();
         $this->broadcastActivity('card.deleted');
     }
 
@@ -638,6 +660,7 @@ class Show extends Component
         $card = $this->cardForBoard($id);
         $targetList = $this->listForBoard($listId);
         $sourceListId = $card->board_list_id;
+        $sourceListName = $card->list?->name;
 
         $card->board_list_id = $targetList->id;
         $card->save();
@@ -648,7 +671,7 @@ class Show extends Component
 
         if ($sourceListId !== $targetList->id) {
             $this->resequence($sourceListId);
-            $this->logActivity('card.moved', $card->id, ['to_list' => $targetList->name]);
+            $this->logActivity('card.moved', $card->id, ['card_title' => $card->title, 'from_list' => $sourceListName, 'to_list' => $targetList->name]);
 
             $ranAutomations = app(AutomationEngine::class)->fire('card.moved', $card->fresh(), [
                 'to_list_id' => $targetList->id,
@@ -679,6 +702,7 @@ class Show extends Component
         $card = $this->cardForBoard($cardId);
         $targetList = $this->listForBoard($listId);
         $sourceListId = $card->board_list_id;
+        $sourceListName = $card->list?->name;
 
         if ($sourceListId === $targetList->id) {
             return;
@@ -691,7 +715,7 @@ class Show extends Component
         $this->resequence($targetList->id);
         $this->resequence($sourceListId);
 
-        $this->logActivity('card.moved', $card->id, ['to_list' => $targetList->name]);
+        $this->logActivity('card.moved', $card->id, ['card_title' => $card->title, 'from_list' => $sourceListName, 'to_list' => $targetList->name]);
 
         app(AutomationEngine::class)->fire('card.moved', $card->fresh(), [
             'to_list_id' => $targetList->id,
@@ -853,6 +877,9 @@ class Show extends Component
             'archivedCards' => $this->showTrash ? $this->board->cards()->whereNotNull('archived_at')->with('list')->latest('archived_at')->get() : collect(),
             'cardTemplates' => CardTemplate::orderBy('name')->get(),
             'views' => $this->board->views()->where('user_id', Auth::id())->latest()->get(),
+            'activities' => $this->showActivity
+                ? $this->board->activities()->with(['user', 'card'])->latest()->limit(60)->get()
+                : collect(),
         ]);
     }
 

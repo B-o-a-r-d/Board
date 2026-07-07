@@ -1,4 +1,4 @@
-<div x-data="{ selected: [], helpOpen: false }"
+<div x-data="{ selected: [], helpOpen: false, selectMode: false, toggleCard(id) { this.selected.includes(id) ? this.selected = this.selected.filter(i => i !== id) : this.selected.push(id); } }"
      @keydown.window="
         if ($event.metaKey || $event.ctrlKey || $event.altKey) return;
         if ($event.target.matches('input, textarea, select, [contenteditable]')) return;
@@ -7,6 +7,7 @@
         else if ($event.key === 'c') { $wire.setView('calendar'); }
         else if ($event.key === '?') { helpOpen = true; }
      "
+     @open-shortcuts.window="helpOpen = true"
      class="flex h-[calc(100dvh-8rem)] flex-col">
     {{-- Board header --}}
     <div class="mb-3 flex flex-col gap-3 sm:mb-4 sm:flex-row sm:items-start sm:justify-between">
@@ -76,10 +77,10 @@
                     </button>
                 </div>
 
-                <button type="button" @click="helpOpen = true"
-                        class="hidden h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-600 hover:bg-neutral-100 sm:flex dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                        title="{{ __('Raccourcis clavier') }} (?)">
-                    <x-phosphor-keyboard class="h-4 w-4"/>
+                <button type="button" wire:click="toggleActivity"
+                        class="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                        title="{{ __('Activité') }}">
+                    <x-phosphor-clock-counter-clockwise class="h-4 w-4"/>
                 </button>
 
                 @if ($view === 'board')
@@ -90,6 +91,13 @@
                             :title="allCollapsed ? '{{ __('Tout déplier') }}' : '{{ __('Tout replier') }}'">
                         <x-phosphor-arrows-in-line-horizontal x-show="! allCollapsed" class="h-4 w-4"/>
                         <x-phosphor-arrows-out-line-horizontal x-show="allCollapsed" x-cloak class="h-4 w-4"/>
+                    </button>
+
+                    <button type="button" @click="selectMode = ! selectMode; if (! selectMode) selected = []"
+                            class="flex h-9 w-9 items-center justify-center rounded-lg border transition"
+                            :class="selectMode ? 'border-indigo-400 bg-indigo-50 text-indigo-600 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300' : 'border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800'"
+                            title="{{ __('Sélectionner des cartes') }}">
+                        <x-phosphor-check-square class="h-4 w-4"/>
                     </button>
                 @endif
 
@@ -389,17 +397,18 @@
                         <li
                             wire:key="card-{{ $card->id }}"
                             wire:sort:item="{{ $card->id }}"
-                            class="group relative shrink-0 cursor-grab overflow-hidden rounded-lg border border-neutral-200 bg-white text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-800"
-                            :class="selected.includes({{ $card->id }}) && 'ring-2 ring-indigo-500 ring-offset-1 dark:ring-offset-neutral-900'"
+                            class="group relative shrink-0 cursor-grab overflow-hidden rounded-lg border bg-white text-sm shadow-sm dark:bg-neutral-800"
+                            :class="selected.includes({{ $card->id }}) ? 'border-indigo-500 dark:border-indigo-500' : 'border-neutral-200 dark:border-neutral-700'"
                         >
-                            {{-- Multi-select checkbox --}}
-                            <label wire:sort:ignore @click.stop
-                                   class="absolute left-1.5 top-1.5 z-10 flex cursor-pointer opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100"
-                                   :class="selected.length && '!opacity-100'">
-                                <input type="checkbox" class="h-4 w-4 cursor-pointer rounded border-neutral-300 accent-indigo-600 dark:border-neutral-600"
-                                       :checked="selected.includes({{ $card->id }})"
-                                       @change="selected.includes({{ $card->id }}) ? selected = selected.filter(i => i !== {{ $card->id }}) : selected.push({{ $card->id }})">
-                            </label>
+                            {{-- Selection overlay (only in select mode): clicking anywhere toggles selection --}}
+                            <div x-show="selectMode" x-cloak wire:sort:ignore @click.stop="toggleCard({{ $card->id }})"
+                                 class="absolute inset-0 z-20 cursor-pointer transition"
+                                 :class="selected.includes({{ $card->id }}) ? 'bg-indigo-500/10' : 'hover:bg-neutral-500/5'">
+                                <span class="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-md border-2 bg-white shadow dark:bg-neutral-900"
+                                      :class="selected.includes({{ $card->id }}) ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-neutral-400 dark:border-neutral-500'">
+                                    <svg x-show="selected.includes({{ $card->id }})" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-8 8a1 1 0 01-1.4 0l-4-4a1 1 0 011.4-1.4L8 12.6l7.3-7.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                                </span>
+                            </div>
 
                             <x-context-menu class="block">
                                 <x-slot:trigger>
@@ -586,7 +595,7 @@
 
         <button type="button" @click="$wire.bulkArchive(selected); selected = []" class="flex items-center gap-1 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:border-neutral-700 dark:text-red-400 dark:hover:bg-red-500/10"><x-phosphor-archive class="h-4 w-4"/> {{ __('Archiver') }}</button>
 
-        <button type="button" @click="selected = []" class="rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200" title="{{ __('Désélectionner') }}"><x-phosphor-x class="h-4 w-4"/></button>
+        <button type="button" @click="selected = []; selectMode = false" class="rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200" title="{{ __('Désélectionner') }}"><x-phosphor-x class="h-4 w-4"/></button>
     </div>
     @else
         @include('livewire.boards.partials.calendar')
@@ -848,6 +857,72 @@
             </ul>
         </div>
     </div>
+
+    {{-- Activity slide-over --}}
+    @if ($showActivity)
+    <div x-data="{ tab: 'all', shown: false }" x-init="requestAnimationFrame(() => shown = true)"
+         @keydown.escape.window="$wire.toggleActivity()"
+         class="fixed inset-0 z-50 flex justify-end">
+        <div x-show="shown" x-transition.opacity @click="$wire.toggleActivity()"
+             class="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"></div>
+
+        <aside x-show="shown"
+               x-transition:enter="transition ease-out duration-200"
+               x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+               class="relative flex h-full w-full max-w-md flex-col border-l border-neutral-200 bg-white shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
+            <div class="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
+                <h2 class="flex items-center gap-2 text-base font-semibold">
+                    <x-phosphor-clock-counter-clockwise class="h-5 w-5"/> {{ __('Activité') }}
+                </h2>
+                <button type="button" wire:click="toggleActivity"
+                        class="rounded-full p-1.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800">
+                    <x-phosphor-x class="h-4 w-4"/>
+                </button>
+            </div>
+
+            <div class="flex gap-1 border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">
+                <button type="button" @click="tab = 'all'"
+                        class="rounded-lg px-3 py-1 text-sm font-medium transition"
+                        :class="tab === 'all' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'">
+                    {{ __('Tout') }}
+                </button>
+                <button type="button" @click="tab = 'comments'"
+                        class="rounded-lg px-3 py-1 text-sm font-medium transition"
+                        :class="tab === 'comments' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'">
+                    {{ __('Commentaires') }}
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto px-4 py-3">
+                @forelse ($activities as $activity)
+                    <div class="flex gap-3 py-2.5" @if ($activity->isComment()) x-show="true" @else x-show="tab === 'all'" @endif>
+                        <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
+                            {{ mb_strtoupper(mb_substr($activity->user?->name ?? '?', 0, 1)) }}
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm text-neutral-700 dark:text-neutral-200">
+                                <span class="font-semibold">{{ $activity->user?->name ?? __('un membre') }}</span>
+                                {{ $activity->describe() }}
+                            </p>
+                            @if ($activity->isComment() && ! empty($activity->properties['excerpt']))
+                                <p class="mt-1 rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
+                                    {{ $activity->properties['excerpt'] }}
+                                </p>
+                            @endif
+                            <p class="mt-0.5 text-xs text-neutral-400 dark:text-neutral-500">{{ $activity->created_at->diffForHumans() }}</p>
+                        </div>
+                    </div>
+                @empty
+                    <p class="py-8 text-center text-sm text-neutral-400 dark:text-neutral-500">{{ __('Aucune activité pour le moment.') }}</p>
+                @endforelse
+
+                @if ($activities->contains(fn ($a) => $a->isComment()) === false)
+                    <p x-show="tab === 'comments'" x-cloak class="py-8 text-center text-sm text-neutral-400 dark:text-neutral-500">{{ __('Aucun commentaire pour le moment.') }}</p>
+                @endif
+            </div>
+        </aside>
+    </div>
+    @endif
 
     <livewire:cards.card-detail :board="$board" wire:key="card-detail-{{ $board->id }}"/>
 </div>

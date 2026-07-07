@@ -84,6 +84,14 @@
                                 <span>{{ __('Profil') }}</span>
                             </a>
 
+                            @if (request()->routeIs('boards.show'))
+                                <button type="button" @click="open = false; $dispatch('open-shortcuts')" class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800">
+                                    <x-phosphor-keyboard class="h-4 w-4" />
+                                    <span>{{ __('Raccourcis clavier') }}</span>
+                                    <kbd class="ml-auto rounded border border-neutral-300 bg-neutral-100 px-1.5 font-mono text-xs text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400">?</kbd>
+                                </button>
+                            @endif
+
                             {{-- Theme toggle (stays open) --}}
                             <button
                                 type="button"

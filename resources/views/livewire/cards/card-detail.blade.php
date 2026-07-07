@@ -23,7 +23,7 @@
                                 >
                                 @error('title') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                             </div>
-                            <button type="submit" class="mt-1 shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">{{ __('Enregistrer') }}</button>
+                            <button type="submit" title="{{ __('Enregistrer') }}" class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white hover:bg-indigo-500"><x-phosphor-floppy-disk-duotone class="h-4 w-4" /></button>
                         </form>
 
                         {{-- Description : éditeur WYSIWYG (TipTap → markdown) --}}
@@ -181,34 +181,80 @@
                                 ->values()->all();
                             $mediaUrls = array_column($media, 'url');
                         @endphp
-                        <div class="space-y-3">
-                            <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Pièces jointes') }}</h3>
-                            <div class="grid grid-cols-2 gap-3">
-                                @foreach ($card->attachments as $attachment)
-                                    <div wire:key="att-{{ $attachment->id }}" class="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700">
-                                        @if ($attachment->isImage())
-                                            <img src="{{ $attachment->url }}" alt="{{ $attachment->name }}" @click="$store.lightbox.open(@js($media), {{ array_search($attachment->url, $mediaUrls, true) }})" class="h-28 w-full cursor-zoom-in object-cover transition hover:opacity-90">
-                                        @elseif ($attachment->isVideo())
-                                            <button type="button" @click="$store.lightbox.open(@js($media), {{ array_search($attachment->url, $mediaUrls, true) }})" class="group relative block h-28 w-full">
-                                                <video src="{{ $attachment->url }}" preload="metadata" muted class="pointer-events-none h-28 w-full bg-black object-contain"></video>
-                                                <span class="absolute inset-0 flex items-center justify-center bg-black/20 transition group-hover:bg-black/30">
-                                                    <span class="flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white"><x-phosphor-play class="ml-0.5 h-5 w-5" /></span>
-                                                </span>
-                                            </button>
-                                        @endif
-                                        <div class="flex items-center justify-between gap-1 p-2">
-                                            <span class="truncate text-xs" title="{{ $attachment->name }}">{{ $attachment->name }}</span>
-                                            <div class="flex shrink-0 gap-1">
-                                                @if ($attachment->isImage())
-                                                    <button type="button" wire:click="setCover({{ $attachment->id }})" class="text-neutral-400 hover:text-amber-500" title="{{ __('Définir comme couverture') }}"><x-phosphor-star class="h-4 w-4" /></button>
-                                                @endif
-                                                <button type="button" wire:click="deleteAttachment({{ $attachment->id }})" class="text-xs text-neutral-400 hover:text-red-500"><x-phosphor-x class="h-3.5 w-3.5" /></button>
-                                            </div>
+                        <div x-data="{
+                                open: JSON.parse(localStorage.getItem('card-attachments-open') ?? 'true'),
+                                view: localStorage.getItem('card-attachments-view') ?? 'list',
+                             }"
+                             x-init="$watch('open', v => localStorage.setItem('card-attachments-open', JSON.stringify(v))); $watch('view', v => localStorage.setItem('card-attachments-view', v))"
+                             class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <button type="button" @click="open = ! open" class="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-neutral-500">
+                                    <x-phosphor-caret-right class="h-3.5 w-3.5 transition-transform" ::class="open && 'rotate-90'" />
+                                    {{ __('Pièces jointes') }}
+                                    @if ($card->attachments->isNotEmpty())<span class="rounded-full bg-neutral-200 px-1.5 text-[10px] font-semibold text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300">{{ $card->attachments->count() }}</span>@endif
+                                </button>
+                                <div x-show="open" class="flex items-center gap-0.5">
+                                    <button type="button" @click="view = 'list'" title="{{ __('Liste') }}" class="rounded p-1 transition" :class="view === 'list' ? 'bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200' : 'text-neutral-400 hover:text-neutral-600'"><x-phosphor-list class="h-4 w-4" /></button>
+                                    <button type="button" @click="view = 'grid'" title="{{ __('Grille') }}" class="rounded p-1 transition" :class="view === 'grid' ? 'bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200' : 'text-neutral-400 hover:text-neutral-600'"><x-phosphor-squares-four class="h-4 w-4" /></button>
+                                </div>
+                            </div>
+
+                            <div x-show="open" x-cloak class="space-y-3">
+                                @if ($card->attachments->isNotEmpty())
+                                    <div class="max-h-72 overflow-y-auto pr-1">
+                                        {{-- Grid layout --}}
+                                        <div x-show="view === 'grid'" class="grid grid-cols-2 gap-3">
+                                            @foreach ($card->attachments as $attachment)
+                                                <div wire:key="attg-{{ $attachment->id }}" class="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700">
+                                                    @if ($attachment->isImage())
+                                                        <img src="{{ $attachment->url }}" alt="{{ $attachment->name }}" @click="$store.lightbox.open(@js($media), {{ array_search($attachment->url, $mediaUrls, true) }})" class="h-28 w-full cursor-zoom-in object-cover transition hover:opacity-90">
+                                                    @elseif ($attachment->isVideo())
+                                                        <button type="button" @click="$store.lightbox.open(@js($media), {{ array_search($attachment->url, $mediaUrls, true) }})" class="group relative block h-28 w-full">
+                                                            <video src="{{ $attachment->url }}" preload="metadata" muted class="pointer-events-none h-28 w-full bg-black object-contain"></video>
+                                                            <span class="absolute inset-0 flex items-center justify-center bg-black/20 transition group-hover:bg-black/30"><span class="flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white"><x-phosphor-play class="ml-0.5 h-5 w-5" /></span></span>
+                                                        </button>
+                                                    @else
+                                                        <div class="flex h-28 w-full items-center justify-center bg-neutral-100 dark:bg-neutral-800"><x-phosphor-file class="h-8 w-8 text-neutral-400" /></div>
+                                                    @endif
+                                                    <div class="flex items-center justify-between gap-1 p-2">
+                                                        <span class="truncate text-xs" title="{{ $attachment->name }}">{{ $attachment->name }}</span>
+                                                        <div class="flex shrink-0 gap-1">
+                                                            @if ($attachment->isImage())
+                                                                <button type="button" wire:click="setCover({{ $attachment->id }})" class="text-neutral-400 hover:text-amber-500" title="{{ __('Définir comme couverture') }}"><x-phosphor-star class="h-4 w-4" /></button>
+                                                            @endif
+                                                            <button type="button" wire:click="deleteAttachment({{ $attachment->id }})" class="text-neutral-400 hover:text-red-500"><x-phosphor-x class="h-3.5 w-3.5" /></button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+
+                                        {{-- List layout --}}
+                                        <div x-show="view === 'list'" class="flex flex-col gap-1.5">
+                                            @foreach ($card->attachments as $attachment)
+                                                <div wire:key="attl-{{ $attachment->id }}" class="flex items-center gap-2 rounded-lg border border-neutral-200 p-1.5 dark:border-neutral-700">
+                                                    @if ($attachment->isImage())
+                                                        <img src="{{ $attachment->url }}" alt="" @click="$store.lightbox.open(@js($media), {{ array_search($attachment->url, $mediaUrls, true) }})" class="h-10 w-10 shrink-0 cursor-zoom-in rounded object-cover">
+                                                    @elseif ($attachment->isVideo())
+                                                        <button type="button" @click="$store.lightbox.open(@js($media), {{ array_search($attachment->url, $mediaUrls, true) }})" class="relative h-10 w-10 shrink-0 overflow-hidden rounded bg-black">
+                                                            <video src="{{ $attachment->url }}" preload="metadata" muted class="pointer-events-none h-full w-full object-contain"></video>
+                                                            <span class="absolute inset-0 flex items-center justify-center"><x-phosphor-play class="h-4 w-4 text-white" /></span>
+                                                        </button>
+                                                    @else
+                                                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-neutral-100 dark:bg-neutral-800"><x-phosphor-file class="h-5 w-5 text-neutral-400" /></span>
+                                                    @endif
+                                                    <span class="min-w-0 flex-1 truncate text-xs" title="{{ $attachment->name }}">{{ $attachment->name }}</span>
+                                                    @if ($attachment->isImage())
+                                                        <button type="button" wire:click="setCover({{ $attachment->id }})" class="shrink-0 text-neutral-400 hover:text-amber-500" title="{{ __('Définir comme couverture') }}"><x-phosphor-star class="h-4 w-4" /></button>
+                                                    @endif
+                                                    <button type="button" wire:click="deleteAttachment({{ $attachment->id }})" class="shrink-0 text-neutral-400 hover:text-red-500"><x-phosphor-x class="h-3.5 w-3.5" /></button>
+                                                </div>
+                                            @endforeach
                                         </div>
                                     </div>
-                                @endforeach
+                                @endif
+                                <x-dropzone model="upload" action="saveAttachment" accept="image/*,video/*" />
                             </div>
-                            <x-dropzone model="upload" action="saveAttachment" accept="image/*,video/*" />
                         </div>
 
                         {{-- Comments (real-time) --}}
@@ -415,9 +461,14 @@
                             </div>
                         </div>
 
-                        {{-- Activity feed --}}
-                        <div class="space-y-2">
-                            <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Activité') }}</h3>
+                        {{-- Activity feed (collapsed by default) --}}
+                        <div x-data="{ open: false }" class="space-y-2">
+                            <button type="button" @click="open = ! open" class="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-neutral-500">
+                                <x-phosphor-caret-right class="h-3.5 w-3.5 transition-transform" ::class="open && 'rotate-90'" />
+                                {{ __('Activité') }}
+                                @if ($card->activities->isNotEmpty())<span class="rounded-full bg-neutral-200 px-1.5 text-[10px] font-semibold text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300">{{ $card->activities->count() }}</span>@endif
+                            </button>
+                            <div x-show="open" x-cloak class="space-y-2">
                             @forelse ($card->activities->take(12) as $activity)
                                 @php
                                     $props = $activity->properties ?? [];
@@ -442,30 +493,32 @@
                             @empty
                                 <p class="text-xs text-neutral-400">{{ __('Aucune activité pour le moment.') }}</p>
                             @endforelse
+                            </div>
                         </div>
                     </div>
 
                     {{-- Sidebar --}}
                     <div class="space-y-5">
-                        <button type="button" wire:click="toggleComplete" class="w-full rounded-lg px-3 py-2 text-sm font-medium {{ $card->completed_at ? 'bg-green-600 text-white hover:bg-green-500' : 'border border-neutral-300 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800' }}">
-                            {{ $card->completed_at ? __('Terminée') : __('Marquer terminée') }}
-                        </button>
-
                         @php $isWatching = $card->watchers->contains(fn ($w) => $w->id === auth()->id()); @endphp
-                        <button type="button" wire:click="toggleWatch"
-                                class="flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition {{ $isWatching ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'border border-neutral-300 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800' }}">
-                            <x-dynamic-component :component="$isWatching ? 'phosphor-eye' : 'phosphor-eye-slash'" class="h-4 w-4" />
-                            {{ $isWatching ? __('Suivi') : __('Suivre') }}
-                            @if ($card->watchers->isNotEmpty())
-                                <span class="rounded-full px-1.5 text-xs {{ $isWatching ? 'bg-white/20' : 'bg-neutral-200 dark:bg-neutral-700' }}">{{ $card->watchers->count() }}</span>
-                            @endif
-                        </button>
-
-                        @can('admin')
-                            <button type="button" wire:click="saveAsTemplate" class="flex w-full items-center justify-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">
-                                <x-phosphor-stack class="h-4 w-4" /> {{ __('Enregistrer comme modèle') }}
+                        <div class="flex items-center gap-2">
+                            <button type="button" wire:click="toggleComplete" title="{{ $card->completed_at ? __('Terminée') : __('Marquer terminée') }}"
+                                    class="flex h-9 flex-1 items-center justify-center rounded-lg transition {{ $card->completed_at ? 'bg-green-600 text-white hover:bg-green-500' : 'border border-neutral-300 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800' }}">
+                                <x-phosphor-check-circle class="h-5 w-5" />
                             </button>
-                        @endcan
+                            <button type="button" wire:click="toggleWatch" title="{{ $isWatching ? __('Suivi') : __('Suivre') }}"
+                                    class="relative flex h-9 flex-1 items-center justify-center rounded-lg transition {{ $isWatching ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'border border-neutral-300 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800' }}">
+                                <x-dynamic-component :component="$isWatching ? 'phosphor-eye' : 'phosphor-eye-slash'" class="h-5 w-5" />
+                                @if ($card->watchers->isNotEmpty())
+                                    <span class="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-neutral-700 px-1 text-[10px] font-semibold text-white dark:bg-neutral-200 dark:text-neutral-900">{{ $card->watchers->count() }}</span>
+                                @endif
+                            </button>
+                            @can('admin')
+                                <button type="button" wire:click="saveAsTemplate" title="{{ __('Enregistrer comme modèle') }}"
+                                        class="flex h-9 flex-1 items-center justify-center rounded-lg border border-neutral-300 transition hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">
+                                    <x-phosphor-stack class="h-5 w-5" />
+                                </button>
+                            @endcan
+                        </div>
 
                         {{-- Manual automation buttons --}}
                         @if ($cardButtons->isNotEmpty())
@@ -478,32 +531,6 @@
                                 @endforeach
                             </div>
                         @endif
-
-                        {{-- Cover: solid color, or an uploaded image --}}
-                        @php $coverPalette = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b']; @endphp
-                        <div>
-                            <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Couverture') }}</h3>
-
-                            @if ($card->cover_path)
-                                <div class="relative mb-2 overflow-hidden rounded-lg">
-                                    <img src="{{ Storage::disk('public')->url($card->cover_path) }}" alt="" class="h-24 w-full object-cover">
-                                    <button type="button" wire:click="clearCover" class="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70" title="{{ __('Retirer la couverture') }}"><x-phosphor-x class="h-3.5 w-3.5" /></button>
-                                </div>
-                            @endif
-
-                            <div class="flex flex-wrap items-center gap-1.5">
-                                @foreach ($coverPalette as $swatch)
-                                    <button type="button" wire:click="setCoverColor('{{ $swatch }}')" class="h-6 w-6 rounded-md ring-offset-1 hover:ring-2 hover:ring-neutral-400 dark:ring-offset-neutral-900 {{ $card->cover_color === $swatch ? 'ring-2 ring-indigo-500' : '' }}" style="background-color: {{ $swatch }}" title="{{ $swatch }}"></button>
-                                @endforeach
-                                @if ($card->cover_color && ! $card->cover_path)
-                                    <button type="button" wire:click="clearCover" class="flex h-6 items-center gap-1 rounded-md border border-neutral-300 px-2 text-xs text-neutral-500 hover:text-neutral-700 dark:border-neutral-700 dark:hover:text-neutral-200" title="{{ __('Retirer la couverture') }}"><x-phosphor-x class="h-3 w-3" /> {{ __('Retirer') }}</button>
-                                @endif
-                            </div>
-
-                            <div class="mt-2">
-                                <x-dropzone model="coverUpload" action="uploadCover" accept="image/*" hint="{{ __('Image de couverture · 10 Mo max') }}" />
-                            </div>
-                        </div>
 
                         {{-- Dates: start + due (toggleable, like Members / Labels) --}}
                         @php $dueOverdue = $card->due_at && ! $card->completed_at && $card->due_at->isPast(); @endphp
@@ -602,6 +629,39 @@
                                 <input type="text" wire:model="newLabelName" placeholder="{{ __('Nouveau label') }}" class="flex-1 rounded-lg border border-neutral-300 bg-white px-2 py-1 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
                                 <button type="submit" class="rounded-lg border border-neutral-300 px-2 py-1 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">+</button>
                             </form>
+                        </div>
+
+                        {{-- Cover: solid color or uploaded image (collapsed by default, at the bottom) --}}
+                        @php $coverPalette = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b']; @endphp
+                        <div x-data="{ open: false }">
+                            <button type="button" @click="open = ! open" class="mb-2 flex w-full items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-neutral-500">
+                                <x-phosphor-caret-right class="h-3.5 w-3.5 transition-transform" ::class="open && 'rotate-90'" />
+                                {{ __('Couverture') }}
+                                @if ($card->cover_path)
+                                    <span class="h-2.5 w-2.5 rounded-full bg-indigo-500"></span>
+                                @elseif ($card->cover_color)
+                                    <span class="h-2.5 w-2.5 rounded-full" style="background-color: {{ $card->cover_color }}"></span>
+                                @endif
+                            </button>
+                            <div x-show="open" x-cloak>
+                                @if ($card->cover_path)
+                                    <div class="relative mb-2 overflow-hidden rounded-lg">
+                                        <img src="{{ Storage::disk('public')->url($card->cover_path) }}" alt="" class="h-24 w-full object-cover">
+                                        <button type="button" wire:click="clearCover" class="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70" title="{{ __('Retirer la couverture') }}"><x-phosphor-x class="h-3.5 w-3.5" /></button>
+                                    </div>
+                                @endif
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    @foreach ($coverPalette as $swatch)
+                                        <button type="button" wire:click="setCoverColor('{{ $swatch }}')" class="h-6 w-6 rounded-md ring-offset-1 hover:ring-2 hover:ring-neutral-400 dark:ring-offset-neutral-900 {{ $card->cover_color === $swatch ? 'ring-2 ring-indigo-500' : '' }}" style="background-color: {{ $swatch }}" title="{{ $swatch }}"></button>
+                                    @endforeach
+                                    @if ($card->cover_color && ! $card->cover_path)
+                                        <button type="button" wire:click="clearCover" class="flex h-6 items-center gap-1 rounded-md border border-neutral-300 px-2 text-xs text-neutral-500 hover:text-neutral-700 dark:border-neutral-700 dark:hover:text-neutral-200" title="{{ __('Retirer la couverture') }}"><x-phosphor-x class="h-3 w-3" /> {{ __('Retirer') }}</button>
+                                    @endif
+                                </div>
+                                <div class="mt-2">
+                                    <x-dropzone model="coverUpload" action="uploadCover" accept="image/*" hint="{{ __('Image de couverture · 10 Mo max') }}" />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

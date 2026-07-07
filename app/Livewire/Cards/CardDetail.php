@@ -145,10 +145,20 @@ class CardDetail extends Component
 
         $data = $this->validate($rules);
 
+        $hadDue = $card->due_at !== null;
+        $newDue = $data['dueAt'] ? Carbon::parse($data['dueAt']) : null;
+
         $card->update([
             'start_at' => $data['startAt'] ? Carbon::parse($data['startAt']) : null,
-            'due_at' => $data['dueAt'] ? Carbon::parse($data['dueAt']) : null,
+            'due_at' => $newDue,
         ]);
+
+        if ($newDue === null && $hadDue) {
+            $this->logActivity($card, 'card.due_removed');
+        } elseif ($newDue !== null) {
+            $this->logActivity($card, $hadDue ? 'card.due_changed' : 'card.due_set', ['value' => $newDue->translatedFormat('d M Y \à H:i')]);
+        }
+
         $this->touched('card.updated');
     }
 
@@ -156,9 +166,16 @@ class CardDetail extends Component
     {
         $card = $this->guardedCard();
 
+        $hadDue = $card->due_at !== null;
+
         $card->update(['start_at' => null, 'due_at' => null]);
         $this->startAt = null;
         $this->dueAt = null;
+
+        if ($hadDue) {
+            $this->logActivity($card, 'card.due_removed');
+        }
+
         $this->touched('card.updated');
     }
 
@@ -178,9 +195,7 @@ class CardDetail extends Component
 
         $card->update(['completed_at' => $card->completed_at ? null : now()]);
 
-        if ($card->completed_at) {
-            $this->logActivity($card, 'card.completed');
-        }
+        $this->logActivity($card, $card->completed_at ? 'card.completed' : 'card.uncompleted');
 
         $this->touched('card.completed');
     }
@@ -333,6 +348,7 @@ class CardDetail extends Component
         ]);
 
         $this->reset('newChecklistTitle');
+        $this->logActivity($card, 'checklist.created');
         $this->touched('checklist.created');
     }
 
@@ -340,6 +356,7 @@ class CardDetail extends Component
     {
         $card = $this->guardedCard();
         $card->checklists()->findOrFail($checklistId)->delete();
+        $this->logActivity($card, 'checklist.deleted');
         $this->touched('checklist.deleted');
     }
 
@@ -406,6 +423,7 @@ class CardDetail extends Component
             'size' => $this->upload->getSize(),
         ]);
 
+        $this->logActivity($card, 'attachment.added', ['value' => $this->upload->getClientOriginalName()]);
         $this->reset('upload');
         $this->touched('attachment.added');
         $this->dispatch('toast', message: 'Pièce jointe ajoutée', type: 'success');
@@ -512,7 +530,7 @@ class CardDetail extends Component
         // Commenting subscribes you to the card so you follow the thread.
         $card->watchers()->syncWithoutDetaching([Auth::id()]);
 
-        $this->logActivity($card, 'comment.created');
+        $this->logActivity($card, 'comment.created', ['excerpt' => Str::limit(trim(strip_tags($data['newComment'])), 140)]);
         $this->notifyForComment($card, $data['newComment']);
 
         $this->reset('newComment');
@@ -749,7 +767,7 @@ class CardDetail extends Component
             'card_id' => $card->id,
             'user_id' => Auth::id(),
             'type' => $type,
-            'properties' => $properties,
+            'properties' => array_merge(['card_title' => $card->title], $properties),
         ]);
     }
 
