@@ -1,13 +1,15 @@
 <?php
 
 use App\Livewire\Boards\Show;
+use App\Models\Board;
 use App\Models\BoardList;
 use App\Models\Card;
 use App\Models\Label;
+use App\Models\User;
 use Livewire\Livewire;
 
 /**
- * @return array{board: \App\Models\Board, owner: \App\Models\User, list: BoardList, a: Card, b: Card}
+ * @return array{board: Board, owner: User, list: BoardList, a: Card, b: Card}
  */
 function boardWithTwoCards(): array
 {
@@ -78,4 +80,68 @@ test('reset filters restores all cards', function () {
         ->call('resetFilters')
         ->assertSet('search', '')
         ->assertSee($b->title);
+});
+
+test('applyFilter casts values and clears on empty string', function () {
+    ['board' => $board, 'owner' => $owner] = boardWithTwoCards();
+    $label = Label::factory()->create(['board_id' => $board->id]);
+
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+        ->call('applyFilter', 'filterLabel', (string) $label->id)
+        ->assertSet('filterLabel', $label->id)
+        ->call('applyFilter', 'filterDue', 'overdue')
+        ->assertSet('filterDue', 'overdue')
+        ->call('applyFilter', 'filterLabel', '')
+        ->assertSet('filterLabel', null);
+});
+
+test('a saved view captures and restores the current filters', function () {
+    ['board' => $board, 'owner' => $owner] = boardWithTwoCards();
+    $label = Label::factory()->create(['board_id' => $board->id]);
+
+    $component = Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+        ->set('search', 'login')
+        ->set('filterLabel', $label->id)
+        ->set('filterDue', 'overdue')
+        ->set('newViewName', 'Mes urgents')
+        ->call('saveView')
+        ->assertHasNoErrors()
+        ->assertSet('newViewName', '');
+
+    $view = $board->views()->where('user_id', $owner->id)->firstOrFail();
+    expect($view->name)->toBe('Mes urgents')
+        ->and($view->filters['label'])->toBe($label->id)
+        ->and($view->filters['due'])->toBe('overdue');
+
+    $component->call('resetFilters')->assertSet('filterLabel', null)
+        ->call('applyView', $view->id)
+        ->assertSet('search', 'login')
+        ->assertSet('filterLabel', $label->id)
+        ->assertSet('filterDue', 'overdue');
+});
+
+test('a saved view can be deleted, but not another user view', function () {
+    ['board' => $board, 'owner' => $owner] = boardWithTwoCards();
+    $mine = $board->views()->create(['user_id' => $owner->id, 'name' => 'À moi', 'filters' => []]);
+
+    $stranger = User::factory()->create();
+    $theirs = $board->views()->create(['user_id' => $stranger->id, 'name' => 'Pas à moi', 'filters' => []]);
+
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+        ->call('deleteView', $mine->id)
+        ->call('deleteView', $theirs->id);
+
+    expect($board->views()->whereKey($mine->id)->exists())->toBeFalse()
+        ->and($board->views()->whereKey($theirs->id)->exists())->toBeTrue();
+});
+
+test('the saved view name is required', function () {
+    ['board' => $board, 'owner' => $owner] = boardWithTwoCards();
+
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+        ->set('newViewName', '')
+        ->call('saveView')
+        ->assertHasErrors('newViewName');
+
+    expect($board->views()->count())->toBe(0);
 });

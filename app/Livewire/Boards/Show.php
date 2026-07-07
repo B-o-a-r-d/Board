@@ -123,6 +123,71 @@ class Show extends Component
         return $this->search !== '' || $this->filterLabel !== null || $this->filterMember !== null || $this->filterDue !== '';
     }
 
+    /**
+     * Number of active dropdown filters (label / member / due) — drives the
+     * mobile "Filtres" toggle badge. Text search is shown separately.
+     */
+    public function activeFilterCount(): int
+    {
+        return (int) ($this->filterLabel !== null)
+            + (int) ($this->filterMember !== null)
+            + (int) ($this->filterDue !== '');
+    }
+
+    /**
+     * Set a filter property from a styled dropdown (values arrive as strings).
+     */
+    public function applyFilter(string $field, string $value): void
+    {
+        match ($field) {
+            'filterLabel', 'filterMember' => $this->{$field} = $value === '' ? null : (int) $value,
+            'filterDue' => $this->filterDue = $value,
+            default => null,
+        };
+    }
+
+    public string $newViewName = '';
+
+    public function saveView(): void
+    {
+        $this->authorize('view', $this->board);
+
+        $data = $this->validate(['newViewName' => ['required', 'string', 'max:60']], attributes: ['newViewName' => 'nom']);
+
+        $this->board->views()->create([
+            'user_id' => Auth::id(),
+            'name' => $data['newViewName'],
+            'filters' => [
+                'search' => $this->search,
+                'label' => $this->filterLabel,
+                'member' => $this->filterMember,
+                'due' => $this->filterDue,
+            ],
+        ]);
+
+        $this->newViewName = '';
+        $this->dispatch('toast', message: __('Vue enregistrée'), type: 'success');
+    }
+
+    public function applyView(int $viewId): void
+    {
+        $this->authorize('view', $this->board);
+
+        $view = $this->board->views()->where('user_id', Auth::id())->findOrFail($viewId);
+
+        $this->search = $view->filters['search'] ?? '';
+        $this->filterLabel = $view->filters['label'] ?? null;
+        $this->filterMember = $view->filters['member'] ?? null;
+        $this->filterDue = $view->filters['due'] ?? '';
+    }
+
+    public function deleteView(int $viewId): void
+    {
+        $this->authorize('view', $this->board);
+
+        $this->board->views()->where('user_id', Auth::id())->whereKey($viewId)->delete();
+    }
+
     public bool $renamingBoard = false;
 
     public string $boardNameDraft = '';
@@ -684,6 +749,7 @@ class Show extends Component
             'archivedLists' => $this->showTrash ? $this->board->lists()->whereNotNull('archived_at')->orderBy('name')->get() : collect(),
             'archivedCards' => $this->showTrash ? $this->board->cards()->whereNotNull('archived_at')->with('list')->latest('archived_at')->get() : collect(),
             'cardTemplates' => CardTemplate::orderBy('name')->get(),
+            'views' => $this->board->views()->where('user_id', Auth::id())->latest()->get(),
         ]);
     }
 

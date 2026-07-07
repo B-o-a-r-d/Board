@@ -118,6 +118,11 @@ class Board extends Model
         return $this->hasMany(Automation::class);
     }
 
+    public function views(): HasMany
+    {
+        return $this->hasMany(BoardView::class);
+    }
+
     /**
      * @param  Builder<Board>  $query
      */

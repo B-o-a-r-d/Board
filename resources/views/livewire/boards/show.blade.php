@@ -118,49 +118,104 @@
     </div>
 
     {{-- Filters --}}
-    <div class="mb-3 flex flex-wrap items-center gap-2">
-        <div class="relative w-full sm:w-auto">
-            <x-phosphor-magnifying-glass class="pointer-events-none absolute left-2.5 top-2 h-4 w-4 text-neutral-400"/>
-            <input
-                type="search"
-                wire:model.live.debounce.300ms="search"
-                placeholder="{{ __('Rechercher une carte…') }}"
-                class="w-full rounded-lg border border-neutral-300 bg-white py-1.5 pl-8 pr-8 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none sm:w-56 dark:border-neutral-700 dark:bg-neutral-800"
-            >
-            <x-phosphor-spinner-gap wire:loading wire:target="search"
-                                    class="absolute right-2 top-2 h-4 w-4 animate-spin text-neutral-400"/>
+    @php
+        $optLabels = ['' => __('Tous les labels')];
+        foreach ($labels as $optLabel) { $optLabels[$optLabel->id] = $optLabel->name ?? __('Sans nom'); }
+
+        $optMembers = ['' => __('Tous les membres')];
+        foreach ($members as $optMember) { $optMembers[$optMember->id] = $optMember->name; }
+
+        $optDue = [
+            '' => __('Échéance : toutes'),
+            'overdue' => __('En retard'),
+            'due' => __('Avec échéance'),
+            'none' => __('Sans échéance'),
+        ];
+    @endphp
+    <div x-data="{ showFilters: false }" class="mb-3 space-y-2">
+        {{-- Primary row: search + (desktop) filters inline + (mobile) filters toggle + saved views --}}
+        <div class="flex items-center gap-2">
+            <div class="relative min-w-0 flex-1 sm:flex-none">
+                <x-phosphor-magnifying-glass class="pointer-events-none absolute left-2.5 top-2 h-4 w-4 text-neutral-400"/>
+                <input
+                    type="search"
+                    wire:model.live.debounce.300ms="search"
+                    placeholder="{{ __('Rechercher une carte…') }}"
+                    class="w-full rounded-lg border border-neutral-300 bg-white py-1.5 pl-8 pr-8 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none sm:w-56 dark:border-neutral-700 dark:bg-neutral-800"
+                >
+                <x-phosphor-spinner-gap wire:loading wire:target="search"
+                                        class="absolute right-2 top-2 h-4 w-4 animate-spin text-neutral-400"/>
+            </div>
+
+            {{-- Desktop: filter dropdowns inline --}}
+            <div class="hidden items-center gap-2 sm:flex">
+                <x-filter-dropdown field="filterLabel" icon="tag" :options="$optLabels" :current="$filterLabel" :placeholder="__('Tous les labels')" />
+                <x-filter-dropdown field="filterMember" icon="user" :options="$optMembers" :current="$filterMember" :placeholder="__('Tous les membres')" />
+                <x-filter-dropdown field="filterDue" icon="clock" :options="$optDue" :current="$filterDue" :placeholder="__('Échéance : toutes')" />
+                @if ($this->hasActiveFilters())
+                    <button type="button" wire:click="resetFilters"
+                            class="rounded-lg px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-500/10">
+                        {{ __('Réinitialiser') }}
+                    </button>
+                @endif
+            </div>
+
+            {{-- Mobile: filters toggle --}}
+            <button type="button" @click="showFilters = ! showFilters"
+                    class="flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm shadow-sm sm:hidden {{ $this->activeFilterCount() > 0 ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300' : 'border-neutral-300 bg-white text-neutral-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300' }}">
+                <x-phosphor-funnel class="h-4 w-4"/>
+                <span>{{ __('Filtres') }}</span>
+                @if ($this->activeFilterCount() > 0)
+                    <span class="rounded-full bg-indigo-600 px-1.5 text-xs font-semibold text-white">{{ $this->activeFilterCount() }}</span>
+                @endif
+            </button>
+
+            {{-- Saved views --}}
+            <div x-data="{ open: false }" @click.outside="open = false" @keydown.escape="open = false" class="relative shrink-0 sm:ml-auto">
+                <button type="button" @click="open = ! open"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-600 shadow-sm hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+                    <x-phosphor-bookmarks-simple class="h-4 w-4 shrink-0 opacity-70"/>
+                    <span class="hidden sm:inline">{{ __('Vues') }}</span>
+                    @if ($views->isNotEmpty())
+                        <span class="rounded-full bg-neutral-200 px-1.5 text-xs font-medium text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300">{{ $views->count() }}</span>
+                    @endif
+                    <x-phosphor-caret-down class="h-3.5 w-3.5 shrink-0 opacity-60 transition-transform" ::class="open && 'rotate-180'"/>
+                </button>
+
+                <div x-show="open" x-cloak x-transition
+                     class="absolute right-0 z-40 mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-neutral-200 bg-white p-1 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
+                    @forelse ($views as $view)
+                        <div wire:key="view-{{ $view->id }}" class="group/view flex items-center gap-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800">
+                            <button type="button" wire:click="applyView({{ $view->id }})" @click="open = false" class="min-w-0 flex-1 truncate px-2.5 py-1.5 text-left text-sm text-neutral-700 dark:text-neutral-300">{{ $view->name }}</button>
+                            <button type="button" wire:click="deleteView({{ $view->id }})" class="mr-1 shrink-0 rounded p-1 text-neutral-300 opacity-100 transition hover:text-red-500 sm:opacity-0 sm:group-hover/view:opacity-100" title="{{ __('Supprimer') }}"><x-phosphor-x class="h-3.5 w-3.5"/></button>
+                        </div>
+                    @empty
+                        <p class="px-2.5 py-2 text-xs text-neutral-400">{{ __('Aucune vue enregistrée.') }}</p>
+                    @endforelse
+
+                    <div class="mt-1 border-t border-neutral-100 p-1.5 dark:border-neutral-800">
+                        <form wire:submit="saveView" class="flex items-center gap-1.5" @click.stop>
+                            <input type="text" wire:model="newViewName" placeholder="{{ __('Nom de la vue') }}" class="min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                            <button type="submit" class="shrink-0 rounded-lg bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-indigo-500">{{ __('Enregistrer') }}</button>
+                        </form>
+                        @error('newViewName') <p class="mt-1 px-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <select wire:model.live="filterLabel"
-                class="min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white py-1.5 pl-3 pr-8 text-sm shadow-sm focus:border-indigo-500 focus:outline-none sm:flex-none dark:border-neutral-700 dark:bg-neutral-800">
-            <option value="">{{ __('Tous les labels') }}</option>
-            @foreach ($labels as $label)
-                <option value="{{ $label->id }}">{{ $label->name ?? __('Sans nom') }}</option>
-            @endforeach
-        </select>
-
-        <select wire:model.live="filterMember"
-                class="min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white py-1.5 pl-3 pr-8 text-sm shadow-sm focus:border-indigo-500 focus:outline-none sm:flex-none dark:border-neutral-700 dark:bg-neutral-800">
-            <option value="">{{ __('Tous les membres') }}</option>
-            @foreach ($members as $member)
-                <option value="{{ $member->id }}">{{ $member->name }}</option>
-            @endforeach
-        </select>
-
-        <select wire:model.live="filterDue"
-                class="min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white py-1.5 pl-3 pr-8 text-sm shadow-sm focus:border-indigo-500 focus:outline-none sm:flex-none dark:border-neutral-700 dark:bg-neutral-800">
-            <option value="">{{ __('Échéance : toutes') }}</option>
-            <option value="overdue">{{ __('En retard') }}</option>
-            <option value="due">{{ __('Avec échéance') }}</option>
-            <option value="none">{{ __('Sans échéance') }}</option>
-        </select>
-
-        @if ($this->hasActiveFilters())
-            <button type="button" wire:click="resetFilters"
-                    class="rounded-lg px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-500/10">
-                {{ __('Réinitialiser') }}
-            </button>
-        @endif
+        {{-- Mobile: collapsible filter controls (stacked full-width) --}}
+        <div x-show="showFilters" x-cloak x-transition class="grid grid-cols-1 gap-2 sm:!hidden">
+            <x-filter-dropdown field="filterLabel" icon="tag" :options="$optLabels" :current="$filterLabel" :placeholder="__('Tous les labels')" />
+            <x-filter-dropdown field="filterMember" icon="user" :options="$optMembers" :current="$filterMember" :placeholder="__('Tous les membres')" />
+            <x-filter-dropdown field="filterDue" icon="clock" :options="$optDue" :current="$filterDue" :placeholder="__('Échéance : toutes')" />
+            @if ($this->hasActiveFilters())
+                <button type="button" wire:click="resetFilters"
+                        class="rounded-lg border border-neutral-200 px-3 py-1.5 text-center text-sm font-medium text-indigo-600 hover:bg-indigo-50 dark:border-neutral-700 dark:text-indigo-400 dark:hover:bg-indigo-500/10">
+                    {{ __('Réinitialiser') }}
+                </button>
+            @endif
+        </div>
     </div>
 
     @php
@@ -172,7 +227,7 @@
     <div
         wire:sort="reorderLists"
         wire:loading.class.delay="opacity-40"
-        wire:target="search, filterLabel, filterMember, filterDue, resetFilters"
+        wire:target="search, filterLabel, filterMember, filterDue, resetFilters, applyFilter, applyView"
         @if ($boardBg) style="background: {{ $boardBg }};" @endif
         class="flex flex-1 snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-p-1 py-4 transition-opacity sm:snap-none sm:gap-4 {{ $boardBg ? 'rounded-xl px-3' : '' }}"
     >
