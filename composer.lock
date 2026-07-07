@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "21339c84ff218865c356ea791fc8515d",
+    "content-hash": "664d79e8b58ffc1e44c15cf916b825a7",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -143,67 +143,17 @@
             "time": "2026-06-30T09:44:12+00:00"
         },
         {
-            "name": "board/plugin-github",
-            "version": "v0.2.0",
-            "source": {
-                "type": "git",
-                "url": "git@github.com:B-o-a-r-d/Github-Plugin.git",
-                "reference": "dcbfccd4da53127dee6e733eeb1022e55a51feee"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/B-o-a-r-d/Github-Plugin/zipball/dcbfccd4da53127dee6e733eeb1022e55a51feee",
-                "reference": "dcbfccd4da53127dee6e733eeb1022e55a51feee",
-                "shasum": ""
-            },
-            "require": {
-                "board/plugin-sdk": "^0.2",
-                "illuminate/http": "^11 || ^12 || ^13",
-                "illuminate/support": "^11 || ^12 || ^13",
-                "laravel/mcp": "^0.8",
-                "php": "^8.3"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "Board\\PluginGithub\\GitHubPluginServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Board\\PluginGithub\\": "src/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "description": "GitHub Power-Up for Board: read-only lists of commits, pull requests and issues.",
-            "keywords": [
-                "board",
-                "github",
-                "kanban",
-                "plugin"
-            ],
-            "support": {
-                "source": "https://github.com/B-o-a-r-d/Github-Plugin/tree/v0.2.0",
-                "issues": "https://github.com/B-o-a-r-d/Github-Plugin/issues"
-            },
-            "time": "2026-07-07T14:52:57+00:00"
-        },
-        {
             "name": "board/plugin-sdk",
-            "version": "v0.2.0",
+            "version": "v0.2.1",
             "source": {
                 "type": "git",
-                "url": "git@github.com:B-o-a-r-d/Board-Plugin-SDK.git",
-                "reference": "d0df4704e2b17d26138ffc8b1acf65cc24633cc3"
+                "url": "https://github.com/B-o-a-r-d/Board-Plugin-SDK.git",
+                "reference": "85db943f861faa57e73ad889981dc465cea4edad"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/B-o-a-r-d/Board-Plugin-SDK/zipball/d0df4704e2b17d26138ffc8b1acf65cc24633cc3",
-                "reference": "d0df4704e2b17d26138ffc8b1acf65cc24633cc3",
+                "url": "https://api.github.com/repos/B-o-a-r-d/Board-Plugin-SDK/zipball/85db943f861faa57e73ad889981dc465cea4edad",
+                "reference": "85db943f861faa57e73ad889981dc465cea4edad",
                 "shasum": ""
             },
             "require": {
@@ -235,10 +185,10 @@
                 "sdk"
             ],
             "support": {
-                "source": "https://github.com/B-o-a-r-d/Board-Plugin-SDK/tree/v0.2.0",
+                "source": "https://github.com/B-o-a-r-d/Board-Plugin-SDK/tree/v0.2.1",
                 "issues": "https://github.com/B-o-a-r-d/Board-Plugin-SDK/issues"
             },
-            "time": "2026-07-07T14:52:57+00:00"
+            "time": "2026-07-07T19:13:29+00:00"
         },
         {
             "name": "brick/math",
@@ -568,83 +518,6 @@
                 }
             ],
             "time": "2026-03-21T13:21:02+00:00"
-        },
-        {
-            "name": "composer/semver",
-            "version": "3.4.4",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/composer/semver.git",
-                "reference": "198166618906cb2de69b95d7d47e5fa8aa1b2b95"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/composer/semver/zipball/198166618906cb2de69b95d7d47e5fa8aa1b2b95",
-                "reference": "198166618906cb2de69b95d7d47e5fa8aa1b2b95",
-                "shasum": ""
-            },
-            "require": {
-                "php": "^5.3.2 || ^7.0 || ^8.0"
-            },
-            "require-dev": {
-                "phpstan/phpstan": "^1.11",
-                "symfony/phpunit-bridge": "^3 || ^7"
-            },
-            "type": "library",
-            "extra": {
-                "branch-alias": {
-                    "dev-main": "3.x-dev"
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Composer\\Semver\\": "src"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Nils Adermann",
-                    "email": "naderman@naderman.de",
-                    "homepage": "http://www.naderman.de"
-                },
-                {
-                    "name": "Jordi Boggiano",
-                    "email": "j.boggiano@seld.be",
-                    "homepage": "http://seld.be"
-                },
-                {
-                    "name": "Rob Bast",
-                    "email": "rob.bast@gmail.com",
-                    "homepage": "http://robbast.nl"
-                }
-            ],
-            "description": "Semver library that offers utilities, version constraint parsing and validation.",
-            "keywords": [
-                "semantic",
-                "semver",
-                "validation",
-                "versioning"
-            ],
-            "support": {
-                "irc": "ircs://irc.libera.chat:6697/composer",
-                "issues": "https://github.com/composer/semver/issues",
-                "source": "https://github.com/composer/semver/tree/3.4.4"
-            },
-            "funding": [
-                {
-                    "url": "https://packagist.com",
-                    "type": "custom"
-                },
-                {
-                    "url": "https://github.com/composer",
-                    "type": "github"
-                }
-            ],
-            "time": "2025-08-20T19:15:30+00:00"
         },
         {
             "name": "dasprid/enum",
@@ -1731,16 +1604,16 @@
         },
         {
             "name": "laravel/framework",
-            "version": "v13.18.1",
+            "version": "v13.19.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/framework.git",
-                "reference": "7d66044819e269f05924793a6800022dc181d850"
+                "reference": "514502b38e11bd676ecf83b271c9452cc7500f16"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/framework/zipball/7d66044819e269f05924793a6800022dc181d850",
-                "reference": "7d66044819e269f05924793a6800022dc181d850",
+                "url": "https://api.github.com/repos/laravel/framework/zipball/514502b38e11bd676ecf83b271c9452cc7500f16",
+                "reference": "514502b38e11bd676ecf83b271c9452cc7500f16",
                 "shasum": ""
             },
             "require": {
@@ -1951,7 +1824,7 @@
                 "issues": "https://github.com/laravel/framework/issues",
                 "source": "https://github.com/laravel/framework"
             },
-            "time": "2026-07-02T18:35:20+00:00"
+            "time": "2026-07-07T14:13:33+00:00"
         },
         {
             "name": "laravel/mcp",
@@ -2549,16 +2422,16 @@
         },
         {
             "name": "league/flysystem",
-            "version": "3.35.1",
+            "version": "3.35.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thephpleague/flysystem.git",
-                "reference": "f23af6c5aafd958a7593029a271d77baf5ed793c"
+                "reference": "b277b5dc3d56650b68904117124e79c851e12376"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thephpleague/flysystem/zipball/f23af6c5aafd958a7593029a271d77baf5ed793c",
-                "reference": "f23af6c5aafd958a7593029a271d77baf5ed793c",
+                "url": "https://api.github.com/repos/thephpleague/flysystem/zipball/b277b5dc3d56650b68904117124e79c851e12376",
+                "reference": "b277b5dc3d56650b68904117124e79c851e12376",
                 "shasum": ""
             },
             "require": {
@@ -2626,9 +2499,9 @@
             ],
             "support": {
                 "issues": "https://github.com/thephpleague/flysystem/issues",
-                "source": "https://github.com/thephpleague/flysystem/tree/3.35.1"
+                "source": "https://github.com/thephpleague/flysystem/tree/3.35.2"
             },
-            "time": "2026-06-25T06:52:23+00:00"
+            "time": "2026-07-06T14:42:07+00:00"
         },
         {
             "name": "league/flysystem-local",
@@ -7846,16 +7719,16 @@
         },
         {
             "name": "vlucas/phpdotenv",
-            "version": "v5.6.3",
+            "version": "v5.6.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/vlucas/phpdotenv.git",
-                "reference": "955e7815d677a3eaa7075231212f2110983adecc"
+                "reference": "416df702837983f8d5ff48c9c3fee4f5f57b980b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/vlucas/phpdotenv/zipball/955e7815d677a3eaa7075231212f2110983adecc",
-                "reference": "955e7815d677a3eaa7075231212f2110983adecc",
+                "url": "https://api.github.com/repos/vlucas/phpdotenv/zipball/416df702837983f8d5ff48c9c3fee4f5f57b980b",
+                "reference": "416df702837983f8d5ff48c9c3fee4f5f57b980b",
                 "shasum": ""
             },
             "require": {
@@ -7914,7 +7787,7 @@
             ],
             "support": {
                 "issues": "https://github.com/vlucas/phpdotenv/issues",
-                "source": "https://github.com/vlucas/phpdotenv/tree/v5.6.3"
+                "source": "https://github.com/vlucas/phpdotenv/tree/v5.6.4"
             },
             "funding": [
                 {
@@ -7926,7 +7799,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2025-12-27T19:49:13+00:00"
+            "time": "2026-07-06T19:11:50+00:00"
         },
         {
             "name": "voku/portable-ascii",
@@ -8004,6 +7877,61 @@
         }
     ],
     "packages-dev": [
+        {
+            "name": "board/marketplace",
+            "version": "v0.1.0",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:B-o-a-r-d/marketplace-plugin.git",
+                "reference": "30bb118a4514c3def317a546608b981b3f14424a"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/B-o-a-r-d/marketplace-plugin/zipball/30bb118a4514c3def317a546608b981b3f14424a",
+                "reference": "30bb118a4514c3def317a546608b981b3f14424a",
+                "shasum": ""
+            },
+            "require": {
+                "board/plugin-sdk": "^0.2",
+                "composer/semver": "^3.4",
+                "illuminate/console": "^11 || ^12 || ^13",
+                "illuminate/contracts": "^11 || ^12 || ^13",
+                "illuminate/database": "^11 || ^12 || ^13",
+                "illuminate/http": "^11 || ^12 || ^13",
+                "illuminate/support": "^11 || ^12 || ^13",
+                "livewire/livewire": "^3 || ^4",
+                "php": "^8.3",
+                "symfony/yaml": "^6 || ^7"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Board\\Marketplace\\MarketplaceServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Board\\Marketplace\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Optional runtime plugin marketplace for the Board Kanban app — install/update Power-Ups with no redeploy.",
+            "keywords": [
+                "board",
+                "kanban",
+                "marketplace",
+                "plugins"
+            ],
+            "support": {
+                "source": "https://github.com/B-o-a-r-d/marketplace-plugin/tree/v0.1.0",
+                "issues": "https://github.com/B-o-a-r-d/marketplace-plugin/issues"
+            },
+            "time": "2026-07-07T19:13:44+00:00"
+        },
         {
             "name": "brianium/paratest",
             "version": "v7.20.0",
@@ -8172,6 +8100,83 @@
                 }
             ],
             "time": "2026-06-07T11:47:49+00:00"
+        },
+        {
+            "name": "composer/semver",
+            "version": "3.4.4",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/composer/semver.git",
+                "reference": "198166618906cb2de69b95d7d47e5fa8aa1b2b95"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/composer/semver/zipball/198166618906cb2de69b95d7d47e5fa8aa1b2b95",
+                "reference": "198166618906cb2de69b95d7d47e5fa8aa1b2b95",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^5.3.2 || ^7.0 || ^8.0"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^1.11",
+                "symfony/phpunit-bridge": "^3 || ^7"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-main": "3.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Composer\\Semver\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Nils Adermann",
+                    "email": "naderman@naderman.de",
+                    "homepage": "http://www.naderman.de"
+                },
+                {
+                    "name": "Jordi Boggiano",
+                    "email": "j.boggiano@seld.be",
+                    "homepage": "http://seld.be"
+                },
+                {
+                    "name": "Rob Bast",
+                    "email": "rob.bast@gmail.com",
+                    "homepage": "http://robbast.nl"
+                }
+            ],
+            "description": "Semver library that offers utilities, version constraint parsing and validation.",
+            "keywords": [
+                "semantic",
+                "semver",
+                "validation",
+                "versioning"
+            ],
+            "support": {
+                "irc": "ircs://irc.libera.chat:6697/composer",
+                "issues": "https://github.com/composer/semver/issues",
+                "source": "https://github.com/composer/semver/tree/3.4.4"
+            },
+            "funding": [
+                {
+                    "url": "https://packagist.com",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/composer",
+                    "type": "github"
+                }
+            ],
+            "time": "2025-08-20T19:15:30+00:00"
         },
         {
             "name": "composer/xdebug-handler",

@@ -983,7 +983,7 @@
                                         </button>
                                     @endif
                                     @if ($needsOAuth && $isConfigured)
-                                        <a href="{{ route('plugins.oauth.'.$def->oauthProvider().'.redirect', $instance) }}"
+                                        <a href="{{ route('plugins.oauth.redirect', $instance) }}"
                                            class="rounded-lg border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">
                                             {{ $connected ? __('Reconnecter') : __('Connecter') }}
                                         </a>
@@ -1007,9 +1007,9 @@
                                         <div class="rounded-lg bg-neutral-50 p-2.5 text-xs text-neutral-600 dark:bg-neutral-800/50 dark:text-neutral-300">
                                             <p class="mb-1 font-medium">{{ __("URL de rappel à renseigner dans l'app OAuth :") }}</p>
                                             <div class="flex items-center gap-2">
-                                                <code class="min-w-0 flex-1 truncate rounded bg-white px-2 py-1 dark:bg-neutral-900">{{ route('plugins.oauth.'.$def->oauthProvider().'.callback') }}</code>
+                                                <code class="min-w-0 flex-1 truncate rounded bg-white px-2 py-1 dark:bg-neutral-900">{{ route('plugins.oauth.callback') }}</code>
                                                 <button type="button" class="shrink-0 rounded p-1 hover:bg-neutral-200 dark:hover:bg-neutral-700"
-                                                        @click="navigator.clipboard?.writeText('{{ route('plugins.oauth.'.$def->oauthProvider().'.callback') }}'); window.toast('{{ __('Copié') }}', { type: 'success' })" title="{{ __('Copier') }}">
+                                                        @click="navigator.clipboard?.writeText('{{ route('plugins.oauth.callback') }}'); window.toast('{{ __('Copié') }}', { type: 'success' })" title="{{ __('Copier') }}">
                                                     <x-phosphor-copy class="h-3.5 w-3.5"/>
                                                 </button>
                                             </div>

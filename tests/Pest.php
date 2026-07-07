@@ -73,3 +73,25 @@ function makeCardContext(): array
 
     return compact('board', 'owner', 'member', 'outsider', 'card');
 }
+
+/**
+ * Zip the demo plugin fixture the way a GitHub zipball is shaped: everything
+ * under a single "<owner>-<repo>-<sha>/" top-level folder.
+ */
+function demoZipball(): string
+{
+    $src = base_path('tests/Fixtures/demo-plugin');
+    $tmp = tempnam(sys_get_temp_dir(), 'zb').'.zip';
+
+    $zip = new ZipArchive;
+    $zip->open($tmp, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+    foreach (['composer.json', 'src/DemoPlugin.php', 'src/DemoServiceProvider.php'] as $rel) {
+        $zip->addFile("$src/$rel", "acme-demo-abc1234/$rel");
+    }
+    $zip->close();
+
+    $bytes = (string) file_get_contents($tmp);
+    @unlink($tmp);
+
+    return $bytes;
+}

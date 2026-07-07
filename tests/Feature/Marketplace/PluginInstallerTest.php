@@ -1,10 +1,10 @@
 <?php
 
-use App\Models\PluginPackage;
 use App\Models\User;
-use App\Plugins\Marketplace\PluginInstaller;
-use App\Plugins\Marketplace\PluginInstallException;
-use App\Providers\PluginLoaderServiceProvider;
+use Board\Marketplace\Models\PluginPackage;
+use Board\Marketplace\PluginInstaller;
+use Board\Marketplace\PluginInstallException;
+use Board\Marketplace\PluginLoader;
 use Board\PluginSdk\PluginRegistry;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
@@ -12,28 +12,6 @@ use Illuminate\Support\Facades\Http;
 afterEach(function () {
     File::deleteDirectory(storage_path('app/plugins'));
 });
-
-/**
- * Zip the demo fixture the way a GitHub zipball is shaped: everything under a
- * single "<owner>-<repo>-<sha>/" top-level folder.
- */
-function demoZipball(): string
-{
-    $src = base_path('tests/Fixtures/demo-plugin');
-    $tmp = tempnam(sys_get_temp_dir(), 'zb').'.zip';
-
-    $zip = new ZipArchive;
-    $zip->open($tmp, ZipArchive::CREATE | ZipArchive::OVERWRITE);
-    foreach (['composer.json', 'src/DemoPlugin.php', 'src/DemoServiceProvider.php'] as $rel) {
-        $zip->addFile("$src/$rel", "acme-demo-abc1234/$rel");
-    }
-    $zip->close();
-
-    $bytes = (string) file_get_contents($tmp);
-    @unlink($tmp);
-
-    return $bytes;
-}
 
 /**
  * @param  array<string, mixed>  $composerOverride
@@ -70,7 +48,7 @@ test('it installs a plugin package from a github release and the loader boots it
         ->and(is_file(storage_path('app/plugins/demo/src/DemoPlugin.php')))->toBeTrue();
 
     // Simulate the next request: the loader registers the runtime package.
-    (new PluginLoaderServiceProvider($this->app))->register();
+    (new PluginLoader($this->app))->boot();
 
     $plugin = app(PluginRegistry::class)->get('demo');
 

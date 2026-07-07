@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\BoardPlugin;
+use Board\PluginSdk\Contracts\ProvidesOAuth;
+use Board\PluginSdk\PluginRegistry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -10,25 +12,35 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 /**
- * Drives the OAuth "web application" flow that connects a board plugin instance
- * to an external provider. Provider endpoints are provider-specific, so each
- * provider gets its own pair of methods; the resulting access token is stored
- * (encrypted) on the BoardPlugin config.
+ * Provider-agnostic OAuth "web application" broker connecting a board plugin
+ * instance to an external provider. The plugin (a {@see ProvidesOAuth}) declares
+ * its endpoints, scopes and how to read back the account; the host owns the flow:
+ * state handling, the authorize redirect, the code→token exchange and storing the
+ * (encrypted) token on the instance config. Nothing here is provider-specific.
  */
 class PluginOAuthController extends Controller
 {
     /**
-     * Send the admin to GitHub to authorize the connection.
+     * Send the admin to the provider's authorize screen.
      */
-    public function githubRedirect(Request $request, BoardPlugin $boardPlugin): RedirectResponse
+    public function redirect(Request $request, BoardPlugin $boardPlugin): RedirectResponse
     {
         Gate::authorize('managePlugins', $boardPlugin->board);
 
-        $clientId = $boardPlugin->config['client_id'] ?? config('services.github.client_id');
+        $plugin = $this->oauthPlugin($boardPlugin);
+
+        if ($plugin === null) {
+            return redirect()->route('boards.show', $boardPlugin->board)
+                ->with('status', __('Ce Power-Up ne gère pas la connexion OAuth.'));
+        }
+
+        $provider = $plugin->oauthProvider();
+
+        $clientId = $boardPlugin->config['client_id'] ?? config("services.{$provider}.client_id");
 
         if (empty($clientId)) {
             return redirect()->route('boards.show', $boardPlugin->board)
-                ->with('status', __('Configurez le Client ID GitHub avant de connecter.'));
+                ->with('status', __('Configurez les identifiants OAuth avant de connecter.'));
         }
 
         $state = Str::random(40);
@@ -38,22 +50,21 @@ class PluginOAuthController extends Controller
             'state' => $state,
         ]);
 
-        $query = http_build_query([
+        $query = http_build_query(array_merge($plugin->authorizeParameters(), [
             'client_id' => $clientId,
-            'redirect_uri' => route('plugins.oauth.github.callback'),
-            'scope' => config('services.github.scopes'),
+            'redirect_uri' => route('plugins.oauth.callback'),
+            'scope' => implode(' ', $plugin->scopes()),
             'state' => $state,
-            'allow_signup' => 'false',
-        ]);
+        ]));
 
-        return redirect()->away('https://github.com/login/oauth/authorize?'.$query);
+        return redirect()->away($plugin->authorizeUrl().'?'.$query);
     }
 
     /**
-     * Handle GitHub's redirect back: verify state, exchange the code for a token
-     * and persist it (encrypted) on the instance.
+     * Handle the provider's redirect back: verify state, exchange the code for a
+     * token and persist it (encrypted) on the instance.
      */
-    public function githubCallback(Request $request): RedirectResponse
+    public function callback(Request $request): RedirectResponse
     {
         $stored = $request->session()->pull('plugin_oauth');
 
@@ -69,41 +80,52 @@ class PluginOAuthController extends Controller
         Gate::authorize('managePlugins', $boardPlugin->board);
 
         $board = $boardPlugin->board;
+        $plugin = $this->oauthPlugin($boardPlugin);
+
+        if ($plugin === null) {
+            return redirect()->route('boards.show', $board)
+                ->with('status', __('Ce Power-Up ne gère pas la connexion OAuth.'));
+        }
+
+        $provider = $plugin->oauthProvider();
 
         $code = (string) $request->query('code');
 
         if ($code === '' || $request->query('error')) {
             return redirect()->route('boards.show', $board)
-                ->with('status', __('Connexion GitHub annulée.'));
+                ->with('status', __('Connexion annulée.'));
         }
 
-        $response = Http::acceptJson()->asForm()->post('https://github.com/login/oauth/access_token', [
-            'client_id' => $boardPlugin->config['client_id'] ?? config('services.github.client_id'),
-            'client_secret' => $boardPlugin->config['client_secret'] ?? config('services.github.client_secret'),
+        $token = Http::acceptJson()->asForm()->post($plugin->tokenUrl(), [
+            'client_id' => $boardPlugin->config['client_id'] ?? config("services.{$provider}.client_id"),
+            'client_secret' => $boardPlugin->config['client_secret'] ?? config("services.{$provider}.client_secret"),
             'code' => $code,
-            'redirect_uri' => route('plugins.oauth.github.callback'),
-        ]);
-
-        $token = $response->json('access_token');
+            'redirect_uri' => route('plugins.oauth.callback'),
+        ])->json('access_token');
 
         if (! $token) {
             return redirect()->route('boards.show', $board)
-                ->with('status', __('Échec de la connexion GitHub.'));
+                ->with('status', __('Échec de la connexion.'));
         }
-
-        $account = Http::withToken($token)
-            ->acceptJson()
-            ->withHeaders(['User-Agent' => 'BoardBot/1.0'])
-            ->get('https://api.github.com/user')
-            ->json('login');
 
         $config = $boardPlugin->config ?? [];
         $config['token'] = $token;
-        $config['account'] = $account;
+        $config['account'] = $plugin->resolveAccount($token);
 
         $boardPlugin->update(['config' => $config]);
 
         return redirect()->route('boards.show', $board)
-            ->with('status', __('GitHub connecté.'));
+            ->with('status', __('Connecté.'));
+    }
+
+    /**
+     * Resolve the installed plugin behind an instance, or null when it is missing
+     * or does not drive OAuth (e.g. an outdated build without ProvidesOAuth).
+     */
+    private function oauthPlugin(BoardPlugin $boardPlugin): ?ProvidesOAuth
+    {
+        $plugin = app(PluginRegistry::class)->get($boardPlugin->plugin_key);
+
+        return $plugin instanceof ProvidesOAuth ? $plugin : null;
     }
 }

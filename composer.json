@@ -11,10 +11,8 @@
     "require": {
         "php": "^8.3",
         "blade-ui-kit/blade-icons": "^1.10",
-        "board/plugin-github": "^0.2",
         "board/plugin-sdk": "^0.2",
         "codeat3/blade-phosphor-icons": "^2.4",
-        "composer/semver": "^3.4",
         "laravel/fortify": "^1.36",
         "laravel/framework": "^13.8",
         "laravel/mcp": "^0.8.2",
@@ -25,6 +23,7 @@
         "rap2hpoutre/fast-excel": "^5.12"
     },
     "require-dev": {
+        "board/marketplace": "^0.1",
         "fakerphp/faker": "^1.23",
         "laravel/boost": "^2.2",
         "laravel/pail": "^1.2.5",
@@ -105,7 +104,7 @@
         },
         {
             "type": "vcs",
-            "url": "https://github.com/B-o-a-r-d/Github-Plugin.git"
+            "url": "https://github.com/B-o-a-r-d/marketplace-plugin.git"
         }
     ],
     "minimum-stability": "stable",

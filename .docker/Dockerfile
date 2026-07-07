@@ -82,8 +82,18 @@ COPY . .
 # Built front-end assets from the assets stage
 COPY --from=assets /app/public/build ./public/build
 
+# Optional first-party Marketplace Power-Up (runtime plugin installer). Off by
+# default so the base image ships no runtime-install code; set
+# INSTALL_MARKETPLACE=true (Dokploy → Environment) to bake it in — admins can then
+# install Power-Ups at runtime from /marketplace (still gated by a master switch).
+ARG INSTALL_MARKETPLACE=false
+
 # Finalise autoloader + package discovery, then tidy permissions
-RUN composer dump-autoload --optimize --no-dev \
+RUN if [ "$INSTALL_MARKETPLACE" = "true" ]; then \
+        echo "[build] Enabling board/marketplace…"; \
+        composer require board/marketplace:^0.1 --no-scripts --no-interaction --prefer-dist --update-no-dev; \
+    fi \
+    && composer dump-autoload --optimize --no-dev \
     && php artisan package:discover --ansi \
     && chown -R www-data:www-data storage bootstrap/cache
 

@@ -84,6 +84,15 @@
                                 <span>{{ __('Profil') }}</span>
                             </a>
 
+                            {{-- Marketplace: admins only, and only when the optional
+                                 board/marketplace package is installed (its route exists). --}}
+                            @if (Route::has('marketplace') && auth()->user()?->isAdmin())
+                                <a href="{{ route('marketplace') }}" wire:navigate @click="open = false" class="flex items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800">
+                                    <x-phosphor-storefront class="h-4 w-4" />
+                                    <span>{{ __('Marketplace') }}</span>
+                                </a>
+                            @endif
+
                             @if (request()->routeIs('boards.show'))
                                 <button type="button" @click="open = false; $dispatch('open-shortcuts')" class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800">
                                     <x-phosphor-keyboard class="h-4 w-4" />

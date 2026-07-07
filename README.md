@@ -71,10 +71,16 @@ Laravel 13 · Livewire 4 (bundled Alpine) · Tailwind CSS 4 · Laravel Reverb
 
 ## Plugins
 
-Board's Power-Ups are separate, versioned Composer packages that depend only on the
-SDK — never on the app — so you can update a plugin without touching the core.
+Board's Power-Ups are separate, versioned packages that depend only on the SDK — never
+on the app — so you can update a plugin without touching the core. The base app ships
+with **no plugin bundled** and **no marketplace**.
 
 ```bash
+# Opt into the runtime marketplace (admins then install Power-Ups from /marketplace,
+# no rebuild):
+composer require board/marketplace
+
+# …or bake a specific Power-Up into the image the classic way:
 composer require board/plugin-github
 ```
 
