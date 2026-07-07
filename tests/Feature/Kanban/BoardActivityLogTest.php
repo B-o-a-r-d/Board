@@ -106,3 +106,68 @@ test('setting and clearing a due date logs the change', function () {
     $component->call('clearDates');
     expect(Activity::where('type', 'card.due_removed')->exists())->toBeTrue();
 });
+
+test('a comment activity stores its comment id and focuses it', function () {
+    ['board' => $board, 'owner' => $owner] = makeActivityBoard();
+    $list = BoardList::factory()->create(['board_id' => $board->id]);
+    $card = Card::factory()->create(['board_id' => $board->id, 'board_list_id' => $list->id]);
+
+    Livewire::actingAs($owner)->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->set('newComment', 'Bien joué')
+        ->call('addComment');
+
+    $activity = Activity::where('type', 'comment.created')->latest('id')->firstOrFail();
+    $comment = $card->comments()->firstOrFail();
+
+    expect($activity->properties['comment_id'])->toBe($comment->id)
+        ->and($activity->focusTarget())->toBe([
+            'card' => $card->id,
+            'section' => null,
+            'comment' => $comment->id,
+        ]);
+});
+
+test('an attachment activity focuses the attachments section', function () {
+    ['board' => $board] = makeActivityBoard();
+    $list = BoardList::factory()->create(['board_id' => $board->id]);
+    $card = Card::factory()->create(['board_id' => $board->id, 'board_list_id' => $list->id]);
+
+    $activity = Activity::create([
+        'board_id' => $board->id,
+        'card_id' => $card->id,
+        'type' => 'attachment.added',
+        'properties' => ['card_title' => $card->title, 'value' => 'photo.png'],
+    ]);
+
+    expect($activity->focusTarget())->toBe([
+        'card' => $card->id,
+        'section' => 'attachments',
+        'comment' => null,
+    ]);
+});
+
+test('a deleted-card activity is not clickable', function () {
+    ['board' => $board] = makeActivityBoard();
+
+    $activity = Activity::create([
+        'board_id' => $board->id,
+        'card_id' => null,
+        'type' => 'card.deleted',
+        'properties' => ['number' => 18, 'card_title' => 'X', 'list' => 'En cours'],
+    ]);
+
+    expect($activity->focusTarget()['card'])->toBeNull();
+});
+
+test('focusActivity closes the slide-over and opens the target card', function () {
+    ['board' => $board, 'owner' => $owner] = makeActivityBoard();
+    $list = BoardList::factory()->create(['board_id' => $board->id]);
+    $card = Card::factory()->create(['board_id' => $board->id, 'board_list_id' => $list->id]);
+
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+        ->set('showActivity', true)
+        ->call('focusActivity', $card->id, 'attachments', null)
+        ->assertSet('showActivity', false)
+        ->assertDispatched('open-card', cardId: $card->id, section: 'attachments', comment: null);
+});

@@ -1,4 +1,25 @@
-<div>
+<div
+    x-data="{
+        handleCardFocus(raw) {
+            const detail = raw?.params?.[0] ?? raw ?? {};
+            if (detail.comment) {
+                this.flashElement('comment-' + detail.comment);
+            } else if (detail.section === 'attachments') {
+                window.dispatchEvent(new CustomEvent('card-open-attachments'));
+            }
+        },
+        flashElement(id) {
+            setTimeout(() => {
+                const el = document.getElementById(id);
+                if (! el) return;
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.classList.add('cf-flash');
+                setTimeout(() => el.classList.remove('cf-flash'), 1800);
+            }, 200);
+        }
+    }"
+    @card-focus.window="handleCardFocus($event.detail)"
+>
     @if ($showModal && $card)
         <x-modal max-width="3xl" on-close="$wire.close()" wire:key="card-modal-{{ $card->id }}">
                 {{-- Cover --}}
@@ -181,11 +202,13 @@
                                 ->values()->all();
                             $mediaUrls = array_column($media, 'url');
                         @endphp
-                        <div x-data="{
+                        <div id="card-section-attachments"
+                             x-data="{
                                 open: JSON.parse(localStorage.getItem('card-attachments-open') ?? 'true'),
                                 view: localStorage.getItem('card-attachments-view') ?? 'list',
                              }"
                              x-init="$watch('open', v => localStorage.setItem('card-attachments-open', JSON.stringify(v))); $watch('view', v => localStorage.setItem('card-attachments-view', v))"
+                             @card-open-attachments.window="open = true; setTimeout(() => $el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200)"
                              class="space-y-3">
                             <div class="flex items-center justify-between">
                                 <button type="button" @click="open = ! open" class="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-neutral-500">
@@ -630,6 +653,49 @@
                                 <button type="submit" class="rounded-lg border border-neutral-300 px-2 py-1 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">+</button>
                             </form>
                         </div>
+
+                        {{-- Custom fields --}}
+                        @if ($customFields->isNotEmpty())
+                            @php $cfValues = $card->customFieldValues->keyBy('custom_field_id'); @endphp
+                            <div>
+                                <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Champs personnalisés') }}</h3>
+                                <div class="space-y-2.5">
+                                    @foreach ($customFields as $field)
+                                        @php $val = optional($cfValues->get($field->id))->value; @endphp
+                                        <div wire:key="cf-input-{{ $field->id }}">
+                                            @if ($field->type === \App\Enums\CustomFieldType::Checkbox)
+                                                <label class="flex items-center gap-2 text-sm">
+                                                    <input type="checkbox" @checked($val)
+                                                           wire:change="saveCustomField({{ $field->id }}, $event.target.checked)"
+                                                           class="h-4 w-4 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500/40 dark:border-neutral-600 dark:bg-neutral-800">
+                                                    {{ $field->name }}
+                                                </label>
+                                            @else
+                                                <label class="mb-0.5 block text-xs text-neutral-500">{{ $field->name }}</label>
+                                                @if ($field->type === \App\Enums\CustomFieldType::Select)
+                                                    <select wire:change="saveCustomField({{ $field->id }}, $event.target.value)"
+                                                            class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                                        <option value="">{{ __('—') }}</option>
+                                                        @foreach ($field->options ?? [] as $opt)
+                                                            <option value="{{ $opt }}" @selected($val === $opt)>{{ $opt }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                @elseif ($field->type === \App\Enums\CustomFieldType::Number)
+                                                    <input type="number" value="{{ $val }}" wire:change="saveCustomField({{ $field->id }}, $event.target.value)"
+                                                           class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                                @elseif ($field->type === \App\Enums\CustomFieldType::Date)
+                                                    <input type="date" value="{{ $val }}" wire:change="saveCustomField({{ $field->id }}, $event.target.value)"
+                                                           class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                                @else
+                                                    <input type="text" value="{{ $val }}" wire:change="saveCustomField({{ $field->id }}, $event.target.value)"
+                                                           class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                                @endif
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
 
                         {{-- Cover: solid color or uploaded image (collapsed by default, at the bottom) --}}
                         @php $coverPalette = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b']; @endphp

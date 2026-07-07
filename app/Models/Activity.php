@@ -49,6 +49,25 @@ class Activity extends Model
     }
 
     /**
+     * Where clicking this activity in the slide-over should take the user: the
+     * card to open plus an optional element to focus within it (a specific
+     * comment, or a named sidebar section). `card` is null when the target no
+     * longer exists (e.g. a permanently deleted card), making the row inert.
+     *
+     * @return array{card: int|null, section: string|null, comment: int|null}
+     */
+    public function focusTarget(): array
+    {
+        $props = $this->properties ?? [];
+
+        return [
+            'card' => $this->card_id,
+            'section' => $this->type === 'attachment.added' ? 'attachments' : null,
+            'comment' => isset($props['comment_id']) ? (int) $props['comment_id'] : null,
+        ];
+    }
+
+    /**
      * A localized, human-readable sentence describing this activity, in the
      * Trello style ("a ajouté [card] à [list]"). The acting user's name is
      * rendered separately, so this returns only the verb phrase.

@@ -123,6 +123,11 @@ class Board extends Model
         return $this->hasMany(BoardView::class);
     }
 
+    public function customFields(): HasMany
+    {
+        return $this->hasMany(CustomField::class)->orderBy('position');
+    }
+
     /**
      * @param  Builder<Board>  $query
      */

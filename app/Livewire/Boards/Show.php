@@ -3,6 +3,7 @@
 namespace App\Livewire\Boards;
 
 use App\Automations\AutomationEngine;
+use App\Enums\CustomFieldType;
 use App\Enums\Role;
 use App\Events\BoardActivity;
 use App\Models\Activity;
@@ -72,6 +73,81 @@ class Show extends Component
         $this->authorize('view', $this->board);
 
         $this->showActivity = ! $this->showActivity;
+    }
+
+    /**
+     * Jump from an activity row to its subject: close the slide-over and open
+     * the target card, optionally focusing a comment or a named section.
+     */
+    public function focusActivity(int $cardId, ?string $section = null, ?int $comment = null): void
+    {
+        $this->authorize('view', $this->board);
+
+        $this->showActivity = false;
+        $this->dispatch('open-card', cardId: $cardId, section: $section, comment: $comment);
+    }
+
+    public bool $showCustomFields = false;
+
+    public string $newFieldName = '';
+
+    public string $newFieldType = 'text';
+
+    /** Comma-separated options, only used when the new field type is "select". */
+    public string $newFieldOptions = '';
+
+    public function toggleCustomFields(): void
+    {
+        $this->authorize('update', $this->board);
+
+        $this->showCustomFields = ! $this->showCustomFields;
+    }
+
+    public function addCustomField(): void
+    {
+        $this->authorize('update', $this->board);
+
+        $data = $this->validate([
+            'newFieldName' => ['required', 'string', 'max:60'],
+            'newFieldType' => ['required', 'string', 'in:text,number,date,select,checkbox'],
+        ]);
+
+        $type = CustomFieldType::from($data['newFieldType']);
+
+        $options = null;
+
+        if ($type->hasOptions()) {
+            $options = collect(explode(',', $this->newFieldOptions))
+                ->map(fn (string $option): string => trim($option))
+                ->filter()
+                ->values()
+                ->all();
+
+            if (empty($options)) {
+                $this->addError('newFieldOptions', __('Ajoutez au moins une option.'));
+
+                return;
+            }
+        }
+
+        $this->board->customFields()->create([
+            'name' => $data['newFieldName'],
+            'type' => $type,
+            'options' => $options,
+            'position' => (int) $this->board->customFields()->max('position') + 1,
+        ]);
+
+        $this->reset('newFieldName', 'newFieldOptions');
+        $this->newFieldType = 'text';
+        $this->dispatch('board-refresh');
+    }
+
+    public function deleteCustomField(int $fieldId): void
+    {
+        $this->authorize('update', $this->board);
+
+        $this->board->customFields()->whereKey($fieldId)->delete();
+        $this->dispatch('board-refresh');
     }
 
     /**
@@ -856,6 +932,7 @@ class Show extends Component
                     'cards.members',
                     'cards.labels',
                     'cards.checklists.items',
+                    'cards.customFieldValues',
                 ])
                 ->orderBy('position')
                 ->get()
@@ -880,6 +957,7 @@ class Show extends Component
             'activities' => $this->showActivity
                 ? $this->board->activities()->with(['user', 'card'])->latest()->limit(60)->get()
                 : collect(),
+            'customFields' => $this->board->customFields,
         ]);
     }
 

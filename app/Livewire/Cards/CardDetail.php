@@ -3,6 +3,7 @@
 namespace App\Livewire\Cards;
 
 use App\Automations\AutomationEngine;
+use App\Enums\CustomFieldType;
 use App\Events\BoardActivity;
 use App\Models\Activity;
 use App\Models\Board;
@@ -92,7 +93,7 @@ class CardDetail extends Component
     public function onRemoteActivity(): void {}
 
     #[On('open-card')]
-    public function openCard(int $cardId): void
+    public function openCard(int $cardId, ?string $section = null, ?int $comment = null): void
     {
         $this->authorize('view', $this->board);
 
@@ -105,6 +106,12 @@ class CardDetail extends Component
         $this->dueAt = $card->due_at?->format('Y-m-d\TH:i');
         $this->resetValidation();
         $this->showModal = true;
+
+        // Let the freshly-rendered modal scroll to / expand the relevant element
+        // (a specific comment or a named section) once its DOM exists.
+        if ($section !== null || $comment !== null) {
+            $this->dispatch('card-focus', section: $section, comment: $comment);
+        }
     }
 
     public function close(): void
@@ -174,6 +181,34 @@ class CardDetail extends Component
 
         if ($hadDue) {
             $this->logActivity($card, 'card.due_removed');
+        }
+
+        $this->touched('card.updated');
+    }
+
+    /**
+     * Set (or clear) a custom field value on the current card. A null/empty
+     * value removes the stored row so the field reads as unset.
+     */
+    public function saveCustomField(int $fieldId, mixed $value): void
+    {
+        $card = $this->guardedCard();
+
+        $field = $this->board->customFields()->findOrFail($fieldId);
+
+        $stored = match ($field->type) {
+            CustomFieldType::Checkbox => $value ? '1' : null,
+            CustomFieldType::Select => in_array($value, $field->options ?? [], true) ? $value : null,
+            default => ($value === '' || $value === null) ? null : (string) $value,
+        };
+
+        if ($stored === null) {
+            $card->customFieldValues()->where('custom_field_id', $field->id)->delete();
+        } else {
+            $card->customFieldValues()->updateOrCreate(
+                ['custom_field_id' => $field->id],
+                ['value' => $stored],
+            );
         }
 
         $this->touched('card.updated');
@@ -522,7 +557,7 @@ class CardDetail extends Component
 
         $data = $this->validate(['newComment' => ['required', 'string', 'max:5000']]);
 
-        $card->comments()->create([
+        $comment = $card->comments()->create([
             'user_id' => Auth::id(),
             'body' => $data['newComment'],
         ]);
@@ -530,7 +565,10 @@ class CardDetail extends Component
         // Commenting subscribes you to the card so you follow the thread.
         $card->watchers()->syncWithoutDetaching([Auth::id()]);
 
-        $this->logActivity($card, 'comment.created', ['excerpt' => Str::limit(trim(strip_tags($data['newComment'])), 140)]);
+        $this->logActivity($card, 'comment.created', [
+            'excerpt' => Str::limit(trim(strip_tags($data['newComment'])), 140),
+            'comment_id' => $comment->id,
+        ]);
         $this->notifyForComment($card, $data['newComment']);
 
         $this->reset('newComment');
@@ -788,7 +826,7 @@ class CardDetail extends Component
     {
         $card = $this->cardId
             ? $this->board->cards()
-                ->with(['members', 'watchers', 'labels', 'checklists.items', 'attachments.uploader', 'comments.user', 'comments.reactions', 'activities.user'])
+                ->with(['members', 'watchers', 'labels', 'checklists.items', 'attachments.uploader', 'comments.user', 'comments.reactions', 'activities.user', 'customFieldValues'])
                 ->find($this->cardId)
             : null;
 
@@ -825,6 +863,7 @@ class CardDetail extends Component
             'reactionEmojis' => self::REACTIONS,
             'cardLinks' => $cardLinks,
             'linkCandidates' => $linkCandidates,
+            'customFields' => $this->board->customFields,
         ]);
     }
 }

@@ -132,6 +132,10 @@
                                                  wire:click="toggleMembers">
                                 {{ __('Membres') }}
                             </x-context-menu.item>
+                            <x-context-menu.item icon="sliders-horizontal"
+                                                 wire:click="toggleCustomFields">
+                                {{ __('Champs personnalisés') }}
+                            </x-context-menu.item>
                             <x-context-menu.separator/>
                             <x-context-menu.item icon="file-csv"
                                                  @click="window.location.href = '{{ route('boards.export', ['board' => $board->id, 'format' => 'csv']) }}'">{{ __('Exporter en CSV') }}</x-context-menu.item>
@@ -471,6 +475,31 @@
                                             </div>
                                         @endif
 
+                                        {{-- Custom field values --}}
+                                        @if ($customFields->isNotEmpty())
+                                            @php
+                                                $cfValues = $card->customFieldValues->keyBy('custom_field_id');
+                                                $cfShown = $customFields->filter(fn ($f) => filled(optional($cfValues->get($f->id))->value));
+                                            @endphp
+                                            @if ($cfShown->isNotEmpty())
+                                                <div class="mt-2 flex flex-wrap gap-1">
+                                                    @foreach ($cfShown as $field)
+                                                        @php $val = $cfValues->get($field->id)->value; @endphp
+                                                        <span class="inline-flex items-center gap-1 rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] text-neutral-600 dark:bg-neutral-700/50 dark:text-neutral-300">
+                                                            <span class="font-medium">{{ $field->name }}:</span>
+                                                            @if ($field->type === \App\Enums\CustomFieldType::Checkbox)
+                                                                <x-phosphor-check class="h-3 w-3 text-green-600 dark:text-green-400"/>
+                                                            @elseif ($field->type === \App\Enums\CustomFieldType::Date)
+                                                                {{ \Illuminate\Support\Carbon::parse($val)->translatedFormat('d M Y') }}
+                                                            @else
+                                                                {{ $val }}
+                                                            @endif
+                                                        </span>
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                        @endif
+
                                         @if ($card->members->isNotEmpty())
                                             <div class="mt-2 flex -space-x-1.5">
                                                 @foreach ($card->members as $member)
@@ -559,7 +588,7 @@
                 type="text"
                 wire:model="newListName"
                 placeholder="{{ __('+ Ajouter une liste') }}"
-                class="w-full rounded-xl border border-dashed border-neutral-300 bg-white/50 px-3 py-2 text-sm placeholder-neutral-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900/50"
+                class="w-full rounded-xl border border-dashed border-neutral-300 bg-white/50 px-3 py-2 text-sm  placeholder-neutral-500 dark:placeholder-neutral-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900/50"
             >
             @error('newListName') <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
         </form>
@@ -806,6 +835,74 @@
         </x-modal>
     @endif
 
+    {{-- Custom fields panel --}}
+    @if ($showCustomFields)
+        @php $fieldTypes = \App\Enums\CustomFieldType::cases(); @endphp
+        <x-modal max-width="lg" on-close="$wire.$set('showCustomFields', false)">
+            <x-slot:header>
+                <span class="flex items-center gap-2"><x-phosphor-sliders-horizontal class="h-5 w-5"/> {{ __('Champs personnalisés') }}</span>
+            </x-slot:header>
+
+            <div class="space-y-5 p-5">
+                @if ($customFields->isEmpty())
+                    <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ __('Aucun champ personnalisé. Ajoutez-en un ci-dessous pour enrichir les cartes.') }}</p>
+                @else
+                    <ul class="divide-y divide-neutral-100 dark:divide-neutral-800">
+                        @foreach ($customFields as $field)
+                            <li wire:key="cf-{{ $field->id }}" class="flex items-center justify-between gap-3 py-2">
+                                <div class="flex min-w-0 items-center gap-2">
+                                    <x-dynamic-component :component="'phosphor-'.$field->type->icon()" class="h-4 w-4 shrink-0 text-neutral-400"/>
+                                    <div class="min-w-0">
+                                        <p class="truncate text-sm font-medium">{{ $field->name }}</p>
+                                        <p class="truncate text-xs text-neutral-500 dark:text-neutral-400">{{ __($field->type->label()) }}@if ($field->type->hasOptions() && $field->options) · {{ implode(', ', $field->options) }}@endif</p>
+                                    </div>
+                                </div>
+                                <button type="button"
+                                        @click="$store.confirm.open({ title: '{{ __('Supprimer le champ') }}', message: '{{ __('Supprimer ce champ et toutes ses valeurs sur les cartes ?') }}', confirmLabel: '{{ __('Supprimer') }}', danger: true }).then(ok => ok && $wire.deleteCustomField({{ $field->id }}))"
+                                        class="shrink-0 rounded-full p-1.5 text-neutral-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
+                                        title="{{ __('Supprimer') }}"><x-phosphor-trash class="h-4 w-4"/></button>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+
+                <form wire:submit="addCustomField" class="space-y-3 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ __('Nom du champ') }}</label>
+                            <input type="text" wire:model="newFieldName" placeholder="{{ __('Priorité, Estimation…') }}"
+                                   class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                            @error('newFieldName') <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ __('Type') }}</label>
+                            <select wire:model.live="newFieldType"
+                                    class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                @foreach ($fieldTypes as $ft)
+                                    <option value="{{ $ft->value }}">{{ __($ft->label()) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    @if ($newFieldType === 'select')
+                        <div>
+                            <label class="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ __('Options (séparées par des virgules)') }}</label>
+                            <input type="text" wire:model="newFieldOptions" placeholder="{{ __('Basse, Moyenne, Haute') }}"
+                                   class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                            @error('newFieldOptions') <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                        </div>
+                    @endif
+
+                    <button type="submit"
+                            class="flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700">
+                        <x-phosphor-plus class="h-4 w-4"/> {{ __('Ajouter le champ') }}
+                    </button>
+                </form>
+            </div>
+        </x-modal>
+    @endif
+
     {{-- List cover image panel --}}
     @if ($coverListId)
         @php $coverList = $lists->firstWhere('id', $coverListId); @endphp
@@ -895,7 +992,19 @@
 
             <div class="flex-1 overflow-y-auto px-4 py-3">
                 @forelse ($activities as $activity)
-                    <div class="flex gap-3 py-2.5" @if ($activity->isComment()) x-show="true" @else x-show="tab === 'all'" @endif>
+                    @php
+                        $ft = $activity->focusTarget();
+                        $sectionArg = $ft['section'] ? "'".$ft['section']."'" : 'null';
+                        $commentArg = $ft['comment'] ?? 'null';
+                    @endphp
+                    <div class="flex gap-3 rounded-lg py-2.5 {{ $ft['card'] ? '-mx-2 cursor-pointer px-2 transition hover:bg-neutral-50 dark:hover:bg-neutral-800/60' : '' }}"
+                         @if ($activity->isComment()) x-show="true" @else x-show="tab === 'all'" @endif
+                         @if ($ft['card'])
+                             role="button" tabindex="0"
+                             wire:click="focusActivity({{ $ft['card'] }}, {{ $sectionArg }}, {{ $commentArg }})"
+                             wire:keydown.enter="focusActivity({{ $ft['card'] }}, {{ $sectionArg }}, {{ $commentArg }})"
+                             title="{{ __('Ouvrir') }}"
+                         @endif>
                         <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
                             {{ mb_strtoupper(mb_substr($activity->user?->name ?? '?', 0, 1)) }}
                         </span>
@@ -911,6 +1020,9 @@
                             @endif
                             <p class="mt-0.5 text-xs text-neutral-400 dark:text-neutral-500">{{ $activity->created_at->diffForHumans() }}</p>
                         </div>
+                        @if ($ft['card'])
+                            <x-phosphor-arrow-up-right class="mt-1 h-3.5 w-3.5 shrink-0 text-neutral-300 dark:text-neutral-600"/>
+                        @endif
                     </div>
                 @empty
                     <p class="py-8 text-center text-sm text-neutral-400 dark:text-neutral-500">{{ __('Aucune activité pour le moment.') }}</p>

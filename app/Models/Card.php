@@ -80,4 +80,9 @@ class Card extends Model
     {
         return $this->hasMany(Activity::class)->latest();
     }
+
+    public function customFieldValues(): HasMany
+    {
+        return $this->hasMany(CustomFieldValue::class);
+    }
 }
