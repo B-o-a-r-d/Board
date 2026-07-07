@@ -14,6 +14,7 @@
         "board/plugin-github": "^0.2",
         "board/plugin-sdk": "^0.2",
         "codeat3/blade-phosphor-icons": "^2.4",
+        "composer/semver": "^3.4",
         "laravel/fortify": "^1.36",
         "laravel/framework": "^13.8",
         "laravel/mcp": "^0.8.2",

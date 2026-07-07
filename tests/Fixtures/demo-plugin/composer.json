@@ -1,0 +1,19 @@
+{
+    "name": "acme/demo-plugin",
+    "type": "library",
+    "require": {
+        "board/plugin-sdk": "^0.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Acme\\DemoPlugin\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Acme\\DemoPlugin\\DemoServiceProvider"
+            ]
+        }
+    }
+}
