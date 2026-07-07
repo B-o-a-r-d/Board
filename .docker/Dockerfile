@@ -88,11 +88,19 @@ COPY --from=assets /app/public/build ./public/build
 # install Power-Ups at runtime from /marketplace (still gated by a master switch).
 ARG INSTALL_MARKETPLACE=false
 
+# GitHub token used ONLY to fetch board/marketplace at build time. Avoids the
+# anonymous GitHub API rate limit (60/h) that breaks repeated builds, and lets a
+# private plugin repo resolve. A minimal / no-scope PAT is enough (repos are public).
+# It is unset right after use so it is not kept in the final image layer.
+ARG GITHUB_TOKEN=
+
 # Finalise autoloader + package discovery, then tidy permissions
 RUN if [ "$INSTALL_MARKETPLACE" = "true" ]; then \
         echo "[build] Enabling board/marketplace…"; \
         git config --global url."https://github.com/".insteadOf "git@github.com:"; \
+        if [ -n "$GITHUB_TOKEN" ]; then composer config --global github-oauth.github.com "$GITHUB_TOKEN"; fi; \
         composer require board/marketplace:^0.1 --no-scripts --no-interaction --prefer-dist --update-no-dev; \
+        composer config --global --unset github-oauth.github.com || true; \
     fi \
     && composer dump-autoload --optimize --no-dev \
     && php artisan package:discover --ansi \

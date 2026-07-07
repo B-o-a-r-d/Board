@@ -17,6 +17,9 @@ services:
         VITE_REVERB_SCHEME: ${REVERB_SCHEME:-https}
         # Bake in the optional Marketplace Power-Up when true (Dokploy → Environment).
         INSTALL_MARKETPLACE: ${INSTALL_MARKETPLACE:-false}
+        # Build-time GitHub token so composer can fetch board/marketplace without
+        # hitting the anonymous API rate limit. A no-scope PAT is enough.
+        GITHUB_TOKEN: ${GITHUB_TOKEN:-}
     image: board-app:latest
     restart: unless-stopped
     env_file: .env
@@ -47,6 +50,9 @@ services:
         VITE_REVERB_SCHEME: ${REVERB_SCHEME:-https}
         # Bake in the optional Marketplace Power-Up when true (Dokploy → Environment).
         INSTALL_MARKETPLACE: ${INSTALL_MARKETPLACE:-false}
+        # Build-time GitHub token so composer can fetch board/marketplace without
+        # hitting the anonymous API rate limit. A no-scope PAT is enough.
+        GITHUB_TOKEN: ${GITHUB_TOKEN:-}
     image: board-web:latest
     restart: unless-stopped
     depends_on:
