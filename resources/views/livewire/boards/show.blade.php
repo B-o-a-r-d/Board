@@ -53,14 +53,30 @@
             </div>
 
             <div class="flex gap-2">
-                <button type="button"
-                        x-data="{ allCollapsed: false }"
-                        @click="allCollapsed = ! allCollapsed; $dispatch(allCollapsed ? 'collapse-all' : 'expand-all')"
-                        class="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                        :title="allCollapsed ? '{{ __('Tout déplier') }}' : '{{ __('Tout replier') }}'">
-                    <x-phosphor-arrows-in-line-horizontal x-show="! allCollapsed" class="h-4 w-4"/>
-                    <x-phosphor-arrows-out-line-horizontal x-show="allCollapsed" x-cloak class="h-4 w-4"/>
-                </button>
+                {{-- View toggle: board / calendar --}}
+                <div class="flex items-center rounded-lg border border-neutral-300 p-0.5 dark:border-neutral-700">
+                    <button type="button" wire:click="setView('board')"
+                            class="flex items-center gap-1 rounded-md px-2 py-1 text-sm transition {{ $view === 'board' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200' }}"
+                            title="{{ __('Tableau') }}">
+                        <x-phosphor-squares-four class="h-4 w-4"/><span class="hidden sm:inline">{{ __('Tableau') }}</span>
+                    </button>
+                    <button type="button" wire:click="setView('calendar')"
+                            class="flex items-center gap-1 rounded-md px-2 py-1 text-sm transition {{ $view === 'calendar' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200' }}"
+                            title="{{ __('Calendrier') }}">
+                        <x-phosphor-calendar-blank class="h-4 w-4"/><span class="hidden sm:inline">{{ __('Calendrier') }}</span>
+                    </button>
+                </div>
+
+                @if ($view === 'board')
+                    <button type="button"
+                            x-data="{ allCollapsed: false }"
+                            @click="allCollapsed = ! allCollapsed; $dispatch(allCollapsed ? 'collapse-all' : 'expand-all')"
+                            class="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                            :title="allCollapsed ? '{{ __('Tout déplier') }}' : '{{ __('Tout replier') }}'">
+                        <x-phosphor-arrows-in-line-horizontal x-show="! allCollapsed" class="h-4 w-4"/>
+                        <x-phosphor-arrows-out-line-horizontal x-show="allCollapsed" x-cloak class="h-4 w-4"/>
+                    </button>
+                @endif
 
                 @can('update', $board)
                     <x-context-menu>
@@ -223,6 +239,7 @@
         $boardBg = $board->backgroundStyle();
     @endphp
 
+    @if ($view !== 'calendar')
     {{-- Lists (columns) --}}
     <div
         wire:sort="reorderLists"
@@ -512,6 +529,9 @@
             @error('newListName') <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
         </form>
     </div>
+    @else
+        @include('livewire.boards.partials.calendar')
+    @endif
 
     {{-- Trash / archive panel --}}
     @if ($showTrash)

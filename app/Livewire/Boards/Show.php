@@ -12,10 +12,13 @@ use App\Models\Card;
 use App\Models\CardTemplate;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -38,6 +41,13 @@ class Show extends Component
     public ?int $filterMember = null;
 
     public string $filterDue = '';
+
+    /** Active view mode: 'board' or 'calendar' (synced to the URL). */
+    #[Url]
+    public string $view = 'board';
+
+    /** Currently displayed calendar month as 'Y-m'. */
+    public string $calendarMonth = '';
 
     public bool $showTrash = false;
 
@@ -111,6 +121,29 @@ class Show extends Component
         $this->authorize('view', $board);
 
         $this->board = $board;
+
+        if ($this->calendarMonth === '') {
+            $this->calendarMonth = now()->format('Y-m');
+        }
+
+        if (! in_array($this->view, ['board', 'calendar'], true)) {
+            $this->view = 'board';
+        }
+    }
+
+    public function setView(string $view): void
+    {
+        $this->view = in_array($view, ['board', 'calendar'], true) ? $view : 'board';
+    }
+
+    public function calendarStep(int $months): void
+    {
+        $this->calendarMonth = Carbon::parse($this->calendarMonth.'-01')->addMonths($months)->format('Y-m');
+    }
+
+    public function calendarToday(): void
+    {
+        $this->calendarMonth = now()->format('Y-m');
     }
 
     public function resetFilters(): void
@@ -721,24 +754,27 @@ class Show extends Component
 
     public function render(): View
     {
-        $lists = $this->board->lists()
-            ->whereNull('archived_at')
-            ->with([
-                'cards' => function ($query) {
-                    $query->whereNull('archived_at')->orderBy('position')->withCount('attachments');
-                    $this->applyCardFilters($query);
-                },
-                'cards.members',
-                'cards.labels',
-                'cards.checklists.items',
-            ])
-            ->orderBy('position')
-            ->get();
+        $lists = $this->view === 'board'
+            ? $this->board->lists()
+                ->whereNull('archived_at')
+                ->with([
+                    'cards' => function ($query) {
+                        $query->whereNull('archived_at')->orderBy('position')->withCount('attachments');
+                        $this->applyCardFilters($query);
+                    },
+                    'cards.members',
+                    'cards.labels',
+                    'cards.checklists.items',
+                ])
+                ->orderBy('position')
+                ->get()
+            : collect();
 
         $boardMembers = $this->board->members()->orderBy('name')->get();
 
         return view('livewire.boards.show', [
             'lists' => $lists,
+            'calendar' => $this->view === 'calendar' ? $this->buildCalendar() : null,
             'labels' => $this->board->labels,
             'members' => $boardMembers,
             'boardMembers' => $boardMembers,
@@ -751,6 +787,56 @@ class Show extends Component
             'cardTemplates' => CardTemplate::orderBy('name')->get(),
             'views' => $this->board->views()->where('user_id', Auth::id())->latest()->get(),
         ]);
+    }
+
+    /**
+     * Build the month grid for the calendar view: 6 weeks of day cells with the
+     * board's dated cards (grouped by due date, falling back to start date).
+     *
+     * @return array{label: string, weekDays: array<int, string>, weeks: array<int, array<int, array{date: Carbon, day: int, inMonth: bool, isToday: bool, cards: Collection<int, Card>}>>}
+     */
+    private function buildCalendar(): array
+    {
+        $month = Carbon::parse($this->calendarMonth.'-01');
+        $gridStart = $month->copy()->startOfMonth()->startOfWeek(Carbon::MONDAY);
+        $gridEnd = $month->copy()->endOfMonth()->endOfWeek(Carbon::SUNDAY);
+        $rangeEnd = $gridEnd->copy()->endOfDay();
+
+        $query = $this->board->cards()
+            ->whereNull('archived_at')
+            ->where(function ($q) use ($gridStart, $rangeEnd) {
+                $q->whereBetween('due_at', [$gridStart, $rangeEnd])
+                    ->orWhere(function ($nested) use ($gridStart, $rangeEnd) {
+                        $nested->whereNull('due_at')->whereBetween('start_at', [$gridStart, $rangeEnd]);
+                    });
+            })
+            ->with(['labels', 'members']);
+
+        $this->applyCardFilters($query);
+
+        $byDay = $query->get()->groupBy(fn (Card $card) => ($card->due_at ?? $card->start_at)->toDateString());
+
+        $days = [];
+        for ($day = $gridStart->copy(); $day <= $gridEnd; $day->addDay()) {
+            $days[] = [
+                'date' => $day->copy(),
+                'day' => $day->day,
+                'inMonth' => $day->month === $month->month,
+                'isToday' => $day->isToday(),
+                'cards' => $byDay->get($day->toDateString(), collect()),
+            ];
+        }
+
+        $weekDays = [];
+        for ($wd = $gridStart->copy(), $i = 0; $i < 7; $i++, $wd->addDay()) {
+            $weekDays[] = $wd->translatedFormat('D');
+        }
+
+        return [
+            'label' => $month->translatedFormat('F Y'),
+            'weekDays' => $weekDays,
+            'weeks' => array_chunk($days, 7),
+        ];
     }
 
     /**
