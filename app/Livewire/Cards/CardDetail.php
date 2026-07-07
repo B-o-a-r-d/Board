@@ -7,6 +7,7 @@ use App\Events\BoardActivity;
 use App\Models\Activity;
 use App\Models\Board;
 use App\Models\Card;
+use App\Models\CardLink;
 use App\Models\CardTemplate;
 use App\Models\ChecklistItem;
 use App\Models\LinkPreview;
@@ -193,6 +194,56 @@ class CardDetail extends Component
         $card = $this->guardedCard();
 
         $card->watchers()->toggle(Auth::id());
+    }
+
+    public string $linkType = 'blocks';
+
+    public string $linkSearch = '';
+
+    /**
+     * Link another card on the same board. Types are normalised so only
+     * 'blocks' and (symmetric) 'relates_to' rows are stored.
+     */
+    public function linkCard(int $relatedCardId, ?string $type = null): void
+    {
+        $card = $this->guardedCard();
+
+        $type ??= $this->linkType;
+
+        if (! in_array($type, ['blocks', 'blocked_by', 'relates_to'], true)) {
+            return;
+        }
+
+        $related = $this->board->cards()->whereKey($relatedCardId)->first();
+
+        if (! $related || $related->id === $card->id) {
+            return;
+        }
+
+        if ($type === 'relates_to') {
+            CardLink::firstOrCreate([
+                'card_id' => min($card->id, $related->id),
+                'related_card_id' => max($card->id, $related->id),
+                'type' => 'relates_to',
+            ]);
+        } else {
+            [$from, $to] = $type === 'blocks' ? [$card->id, $related->id] : [$related->id, $card->id];
+            CardLink::firstOrCreate(['card_id' => $from, 'related_card_id' => $to, 'type' => 'blocks']);
+        }
+
+        $this->linkSearch = '';
+        $this->touched('card.linked');
+    }
+
+    public function unlinkCard(int $linkId): void
+    {
+        $card = $this->guardedCard();
+
+        CardLink::whereKey($linkId)
+            ->where(fn ($q) => $q->where('card_id', $card->id)->orWhere('related_card_id', $card->id))
+            ->delete();
+
+        $this->touched('card.unlinked');
     }
 
     public function toggleMember(int $userId): void
@@ -723,12 +774,39 @@ class CardDetail extends Component
                 ->find($this->cardId)
             : null;
 
+        $cardLinks = ['blocks' => collect(), 'blockedBy' => collect(), 'relates' => collect()];
+        $linkCandidates = collect();
+
+        if ($card) {
+            $cardLinks['blocks'] = CardLink::where('card_id', $card->id)->where('type', 'blocks')->with('relatedCard')->get();
+            $cardLinks['blockedBy'] = CardLink::where('related_card_id', $card->id)->where('type', 'blocks')->with('card')->get();
+            $cardLinks['relates'] = CardLink::where('type', 'relates_to')
+                ->where(fn ($q) => $q->where('card_id', $card->id)->orWhere('related_card_id', $card->id))
+                ->with(['card', 'relatedCard'])->get();
+
+            if (trim($this->linkSearch) !== '') {
+                $linkedIds = collect([$card->id])
+                    ->merge($cardLinks['blocks']->pluck('related_card_id'))
+                    ->merge($cardLinks['blockedBy']->pluck('card_id'))
+                    ->merge($cardLinks['relates']->flatMap(fn ($l) => [$l->card_id, $l->related_card_id]))
+                    ->unique()->all();
+
+                $linkCandidates = $this->board->cards()
+                    ->whereNull('archived_at')
+                    ->whereKeyNot($linkedIds)
+                    ->whereRaw('LOWER(title) LIKE ?', ['%'.mb_strtolower(trim($this->linkSearch)).'%'])
+                    ->orderBy('title')->limit(8)->get();
+            }
+        }
+
         return view('livewire.cards.card-detail', [
             'card' => $card,
             'boardMembers' => $this->board->members,
             'boardLabels' => $this->board->labels,
             'cardButtons' => $this->board->automations()->where('trigger_type', 'manual')->where('is_active', true)->get(),
             'reactionEmojis' => self::REACTIONS,
+            'cardLinks' => $cardLinks,
+            'linkCandidates' => $linkCandidates,
         ]);
     }
 }

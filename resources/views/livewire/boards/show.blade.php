@@ -1,4 +1,13 @@
-<div class="flex h-[calc(100dvh-8rem)] flex-col">
+<div x-data="{ selected: [], helpOpen: false }"
+     @keydown.window="
+        if ($event.metaKey || $event.ctrlKey || $event.altKey) return;
+        if ($event.target.matches('input, textarea, select, [contenteditable]')) return;
+        if ($event.key === '/') { $event.preventDefault(); document.getElementById('board-search')?.focus(); }
+        else if ($event.key === 'b') { $wire.setView('board'); }
+        else if ($event.key === 'c') { $wire.setView('calendar'); }
+        else if ($event.key === '?') { helpOpen = true; }
+     "
+     class="flex h-[calc(100dvh-8rem)] flex-col">
     {{-- Board header --}}
     <div class="mb-3 flex flex-col gap-3 sm:mb-4 sm:flex-row sm:items-start sm:justify-between">
         <div class="min-w-0">
@@ -66,6 +75,12 @@
                         <x-phosphor-calendar-blank class="h-4 w-4"/><span class="hidden sm:inline">{{ __('Calendrier') }}</span>
                     </button>
                 </div>
+
+                <button type="button" @click="helpOpen = true"
+                        class="hidden h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-600 hover:bg-neutral-100 sm:flex dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                        title="{{ __('Raccourcis clavier') }} (?)">
+                    <x-phosphor-keyboard class="h-4 w-4"/>
+                </button>
 
                 @if ($view === 'board')
                     <button type="button"
@@ -155,6 +170,7 @@
                 <x-phosphor-magnifying-glass class="pointer-events-none absolute left-2.5 top-2 h-4 w-4 text-neutral-400"/>
                 <input
                     type="search"
+                    id="board-search"
                     wire:model.live.debounce.300ms="search"
                     placeholder="{{ __('Rechercher une carte…') }}"
                     class="w-full rounded-lg border border-neutral-300 bg-white py-1.5 pl-8 pr-8 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none sm:w-56 dark:border-neutral-700 dark:bg-neutral-800"
@@ -373,8 +389,18 @@
                         <li
                             wire:key="card-{{ $card->id }}"
                             wire:sort:item="{{ $card->id }}"
-                            class="group shrink-0 cursor-grab overflow-hidden rounded-lg border border-neutral-200 bg-white text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-800"
+                            class="group relative shrink-0 cursor-grab overflow-hidden rounded-lg border border-neutral-200 bg-white text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-800"
+                            :class="selected.includes({{ $card->id }}) && 'ring-2 ring-indigo-500 ring-offset-1 dark:ring-offset-neutral-900'"
                         >
+                            {{-- Multi-select checkbox --}}
+                            <label wire:sort:ignore @click.stop
+                                   class="absolute left-1.5 top-1.5 z-10 flex cursor-pointer opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100"
+                                   :class="selected.length && '!opacity-100'">
+                                <input type="checkbox" class="h-4 w-4 cursor-pointer rounded border-neutral-300 accent-indigo-600 dark:border-neutral-600"
+                                       :checked="selected.includes({{ $card->id }})"
+                                       @change="selected.includes({{ $card->id }}) ? selected = selected.filter(i => i !== {{ $card->id }}) : selected.push({{ $card->id }})">
+                            </label>
+
                             <x-context-menu class="block">
                                 <x-slot:trigger>
                                     @if ($card->cover_path)
@@ -528,6 +554,39 @@
             >
             @error('newListName') <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
         </form>
+    </div>
+
+    {{-- Bulk actions bar (shown when cards are multi-selected) --}}
+    <div x-show="selected.length > 0" x-cloak
+         class="fixed inset-x-0 bottom-4 z-40 mx-auto flex w-max max-w-[calc(100vw-1.5rem)] flex-wrap items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 shadow-xl dark:border-neutral-700 dark:bg-neutral-900">
+        <span class="text-sm font-medium" x-text="selected.length + ' {{ __('sélectionnée(s)') }}'"></span>
+
+        <div x-data="{ o: false }" @click.outside="o = false" class="relative">
+            <button type="button" @click="o = ! o" class="flex items-center gap-1 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"><x-phosphor-arrows-left-right class="h-4 w-4"/> {{ __('Déplacer') }}</button>
+            <div x-show="o" x-cloak class="absolute bottom-full left-0 mb-1 max-h-56 w-48 overflow-y-auto rounded-lg border border-neutral-200 bg-white p-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+                @foreach ($lists as $bulkList)
+                    <button type="button" @click="$wire.bulkMove(selected, {{ $bulkList->id }}); selected = []; o = false" class="block w-full truncate rounded px-2 py-1.5 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800">{{ $bulkList->name }}</button>
+                @endforeach
+            </div>
+        </div>
+
+        @if ($labels->isNotEmpty())
+            <div x-data="{ o: false }" @click.outside="o = false" class="relative">
+                <button type="button" @click="o = ! o" class="flex items-center gap-1 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"><x-phosphor-tag class="h-4 w-4"/> {{ __('Label') }}</button>
+                <div x-show="o" x-cloak class="absolute bottom-full left-0 mb-1 max-h-56 w-52 overflow-y-auto rounded-lg border border-neutral-200 bg-white p-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+                    @foreach ($labels as $bulkLabel)
+                        <button type="button" @click="$wire.bulkAddLabel(selected, {{ $bulkLabel->id }}); selected = []; o = false" class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800">
+                            <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background-color: {{ $bulkLabel->color }}"></span>
+                            <span class="truncate">{{ $bulkLabel->name ?? __('Sans nom') }}</span>
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
+        <button type="button" @click="$wire.bulkArchive(selected); selected = []" class="flex items-center gap-1 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:border-neutral-700 dark:text-red-400 dark:hover:bg-red-500/10"><x-phosphor-archive class="h-4 w-4"/> {{ __('Archiver') }}</button>
+
+        <button type="button" @click="selected = []" class="rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200" title="{{ __('Désélectionner') }}"><x-phosphor-x class="h-4 w-4"/></button>
     </div>
     @else
         @include('livewire.boards.partials.calendar')
@@ -761,6 +820,34 @@
     @can('update', $board)
         <livewire:boards.automations :board="$board" :show-trigger="false" wire:key="automations-{{ $board->id }}"/>
     @endcan
+
+    {{-- Keyboard shortcuts help (desktop) --}}
+    <div x-show="helpOpen" x-cloak x-transition.opacity @keydown.escape.window="helpOpen = false" @click="helpOpen = false"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/50 p-4 backdrop-blur-sm">
+        <div @click.stop class="w-full max-w-sm rounded-2xl border border-neutral-200 bg-white p-5 shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
+            <div class="mb-3 flex items-center justify-between">
+                <h2 class="flex items-center gap-2 text-base font-semibold"><x-phosphor-keyboard class="h-5 w-5"/> {{ __('Raccourcis clavier') }}</h2>
+                <button type="button" @click="helpOpen = false" class="rounded-full p-1.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"><x-phosphor-x class="h-4 w-4"/></button>
+            </div>
+            @php
+                $shortcuts = [
+                    __('Rechercher une carte') => '/',
+                    __('Vue tableau') => 'B',
+                    __('Vue calendrier') => 'C',
+                    __('Fermer / annuler') => 'Échap',
+                    __('Afficher cette aide') => '?',
+                ];
+            @endphp
+            <ul class="space-y-2 text-sm">
+                @foreach ($shortcuts as $label => $key)
+                    <li class="flex items-center justify-between gap-3">
+                        <span class="text-neutral-600 dark:text-neutral-300">{{ $label }}</span>
+                        <kbd class="rounded border border-neutral-300 bg-neutral-100 px-1.5 py-0.5 font-mono text-xs text-neutral-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">{{ $key }}</kbd>
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+    </div>
 
     <livewire:cards.card-detail :board="$board" wire:key="card-detail-{{ $board->id }}"/>
 </div>

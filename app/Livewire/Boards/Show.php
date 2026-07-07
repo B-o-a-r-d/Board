@@ -702,6 +702,73 @@ class Show extends Component
     }
 
     /**
+     * Bulk-archive the given cards (from the multi-select action bar).
+     *
+     * @param  array<int, int>  $cardIds
+     */
+    public function bulkArchive(array $cardIds): void
+    {
+        $this->authorize('view', $this->board);
+
+        $cards = $this->board->cards()->whereIn('id', $cardIds)->whereNull('archived_at')->get();
+
+        foreach ($cards as $card) {
+            $card->update(['archived_at' => now()]);
+        }
+
+        $cards->pluck('board_list_id')->unique()->each(fn ($listId) => $this->resequence($listId));
+
+        if ($cards->isNotEmpty()) {
+            $this->broadcastActivity('card.archived');
+        }
+    }
+
+    /**
+     * Bulk-move the given cards to a list, appended in order.
+     *
+     * @param  array<int, int>  $cardIds
+     */
+    public function bulkMove(array $cardIds, int $listId): void
+    {
+        $this->authorize('view', $this->board);
+
+        $target = $this->listForBoard($listId);
+        $cards = $this->board->cards()->whereIn('id', $cardIds)->whereNull('archived_at')->get();
+        $sourceListIds = $cards->pluck('board_list_id')->unique();
+        $position = (int) $target->cards()->max('position');
+
+        foreach ($cards as $card) {
+            $card->update(['board_list_id' => $target->id, 'position' => ++$position]);
+        }
+
+        $sourceListIds->reject(fn ($id) => $id === $target->id)->each(fn ($id) => $this->resequence($id));
+        $this->resequence($target->id);
+
+        if ($cards->isNotEmpty()) {
+            $this->broadcastActivity('card.moved');
+        }
+    }
+
+    /**
+     * Bulk-attach a label to the given cards.
+     *
+     * @param  array<int, int>  $cardIds
+     */
+    public function bulkAddLabel(array $cardIds, int $labelId): void
+    {
+        $this->authorize('view', $this->board);
+
+        if (! $this->board->labels()->whereKey($labelId)->exists()) {
+            return;
+        }
+
+        $this->board->cards()->whereIn('id', $cardIds)->whereNull('archived_at')->get()
+            ->each(fn (Card $card) => $card->labels()->syncWithoutDetaching([$labelId]));
+
+        $this->broadcastActivity('card.labels');
+    }
+
+    /**
      * Renumber a list's cards, optionally inserting a moved card at a position.
      */
     private function resequence(int $listId, ?int $movedId = null, ?int $position = null): void

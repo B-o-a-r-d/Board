@@ -5,6 +5,7 @@ use App\Livewire\Boards\Show;
 use App\Models\Board;
 use App\Models\BoardList;
 use App\Models\Card;
+use App\Models\Label;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\UploadedFile;
@@ -400,4 +401,48 @@ test('a list cover image is uploaded and removed', function () {
         ->call('removeListCover', $list->id);
     expect($list->fresh()->cover_path)->toBeNull();
     Storage::disk('public')->assertMissing($path);
+});
+
+test('bulk archive archives only the selected cards', function () {
+    ['board' => $board, 'owner' => $owner] = makeBoard();
+    $list = BoardList::factory()->create(['board_id' => $board->id]);
+    $a = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id]);
+    $b = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id]);
+    $keep = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id]);
+
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+        ->call('bulkArchive', [$a->id, $b->id]);
+
+    expect($a->fresh()->archived_at)->not->toBeNull()
+        ->and($b->fresh()->archived_at)->not->toBeNull()
+        ->and($keep->fresh()->archived_at)->toBeNull();
+});
+
+test('bulk move relocates the selected cards to a list', function () {
+    ['board' => $board, 'owner' => $owner] = makeBoard();
+    $src = BoardList::factory()->create(['board_id' => $board->id]);
+    $dst = BoardList::factory()->create(['board_id' => $board->id]);
+    $a = Card::factory()->create(['board_list_id' => $src->id, 'board_id' => $board->id]);
+    $b = Card::factory()->create(['board_list_id' => $src->id, 'board_id' => $board->id]);
+
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+        ->call('bulkMove', [$a->id, $b->id], $dst->id);
+
+    expect($a->fresh()->board_list_id)->toBe($dst->id)
+        ->and($b->fresh()->board_list_id)->toBe($dst->id)
+        ->and($dst->cards()->count())->toBe(2);
+});
+
+test('bulk add label attaches a label to the selected cards', function () {
+    ['board' => $board, 'owner' => $owner] = makeBoard();
+    $list = BoardList::factory()->create(['board_id' => $board->id]);
+    $a = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id]);
+    $b = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id]);
+    $label = Label::factory()->create(['board_id' => $board->id]);
+
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+        ->call('bulkAddLabel', [$a->id, $b->id], $label->id);
+
+    expect($a->labels()->whereKey($label->id)->exists())->toBeTrue()
+        ->and($b->labels()->whereKey($label->id)->exists())->toBeTrue();
 });
