@@ -3,7 +3,6 @@
 use App\Enums\Role;
 use App\Livewire\Boards\PluginList;
 use App\Livewire\Boards\Show;
-use App\Livewire\Cards\CardDetail;
 use App\Mcp\Servers\BoardServer;
 use App\Models\Activity;
 use App\Models\Board;
@@ -13,7 +12,6 @@ use App\Models\Card;
 use App\Models\User;
 use App\Models\Workspace;
 use Board\PluginSdk\Contracts\DefinesActivities;
-use Board\PluginSdk\Contracts\EnrichesCards;
 use Board\PluginSdk\Contracts\ProvidesListSource;
 use Board\PluginSdk\Contracts\ProvidesMcpTools;
 use Board\PluginSdk\Contracts\ProvidesOAuth;
@@ -73,7 +71,6 @@ test('the connector plugin auto-registers into the registry via its provider', f
         ->and($plugin->requiresOAuth())->toBeTrue()
         ->and($plugin)->toBeInstanceOf(ProvidesListSource::class)
         ->and($plugin)->toBeInstanceOf(DefinesActivities::class)
-        ->and($plugin)->toBeInstanceOf(EnrichesCards::class)
         ->and($plugin)->toBeInstanceOf(ProvidesMcpTools::class)
         ->and($plugin)->toBeInstanceOf(ProvidesOAuth::class);
 });
@@ -87,57 +84,6 @@ test('activity describe() delegates to the plugin for its own types', function (
 
     expect($activity->describe())->toBe('linked the item "Fix the bug"')
         ->and($activity->pluginKey())->toBe('acme');
-});
-
-test('linking a connector ref to a card stores a ref and logs a plugin activity', function () {
-    Http::fake([
-        'api.acme.test/items/*' => Http::response([
-            'id' => 'A123',
-            'title' => 'Fix the bug',
-            'author' => 'Octo',
-            'url' => 'https://acme.test/items/A123',
-            'created_at' => '2026-07-07T10:00:00Z',
-        ]),
-    ]);
-
-    ['board' => $board, 'owner' => $owner] = makePluginBoard();
-    $instance = $board->plugins()->create([
-        'plugin_key' => 'acme', 'name' => 'Acme', 'config' => ['token' => 't'], 'is_active' => true,
-    ]);
-    $list = BoardList::factory()->create(['board_id' => $board->id]);
-    $card = Card::factory()->create(['board_id' => $board->id, 'board_list_id' => $list->id]);
-
-    Livewire::actingAs($owner)->test(CardDetail::class, ['board' => $board])
-        ->call('openCard', $card->id)
-        ->call('addPluginRef', $instance->id, 'item', 'https://acme.test/items/A123')
-        ->assertHasNoErrors();
-
-    $ref = $card->pluginRefs()->firstOrFail();
-    expect($ref->plugin_key)->toBe('acme')
-        ->and($ref->ref_type)->toBe('item')
-        ->and($ref->ref_id)->toBe('A123')
-        ->and($ref->payload['title'])->toBe('Fix the bug');
-
-    $activity = Activity::where('type', 'acme.ref_linked')->latest('id')->firstOrFail();
-    expect($activity->source)->toBe('plugin:acme')
-        ->and($activity->card_id)->toBe($card->id);
-});
-
-test('an unresolvable ref shows an error and stores nothing', function () {
-    Http::fake(['api.acme.test/*' => Http::response([], 404)]);
-
-    ['board' => $board, 'owner' => $owner] = makePluginBoard();
-    $instance = $board->plugins()->create([
-        'plugin_key' => 'acme', 'name' => 'Acme', 'config' => ['token' => 't'], 'is_active' => true,
-    ]);
-    $list = BoardList::factory()->create(['board_id' => $board->id]);
-    $card = Card::factory()->create(['board_id' => $board->id, 'board_list_id' => $list->id]);
-
-    Livewire::actingAs($owner)->test(CardDetail::class, ['board' => $board])
-        ->call('openCard', $card->id)
-        ->call('addPluginRef', $instance->id, 'item', 'garbage-input');
-
-    expect($card->pluginRefs()->count())->toBe(0);
 });
 
 test('the slide-over shows a plugin tab only when that plugin has activity', function () {

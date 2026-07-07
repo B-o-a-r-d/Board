@@ -3,7 +3,6 @@
 namespace Tests\Fixtures\Connector;
 
 use Board\PluginSdk\Contracts\DefinesActivities;
-use Board\PluginSdk\Contracts\EnrichesCards;
 use Board\PluginSdk\Contracts\Plugin;
 use Board\PluginSdk\Contracts\ProvidesListSource;
 use Board\PluginSdk\Contracts\ProvidesMcpTools;
@@ -21,7 +20,7 @@ use Illuminate\Support\Facades\Http;
  *
  * All I/O targets the fake `acme.test` host so tests can `Http::fake()` it.
  */
-class AcmePlugin implements DefinesActivities, EnrichesCards, Plugin, ProvidesListSource, ProvidesMcpTools, ProvidesOAuth
+class AcmePlugin implements DefinesActivities, Plugin, ProvidesListSource, ProvidesMcpTools, ProvidesOAuth
 {
     public const AUTHORIZE_URL = 'https://acme.test/oauth/authorize';
 
@@ -132,37 +131,6 @@ class AcmePlugin implements DefinesActivities, EnrichesCards, Plugin, ProvidesLi
         ));
     }
 
-    // --- EnrichesCards --------------------------------------------------------
-
-    public function cardRefTypes(): array
-    {
-        return [['key' => 'item', 'label' => 'Item']];
-    }
-
-    public function resolveCardRef(array $config, string $type, string $rawRef): ?array
-    {
-        $id = $this->parseRef($rawRef);
-
-        if ($id === null) {
-            return null;
-        }
-
-        $item = $this->client($config)->get(self::API.'/items/'.$id)->json();
-
-        if (! is_array($item) || empty($item['id'])) {
-            return null;
-        }
-
-        return [
-            'ref_id' => (string) $item['id'],
-            'title' => (string) ($item['title'] ?? ''),
-            'subtitle' => (string) ($item['author'] ?? '—'),
-            'url' => (string) ($item['url'] ?? ''),
-            'icon' => 'file',
-            'timestamp' => (string) ($item['created_at'] ?? ''),
-        ];
-    }
-
     // --- DefinesActivities ----------------------------------------------------
 
     public function activityTab(): array
@@ -203,23 +171,5 @@ class AcmePlugin implements DefinesActivities, EnrichesCards, Plugin, ProvidesLi
     private function client(array $config): PendingRequest
     {
         return Http::withToken((string) ($config['token'] ?? ''))->acceptJson();
-    }
-
-    /**
-     * Parse "…/items/{id}" or "item#{id}" into the item id, or null.
-     */
-    private function parseRef(string $raw): ?string
-    {
-        $raw = trim($raw);
-
-        if (preg_match('#items/([A-Za-z0-9]+)#', $raw, $m)) {
-            return $m[1];
-        }
-
-        if (preg_match('#^item\#(\d+)$#', $raw, $m)) {
-            return $m[1];
-        }
-
-        return null;
     }
 }

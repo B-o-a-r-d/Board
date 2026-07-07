@@ -85,9 +85,4 @@ class Card extends Model
     {
         return $this->hasMany(CustomFieldValue::class);
     }
-
-    public function pluginRefs(): HasMany
-    {
-        return $this->hasMany(CardPluginRef::class)->latest();
-    }
 }
