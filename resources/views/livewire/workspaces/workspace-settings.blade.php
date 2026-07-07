@@ -61,17 +61,17 @@
             @foreach ($members as $member)
                 @php $isOwner = $member->id === $workspace->owner_id; @endphp
                 <li wire:key="member-{{ $member->id }}" class="flex items-center justify-between gap-3 py-3">
-                    <div class="flex items-center gap-3">
-                        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
+                    <div class="flex min-w-0 items-center gap-3">
+                        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
                             {{ Str::of($member->name)->substr(0, 1)->upper() }}
                         </span>
-                        <div>
-                            <p class="text-sm font-medium">{{ $member->name }}</p>
-                            <p class="text-xs text-neutral-500 dark:text-neutral-400">{{ $member->email }}</p>
+                        <div class="min-w-0">
+                            <p class="truncate text-sm font-medium">{{ $member->name }}</p>
+                            <p class="truncate text-xs text-neutral-500 dark:text-neutral-400">{{ $member->email }}</p>
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-2">
+                    <div class="flex shrink-0 items-center gap-2">
                         @if ($isOwner)
                             <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">{{ __('Propriétaire') }}</span>
                         @elseif ($canManage)

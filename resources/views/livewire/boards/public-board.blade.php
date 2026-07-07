@@ -1,15 +1,15 @@
-<div class="flex h-[calc(100vh-8rem)] flex-col">
+<div class="flex h-[calc(100dvh-8rem)] flex-col">
     {{-- Board header --}}
-    <div class="mb-4 flex items-start justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-semibold tracking-tight">{{ $board->name }}</h1>
+    <div class="mb-3 flex flex-col gap-3 sm:mb-4 sm:flex-row sm:items-start sm:justify-between">
+        <div class="text-center sm:text-left">
+            <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">{{ $board->name }}</h1>
             <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ $board->workspace->name }} · {{ __('Tableau partagé en lecture seule') }}</p>
         </div>
 
         {{-- Everyone currently on this board (members + anonymous guests) --}}
         <div
             x-data="publicPresence(@js($board->share_token), {{ $board->id }})"
-            class="flex items-center -space-x-2"
+            class="flex items-center justify-center -space-x-2 sm:justify-end"
             wire:ignore
         >
             <template x-for="viewer in viewers" :key="viewer.id">
@@ -29,12 +29,12 @@
     {{-- Lists (columns) --}}
     <div
         @if ($boardBg) style="background: {{ $boardBg }};" @endif
-        class="flex flex-1 items-start gap-4 overflow-x-auto py-4 {{ $boardBg ? 'rounded-xl px-3' : '' }}"
+        class="flex flex-1 snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-p-1 py-4 sm:snap-none sm:gap-4 {{ $boardBg ? 'rounded-xl px-3' : '' }}"
     >
         @forelse ($lists as $list)
             <div
                 wire:key="public-list-{{ $list->id }}"
-                class="flex max-h-full w-72 shrink-0 flex-col overflow-hidden rounded-xl bg-neutral-200/70 dark:bg-neutral-900"
+                class="flex max-h-full w-full shrink-0 snap-start flex-col overflow-hidden rounded-xl bg-neutral-200/70 sm:w-72 dark:bg-neutral-900"
             >
                 @if ($list->cover_color)
                     <div class="h-2 w-full" style="background-color: {{ $list->cover_color }}"></div>
