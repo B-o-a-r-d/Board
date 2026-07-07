@@ -105,7 +105,7 @@
                 <p class="text-xs font-medium text-amber-700 dark:text-amber-400">{{ __('Copiez ce jeton maintenant — il ne sera plus affiché.') }}</p>
                 <div class="mt-2 flex items-center gap-2" x-data="{ copied: false }">
                     <input type="text" readonly value="{{ $newToken }}" @focus="$el.select()" class="flex-1 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 font-mono text-xs dark:border-neutral-700 dark:bg-neutral-800">
-                    <button type="button" @click="navigator.clipboard?.writeText('{{ $newToken }}'); copied = true; setTimeout(() => copied = false, 1500)" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500"><span x-text="copied ? '{{ __('Copié !') }}' : '{{ __('Copier') }}'"></span></button>
+                    <button type="button" @click="navigator.clipboard?.writeText('{{ $newToken }}'); window.toast('{{ __('Copié !') }}', { type: 'success' }); copied = true; setTimeout(() => copied = false, 1500)" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500"><span x-text="copied ? '{{ __('Copié !') }}' : '{{ __('Copier') }}'"></span></button>
                 </div>
             </div>
         @endif
@@ -194,7 +194,7 @@ args = ["-y", "mcp-remote", "'.$mcpEndpoint.'", "--header", "Authorization: Bear
                     <div x-data="{ copied: false }">
                         <div class="mb-1 flex items-center justify-between">
                             <span class="text-xs font-semibold uppercase tracking-wide text-neutral-500">{{ $label }}</span>
-                            <button type="button" @click="navigator.clipboard?.writeText($refs.code.textContent); copied = true; setTimeout(() => copied = false, 1500)" class="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"><span x-text="copied ? '{{ __('Copié !') }}' : '{{ __('Copier') }}'"></span></button>
+                            <button type="button" @click="navigator.clipboard?.writeText($refs.code.textContent); window.toast('{{ __('Copié !') }}', { type: 'success' }); copied = true; setTimeout(() => copied = false, 1500)" class="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"><span x-text="copied ? '{{ __('Copié !') }}' : '{{ __('Copier') }}'"></span></button>
                         </div>
                         <pre x-ref="code" class="overflow-x-auto rounded-lg bg-neutral-900 p-3 font-mono text-xs text-neutral-100 dark:bg-neutral-950">{{ $snippet }}</pre>
                     </div>

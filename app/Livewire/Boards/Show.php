@@ -449,6 +449,40 @@ class Show extends Component
     }
 
     /**
+     * Move a card to the end of another list without drag & drop — the reliable
+     * path on touch devices, exposed via the card's "Déplacer vers…" menu. Unlike
+     * moveCard this always re-renders so the actor sees the card jump columns.
+     */
+    public function moveCardToList(int $cardId, int $listId): void
+    {
+        $this->authorize('view', $this->board);
+
+        $card = $this->cardForBoard($cardId);
+        $targetList = $this->listForBoard($listId);
+        $sourceListId = $card->board_list_id;
+
+        if ($sourceListId === $targetList->id) {
+            return;
+        }
+
+        $card->board_list_id = $targetList->id;
+        $card->position = (int) $targetList->cards()->max('position') + 1;
+        $card->save();
+
+        $this->resequence($targetList->id);
+        $this->resequence($sourceListId);
+
+        $this->logActivity('card.moved', $card->id, ['to_list' => $targetList->name]);
+
+        app(AutomationEngine::class)->fire('card.moved', $card->fresh(), [
+            'to_list_id' => $targetList->id,
+            'from_list_id' => $sourceListId,
+        ]);
+
+        $this->broadcastActivity('card.moved');
+    }
+
+    /**
      * Renumber a list's cards, optionally inserting a moved card at a position.
      */
     private function resequence(int $listId, ?int $movedId = null, ?int $position = null): void

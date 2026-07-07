@@ -13,9 +13,15 @@
 
     <script>
         (function () {
-            const stored = localStorage.getItem('theme');
-            const dark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-            document.documentElement.classList.toggle('dark', dark);
+            const applyTheme = () => {
+                const stored = localStorage.getItem('theme');
+                const dark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+                document.documentElement.classList.toggle('dark', dark);
+            };
+            applyTheme();
+            // wire:navigate morphs <html> back to the server markup (no .dark class),
+            // so re-apply the stored theme after every SPA navigation to avoid a flash.
+            document.addEventListener('livewire:navigated', applyTheme);
         })();
     </script>
 
@@ -26,7 +32,7 @@
         <div class="w-full max-w-md">
             <a href="{{ url('/') }}" class="mb-8 flex items-center justify-center gap-2">
                 <img srcset="{{ asset('logo.png') }}" alt="icon" class="h-10"/>
-                <span class="font-semibold tracking-tight">{{ config('app.name') }}</span>
+                <span class="hidden font-semibold tracking-tight sm:inline">{{ config('app.name') }}</span>
             </a>
 
             <div class="rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">

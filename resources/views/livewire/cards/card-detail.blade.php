@@ -10,7 +10,7 @@
 
                 <button type="button" wire:click="close" class="absolute right-3 top-3 rounded-full bg-white/80 p-1.5 text-neutral-600 shadow hover:bg-white dark:bg-neutral-800/80 dark:text-neutral-300"><x-phosphor-x class="h-5 w-5" /></button>
 
-                <div class="grid gap-6 p-6 sm:grid-cols-3 mt-6">
+                <div class="mt-6 grid gap-6 p-4 sm:grid-cols-3 sm:p-6">
                     {{-- Main column --}}
                     <div class="space-y-6 sm:col-span-2">
                         <form wire:submit="saveDetails" class="flex items-start gap-2">
@@ -100,7 +100,7 @@
                                         @foreach ($checklist->items as $item)
                                             <li wire:key="item-{{ $item->id }}" class="group flex items-center gap-2 text-sm">
                                                 <x-checkbox :checked="$item->is_completed" :label="$item->content" wire:click="toggleChecklistItem({{ $item->id }})" wire:key="cbitem-{{ $item->id }}-{{ $item->is_completed }}" />
-                                                <button type="button" wire:click="deleteChecklistItem({{ $item->id }})" class="ml-auto text-xs text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-red-500"><x-phosphor-x class="h-3.5 w-3.5" /></button>
+                                                <button type="button" wire:click="deleteChecklistItem({{ $item->id }})" class="ml-auto text-xs text-neutral-300 opacity-100 hover:text-red-500 group-hover:opacity-100 sm:opacity-0"><x-phosphor-x class="h-3.5 w-3.5" /></button>
                                             </li>
                                         @endforeach
                                     </ul>
@@ -299,9 +299,9 @@
                                                 <span class="text-sm font-medium">{{ $comment->user?->name ?? 'Utilisateur supprimé' }}</span>
                                                 <span class="text-xs text-neutral-400">{{ $comment->created_at->diffForHumans() }}</span>
                                                 <div class="ml-auto flex items-center gap-2" x-data="{ copied: false }">
-                                                    <button type="button" @click="navigator.clipboard?.writeText('{{ route('boards.show', ['board' => $board, 'card' => $card->public_id]) }}#comment-{{ $comment->id }}'); copied = true; setTimeout(() => copied = false, 1500)" class="text-xs text-neutral-300 opacity-0 transition hover:text-indigo-500 group-hover/comment:opacity-100" title="{{ __('Copier le lien du commentaire') }}"><span x-text="copied ? 'Copié !' : 'Lien'"></span></button>
+                                                    <button type="button" @click="navigator.clipboard?.writeText('{{ route('boards.show', ['board' => $board, 'card' => $card->public_id]) }}#comment-{{ $comment->id }}'); window.toast('{{ __('Lien copié') }}', { type: 'success' }); copied = true; setTimeout(() => copied = false, 1500)" class="text-xs text-neutral-300 opacity-100 transition hover:text-indigo-500 group-hover/comment:opacity-100 sm:opacity-0" title="{{ __('Copier le lien du commentaire') }}"><span x-text="copied ? 'Copié !' : 'Lien'"></span></button>
                                                     @if ($canDelete)
-                                                        <button type="button" wire:click="deleteComment({{ $comment->id }})" class="text-xs text-neutral-300 opacity-0 transition hover:text-red-500 group-hover/comment:opacity-100">{{ __('Supprimer') }}</button>
+                                                        <button type="button" wire:click="deleteComment({{ $comment->id }})" class="text-xs text-neutral-300 opacity-100 transition hover:text-red-500 group-hover/comment:opacity-100 sm:opacity-0">{{ __('Supprimer') }}</button>
                                                     @endif
                                                 </div>
                                             </div>
@@ -460,7 +460,7 @@
                                                 <span class="h-3 w-6 shrink-0 rounded-full" style="background-color: {{ $label->color }}"></span>
                                                 <span class="truncate">{{ $label->name ?? '—' }}</span>
                                             </button>
-                                            <button type="button" @click="openAt($event.clientX, $event.clientY)" class="shrink-0 rounded p-1 text-neutral-400 opacity-0 transition hover:bg-neutral-100 hover:text-neutral-700 group-hover/label:opacity-100 dark:hover:bg-neutral-800 dark:hover:text-neutral-200" title="{{ __('Options du label (clic droit aussi)') }}"><x-phosphor-dots-three class="h-4 w-4" /></button>
+                                            <button type="button" @click="openAt($event.clientX, $event.clientY)" class="shrink-0 rounded p-1 text-neutral-400 opacity-100 transition hover:bg-neutral-100 hover:text-neutral-700 group-hover/label:opacity-100 sm:opacity-0 dark:hover:bg-neutral-800 dark:hover:text-neutral-200" title="{{ __('Options du label (clic droit aussi)') }}"><x-phosphor-dots-three class="h-4 w-4" /></button>
                                         </x-slot:trigger>
                                         <x-slot:menu>
                                             <div class="p-1" x-data="{ name: @js($label->name) }" @click.stop>

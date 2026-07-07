@@ -14,9 +14,15 @@
 
     <script>
         (function () {
-            const stored = localStorage.getItem('theme');
-            const dark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-            document.documentElement.classList.toggle('dark', dark);
+            const applyTheme = () => {
+                const stored = localStorage.getItem('theme');
+                const dark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+                document.documentElement.classList.toggle('dark', dark);
+            };
+            applyTheme();
+            // wire:navigate morphs <html> back to the server markup (no .dark class),
+            // so re-apply the stored theme after every SPA navigation to avoid a flash.
+            document.addEventListener('livewire:navigated', applyTheme);
         })();
     </script>
 
@@ -28,7 +34,7 @@
             <nav class="mx-auto flex h-14 max-w-full items-center justify-between px-4 sm:px-6 lg:px-8">
                 <a href="{{ url('/') }}" class="flex items-center gap-2">
                     <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">B</span>
-                    <span class="font-semibold tracking-tight">{{ config('app.name') }}</span>
+                    <span class="hidden font-semibold tracking-tight sm:inline">{{ config('app.name') }}</span>
                 </a>
 
                 <div class="flex items-center gap-3">

@@ -21,7 +21,7 @@
         @keydown.escape.window="expanded = false"
         x-transition
         x-cloak
-        class="absolute right-0 z-50 mt-2 flex max-h-[32rem] w-80 flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900"
+        class="absolute right-0 z-50 mt-2 flex max-h-[32rem] w-80 max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900"
     >
         {{-- Header --}}
         <div class="flex shrink-0 items-center justify-between border-b border-neutral-100 px-4 py-2 dark:border-neutral-800">
@@ -65,7 +65,7 @@
                     </button>
 
                     {{-- Per-notification actions --}}
-                    <div class="absolute right-2 top-2 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                    <div class="absolute right-2 top-2 flex items-center gap-0.5 opacity-100 transition-opacity group-hover:opacity-100 sm:opacity-0">
                         <button
                             type="button"
                             wire:click.stop="toggleRead('{{ $notification->id }}')"

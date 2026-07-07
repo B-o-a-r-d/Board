@@ -1,16 +1,16 @@
 <div class="space-y-8">
-    <div class="flex items-center justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-semibold tracking-tight">{{ __('Tableau de bord') }}</h1>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div class="text-center sm:text-left">
+            <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">{{ __('Tableau de bord') }}</h1>
             <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ __('Vos workspaces et vos boards.') }}</p>
         </div>
 
-        <form wire:submit="createWorkspace" class="flex items-center gap-2">
+        <form wire:submit="createWorkspace" class="flex w-full items-center gap-2 sm:w-auto">
             <input
                 type="text"
                 wire:model="newWorkspaceName"
                 placeholder="{{ __('Nouveau workspace') }}"
-                class="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800"
+                class="min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none sm:flex-none dark:border-neutral-700 dark:bg-neutral-800"
             >
             <button type="submit" class="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none">
                 {{ __('Créer') }}

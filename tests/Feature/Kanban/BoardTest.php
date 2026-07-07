@@ -108,6 +108,24 @@ test('moving a card to another list reassigns and resequences it', function () {
         ->and($source->cards()->count())->toBe(0);
 });
 
+test('a card is moved to another list without drag via the menu action', function () {
+    ['board' => $board, 'owner' => $owner] = makeBoard();
+    $source = BoardList::factory()->create(['board_id' => $board->id]);
+    $target = BoardList::factory()->create(['board_id' => $board->id]);
+
+    Card::factory()->create(['board_list_id' => $target->id, 'board_id' => $board->id, 'position' => 0]);
+    $card = Card::factory()->create(['board_list_id' => $source->id, 'board_id' => $board->id, 'position' => 0]);
+
+    Livewire::actingAs($owner)
+        ->test(Show::class, ['board' => $board])
+        ->call('moveCardToList', $card->id, $target->id);
+
+    expect($card->fresh()->board_list_id)->toBe($target->id)
+        ->and($card->fresh()->position)->toBe(1)
+        ->and($target->cards()->count())->toBe(2)
+        ->and($source->cards()->count())->toBe(0);
+});
+
 test('reordering lists updates their positions', function () {
     ['board' => $board, 'owner' => $owner] = makeBoard();
 
