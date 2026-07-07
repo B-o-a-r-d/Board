@@ -91,6 +91,7 @@ ARG INSTALL_MARKETPLACE=false
 # Finalise autoloader + package discovery, then tidy permissions
 RUN if [ "$INSTALL_MARKETPLACE" = "true" ]; then \
         echo "[build] Enabling board/marketplace…"; \
+        git config --global url."https://github.com/".insteadOf "git@github.com:"; \
         composer require board/marketplace:^0.1 --no-scripts --no-interaction --prefer-dist --update-no-dev; \
     fi \
     && composer dump-autoload --optimize --no-dev \
