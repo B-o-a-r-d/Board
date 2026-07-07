@@ -6,6 +6,7 @@ use App\Actions\Fortify\UpdateUserPassword;
 use App\Actions\Fortify\UpdateUserProfileInformation;
 use App\Http\Middleware\SetLocale;
 use App\Models\Setting;
+use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -34,6 +35,9 @@ class Profile extends Component
 
     public string $locale = '';
 
+    /** @var array<string, bool> */
+    public array $notificationPreferences = [];
+
     public function mount(): void
     {
         $user = Auth::user();
@@ -42,6 +46,18 @@ class Profile extends Component
         $this->email = $user->email;
         $this->locale = $user->locale ?: app()->getLocale();
         $this->mcpEnabled = Setting::mcpEnabled();
+        $this->notificationPreferences = $user->notificationPreferences();
+    }
+
+    public function updateNotificationPreference(string $key, bool $value): void
+    {
+        abort_unless(array_key_exists($key, User::defaultNotificationPreferences()), 422);
+
+        $prefs = array_merge(Auth::user()->notificationPreferences(), [$key => $value]);
+        Auth::user()->update(['notification_preferences' => $prefs]);
+
+        $this->notificationPreferences = $prefs;
+        $this->dispatch('toast', message: __('Préférences de notification mises à jour'), type: 'success');
     }
 
     public function updateLocale(string $locale): void

@@ -20,6 +20,45 @@
         </div>
     </section>
 
+    {{-- Notifications --}}
+    <section class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+        <h2 class="text-base font-semibold">{{ __('Notifications') }}</h2>
+        <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{{ __('Choisissez comment et quand être notifié.') }}</p>
+
+        @php
+            $notifChannels = [
+                'inapp' => [__('Notifications dans l\'app'), __('La cloche en haut à droite.')],
+                'email' => [__('Notifications par email'), __('Recevoir aussi un email.')],
+            ];
+            $notifEvents = [
+                'comments' => [__('Commentaires'), __('Sur les cartes dont vous êtes membre.')],
+                'mentions' => [__('Mentions'), __('Quand on vous @mentionne.')],
+                'reactions' => [__('Réactions'), __('Quand on réagit à vos commentaires.')],
+                'assignments' => [__('Assignations'), __('Quand on vous assigne à une carte.')],
+                'mentions_only' => [__('Commentaires : mentions uniquement'), __('Ne notifier les commentaires que si vous êtes mentionné.')],
+            ];
+        @endphp
+
+        <div class="mt-4 space-y-4">
+            <div>
+                <p class="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-400">{{ __('Canaux') }}</p>
+                <div class="divide-y divide-neutral-100 dark:divide-neutral-800">
+                    @foreach ($notifChannels as $key => [$label, $desc])
+                        @include('livewire.partials.notification-toggle', ['key' => $key, 'label' => $label, 'desc' => $desc])
+                    @endforeach
+                </div>
+            </div>
+            <div>
+                <p class="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-400">{{ __('Événements') }}</p>
+                <div class="divide-y divide-neutral-100 dark:divide-neutral-800">
+                    @foreach ($notifEvents as $key => [$label, $desc])
+                        @include('livewire.partials.notification-toggle', ['key' => $key, 'label' => $label, 'desc' => $desc])
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </section>
+
     {{-- Profile information --}}
     <section class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
         <h2 class="text-base font-semibold">{{ __('Informations') }}</h2>

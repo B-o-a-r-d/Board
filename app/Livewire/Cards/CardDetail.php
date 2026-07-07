@@ -27,6 +27,9 @@ class CardDetail extends Component
 {
     use WithFileUploads;
 
+    /** @var array<int, string> Curated emoji set available as comment reactions. */
+    public const REACTIONS = ['👍', '❤️', '😄', '🎉', '😮', '🚀'];
+
     public Board $board;
 
     public ?int $cardId = null;
@@ -36,6 +39,8 @@ class CardDetail extends Component
     public string $title = '';
 
     public string $description = '';
+
+    public ?string $startAt = null;
 
     public ?string $dueAt = null;
 
@@ -53,6 +58,10 @@ class CardDetail extends Component
     public mixed $coverUpload = null;
 
     public string $newComment = '';
+
+    public ?int $editingCommentId = null;
+
+    public string $editingCommentBody = '';
 
     public function mount(Board $board): void
     {
@@ -91,6 +100,7 @@ class CardDetail extends Component
         $this->cardId = $card->id;
         $this->title = $card->title;
         $this->description = (string) $card->description;
+        $this->startAt = $card->start_at?->format('Y-m-d\TH:i');
         $this->dueAt = $card->due_at?->format('Y-m-d\TH:i');
         $this->resetValidation();
         $this->showModal = true;
@@ -100,7 +110,7 @@ class CardDetail extends Component
     {
         $this->showModal = false;
         $this->cardId = null;
-        $this->reset('title', 'description', 'dueAt', 'newChecklistTitle', 'newChecklistItem', 'upload');
+        $this->reset('title', 'description', 'startAt', 'dueAt', 'newChecklistTitle', 'newChecklistItem', 'upload', 'editingCommentId', 'editingCommentBody');
     }
 
     public function saveDetails(): void
@@ -122,21 +132,31 @@ class CardDetail extends Component
         $this->touched('card.updated');
     }
 
-    public function saveDueDate(): void
+    public function saveDates(): void
     {
         $card = $this->guardedCard();
 
-        $data = $this->validate(['dueAt' => ['nullable', 'date']]);
+        $rules = ['startAt' => ['nullable', 'date'], 'dueAt' => ['nullable', 'date']];
 
-        $card->update(['due_at' => $data['dueAt'] ? Carbon::parse($data['dueAt']) : null]);
+        if (! empty($this->startAt)) {
+            $rules['dueAt'][] = 'after_or_equal:startAt';
+        }
+
+        $data = $this->validate($rules);
+
+        $card->update([
+            'start_at' => $data['startAt'] ? Carbon::parse($data['startAt']) : null,
+            'due_at' => $data['dueAt'] ? Carbon::parse($data['dueAt']) : null,
+        ]);
         $this->touched('card.updated');
     }
 
-    public function clearDueDate(): void
+    public function clearDates(): void
     {
         $card = $this->guardedCard();
 
-        $card->update(['due_at' => null]);
+        $card->update(['start_at' => null, 'due_at' => null]);
+        $this->startAt = null;
         $this->dueAt = null;
         $this->touched('card.updated');
     }
@@ -485,6 +505,71 @@ class CardDetail extends Component
         $this->touched('comment.deleted');
     }
 
+    public function startEditComment(int $commentId): void
+    {
+        $card = $this->guardedCard();
+        $comment = $card->comments()->findOrFail($commentId);
+
+        abort_unless(
+            $comment->user_id === Auth::id() || $this->board->memberRole(Auth::user())?->isAdministrator(),
+            403,
+        );
+
+        $this->editingCommentId = $comment->id;
+        $this->editingCommentBody = $comment->body;
+    }
+
+    public function saveComment(): void
+    {
+        $card = $this->guardedCard();
+        $comment = $card->comments()->findOrFail($this->editingCommentId);
+
+        abort_unless(
+            $comment->user_id === Auth::id() || $this->board->memberRole(Auth::user())?->isAdministrator(),
+            403,
+        );
+
+        $data = $this->validate(['editingCommentBody' => ['required', 'string', 'max:5000']]);
+
+        $comment->update(['body' => $data['editingCommentBody']]);
+        $this->reset('editingCommentId', 'editingCommentBody');
+        $this->touched('comment.updated');
+    }
+
+    public function cancelEditComment(): void
+    {
+        $this->reset('editingCommentId', 'editingCommentBody');
+    }
+
+    /**
+     * Toggle the current user's emoji reaction on a comment. Adding a reaction
+     * notifies the comment author (unless they reacted to their own comment).
+     */
+    public function toggleReaction(int $commentId, string $emoji): void
+    {
+        $card = $this->guardedCard();
+        $comment = $card->comments()->findOrFail($commentId);
+
+        abort_unless(in_array($emoji, self::REACTIONS, true), 422);
+
+        $existing = $comment->reactions()
+            ->where('user_id', Auth::id())
+            ->where('emoji', $emoji)
+            ->first();
+
+        if ($existing) {
+            $existing->delete();
+        } else {
+            $comment->reactions()->create(['user_id' => Auth::id(), 'emoji' => $emoji]);
+
+            if ($comment->user_id !== Auth::id() && $comment->user) {
+                $comment->user->notify(new CardNotification($card, 'reaction', Auth::user(), $emoji));
+            }
+        }
+
+        $this->touched('comment.reaction');
+    }
+
     /**
      * Escape a comment body, highlight @mentions of board members, and linkify URLs.
      */
@@ -616,7 +701,7 @@ class CardDetail extends Component
     {
         $card = $this->cardId
             ? $this->board->cards()
-                ->with(['members', 'labels', 'checklists.items', 'attachments.uploader', 'comments.user', 'activities.user'])
+                ->with(['members', 'labels', 'checklists.items', 'attachments.uploader', 'comments.user', 'comments.reactions', 'activities.user'])
                 ->find($this->cardId)
             : null;
 
@@ -625,6 +710,7 @@ class CardDetail extends Component
             'boardMembers' => $this->board->members,
             'boardLabels' => $this->board->labels,
             'cardButtons' => $this->board->automations()->where('trigger_type', 'manual')->where('is_active', true)->get(),
+            'reactionEmojis' => self::REACTIONS,
         ]);
     }
 }

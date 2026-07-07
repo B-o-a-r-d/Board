@@ -1,7 +1,9 @@
 <?php
 
+use App\Enums\Role;
 use App\Livewire\Cards\CardDetail;
 use App\Models\Label;
+use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -103,18 +105,67 @@ test('the description is saved from the wysiwyg editor as markdown', function ()
     expect($card->fresh()->description)->toContain('## Titre')->toContain('**Gras**');
 });
 
-test('a due date can be saved and cleared from the sidebar', function () {
+test('a date range (start + due) can be saved and cleared from the sidebar', function () {
     ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
 
     $component = Livewire::actingAs($owner)
         ->test(CardDetail::class, ['board' => $board])
         ->call('openCard', $card->id);
 
-    $component->set('dueAt', '2026-08-01T09:30')->call('saveDueDate')->assertHasNoErrors();
-    expect($card->fresh()->due_at->format('Y-m-d H:i'))->toBe('2026-08-01 09:30');
+    $component->set('startAt', '2026-08-01T09:00')->set('dueAt', '2026-08-01T09:30')->call('saveDates')->assertHasNoErrors();
+    expect($card->fresh()->start_at->format('Y-m-d H:i'))->toBe('2026-08-01 09:00')
+        ->and($card->fresh()->due_at->format('Y-m-d H:i'))->toBe('2026-08-01 09:30');
 
-    $component->call('clearDueDate')->assertSet('dueAt', null);
+    $component->call('clearDates')->assertSet('dueAt', null)->assertSet('startAt', null);
+    expect($card->fresh()->due_at)->toBeNull()->and($card->fresh()->start_at)->toBeNull();
+});
+
+test('a due date before the start date is rejected', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+
+    Livewire::actingAs($owner)
+        ->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->set('startAt', '2026-08-10T10:00')
+        ->set('dueAt', '2026-08-01T10:00')
+        ->call('saveDates')
+        ->assertHasErrors('dueAt');
+
     expect($card->fresh()->due_at)->toBeNull();
+});
+
+test('a comment author edits their comment', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+    $comment = $card->comments()->create(['user_id' => $owner->id, 'body' => 'Avant']);
+
+    Livewire::actingAs($owner)
+        ->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->call('startEditComment', $comment->id)
+        ->assertSet('editingCommentBody', 'Avant')
+        ->set('editingCommentBody', 'Après')
+        ->call('saveComment')
+        ->assertHasNoErrors();
+
+    expect($comment->fresh()->body)->toBe('Après');
+});
+
+test('a non-author cannot edit a comment', function () {
+    ['board' => $board, 'card' => $card] = makeCardContext();
+    $author = User::factory()->create();
+    $board->members()->attach($author, ['role' => Role::Member->value]);
+    $comment = $card->comments()->create(['user_id' => $author->id, 'body' => 'À moi']);
+
+    $intruder = User::factory()->create();
+    $board->members()->attach($intruder, ['role' => Role::Member->value]);
+
+    Livewire::actingAs($intruder)
+        ->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->call('startEditComment', $comment->id)
+        ->assertForbidden();
+
+    expect($comment->fresh()->body)->toBe('À moi');
 });
 
 test('an uploaded image cover is set and clears the color cover', function () {

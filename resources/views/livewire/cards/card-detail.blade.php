@@ -297,23 +297,61 @@
                                         <div class="min-w-0 flex-1">
                                             <div class="flex items-center gap-2">
                                                 <span class="text-sm font-medium">{{ $comment->user?->name ?? 'Utilisateur supprimé' }}</span>
-                                                <span class="text-xs text-neutral-400">{{ $comment->created_at->diffForHumans() }}</span>
+                                                <span class="text-xs text-neutral-400">{{ $comment->created_at->diffForHumans() }}@if ($comment->updated_at->gt($comment->created_at)) · {{ __('modifié') }}@endif</span>
                                                 <div class="ml-auto flex items-center gap-2" x-data="{ copied: false }">
                                                     <button type="button" @click="navigator.clipboard?.writeText('{{ route('boards.show', ['board' => $board, 'card' => $card->public_id]) }}#comment-{{ $comment->id }}'); window.toast('{{ __('Lien copié') }}', { type: 'success' }); copied = true; setTimeout(() => copied = false, 1500)" class="text-xs text-neutral-300 opacity-100 transition hover:text-indigo-500 group-hover/comment:opacity-100 sm:opacity-0" title="{{ __('Copier le lien du commentaire') }}"><span x-text="copied ? 'Copié !' : 'Lien'"></span></button>
+                                                    @if ($comment->user_id === auth()->id())
+                                                        <button type="button" wire:click="startEditComment({{ $comment->id }})" class="text-xs text-neutral-300 opacity-100 transition hover:text-indigo-500 group-hover/comment:opacity-100 sm:opacity-0">{{ __('Modifier') }}</button>
+                                                    @endif
                                                     @if ($canDelete)
                                                         <button type="button" wire:click="deleteComment({{ $comment->id }})" class="text-xs text-neutral-300 opacity-100 transition hover:text-red-500 group-hover/comment:opacity-100 sm:opacity-0">{{ __('Supprimer') }}</button>
                                                     @endif
                                                 </div>
                                             </div>
-                                            <div class="mt-0.5 whitespace-pre-wrap break-words text-sm text-neutral-700 dark:text-neutral-300">{!! $this->renderCommentBody($comment->body) !!}</div>
-                                            @foreach ($this->linkPreviews($comment->body) as $preview)
-                                                <x-link-preview
-                                                    :preview="$preview"
-                                                    :hidden="in_array($preview->url, $comment->hidden_previews ?? [], true)"
-                                                    wire-toggle="toggleCommentPreview({{ $comment->id }}, '{{ $preview->url }}')"
-                                                    wire:key="comment-{{ $comment->id }}-lp-{{ $preview->id }}"
-                                                />
-                                            @endforeach
+                                            @if ($editingCommentId === $comment->id)
+                                                <form wire:submit="saveComment" class="mt-1 space-y-1.5">
+                                                    <textarea wire:model="editingCommentBody" rows="3" class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800"></textarea>
+                                                    @error('editingCommentBody') <p class="text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                                                    <div class="flex gap-2">
+                                                        <button type="submit" class="rounded-lg bg-indigo-600 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-500">{{ __('Enregistrer') }}</button>
+                                                        <button type="button" wire:click="cancelEditComment" class="rounded-lg px-3 py-1 text-xs text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800">{{ __('Annuler') }}</button>
+                                                    </div>
+                                                </form>
+                                            @else
+                                                <div class="mt-0.5 whitespace-pre-wrap break-words text-sm text-neutral-700 dark:text-neutral-300">{!! $this->renderCommentBody($comment->body) !!}</div>
+                                                @foreach ($this->linkPreviews($comment->body) as $preview)
+                                                    <x-link-preview
+                                                        :preview="$preview"
+                                                        :hidden="in_array($preview->url, $comment->hidden_previews ?? [], true)"
+                                                        wire-toggle="toggleCommentPreview({{ $comment->id }}, '{{ $preview->url }}')"
+                                                        wire:key="comment-{{ $comment->id }}-lp-{{ $preview->id }}"
+                                                    />
+                                                @endforeach
+                                            @endif
+
+                                            {{-- Reactions --}}
+                                            @php
+                                                $grouped = $comment->reactions->groupBy('emoji');
+                                                $myReactions = $comment->reactions->where('user_id', auth()->id())->pluck('emoji')->all();
+                                            @endphp
+                                            <div class="mt-1.5 flex flex-wrap items-center gap-1" x-data="{ picker: false }">
+                                                @foreach ($grouped as $emoji => $group)
+                                                    <button type="button" wire:click="toggleReaction({{ $comment->id }}, '{{ $emoji }}')"
+                                                            class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition {{ in_array($emoji, $myReactions, true) ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300' : 'border-neutral-200 bg-neutral-50 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300' }}">
+                                                        <span>{{ $emoji }}</span><span class="font-medium">{{ $group->count() }}</span>
+                                                    </button>
+                                                @endforeach
+                                                <div class="relative">
+                                                    <button type="button" @click="picker = ! picker" class="flex h-6 w-6 items-center justify-center rounded-full border border-neutral-200 text-neutral-400 transition hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800" title="{{ __('Ajouter une réaction') }}">
+                                                        <x-phosphor-smiley class="h-4 w-4"/>
+                                                    </button>
+                                                    <div x-show="picker" x-cloak @click.outside="picker = false" class="absolute left-0 z-20 mt-1 flex gap-0.5 rounded-lg border border-neutral-200 bg-white p-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+                                                        @foreach ($reactionEmojis as $emoji)
+                                                            <button type="button" wire:click="toggleReaction({{ $comment->id }}, '{{ $emoji }}')" @click="picker = false" class="flex h-7 w-7 items-center justify-center rounded text-base hover:bg-neutral-100 dark:hover:bg-neutral-800">{{ $emoji }}</button>
+                                                        @endforeach
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 @endforeach
@@ -400,31 +438,39 @@
                             </div>
                         </div>
 
-                        {{-- Due date (toggleable, like Members / Labels) --}}
+                        {{-- Dates: start + due (toggleable, like Members / Labels) --}}
                         @php $dueOverdue = $card->due_at && ! $card->completed_at && $card->due_at->isPast(); @endphp
-                        <div x-data="{ enabled: @js((bool) $card->due_at) }">
+                        <div x-data="{ enabled: @js((bool) ($card->start_at || $card->due_at)) }">
                             <div class="mb-2 flex items-center justify-between">
-                                <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Échéance') }}</h3>
+                                <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Dates') }}</h3>
                                 <button
                                     type="button"
                                     role="switch"
-                                    aria-label="{{ __('Activer l\'échéance') }}"
+                                    aria-label="{{ __('Activer les dates') }}"
                                     :aria-checked="enabled"
-                                    @click="enabled = ! enabled; if (! enabled) { $wire.clearDueDate() }"
+                                    @click="enabled = ! enabled; if (! enabled) { $wire.clearDates() }"
                                     class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition"
                                     :class="enabled ? 'bg-indigo-600' : 'bg-neutral-300 dark:bg-neutral-700'"
                                 >
                                     <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition" :class="enabled ? 'translate-x-4' : 'translate-x-0.5'"></span>
                                 </button>
                             </div>
-                            <div x-show="enabled" x-cloak class="space-y-1.5">
-                                <input type="datetime-local" wire:model="dueAt" wire:change="saveDueDate" class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                            <div x-show="enabled" x-cloak class="space-y-2">
+                                <div>
+                                    <label class="mb-0.5 block text-xs text-neutral-500">{{ __('Début') }}</label>
+                                    <input type="datetime-local" wire:model="startAt" wire:change="saveDates" class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                </div>
+                                <div>
+                                    <label class="mb-0.5 block text-xs text-neutral-500">{{ __('Échéance') }}</label>
+                                    <input type="datetime-local" wire:model="dueAt" wire:change="saveDates" class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                    @error('dueAt') <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                                </div>
                                 @if ($card->due_at)
                                     <div class="flex items-center justify-between text-xs">
                                         <span class="{{ $dueOverdue ? 'font-medium text-red-600 dark:text-red-400' : 'text-neutral-500' }}">
                                             {{ $card->due_at->translatedFormat('d M Y \à H:i') }}{{ $dueOverdue ? __(' · en retard') : '' }}
                                         </span>
-                                        <button type="button" wire:click="clearDueDate" @click="enabled = false" class="text-neutral-400 hover:text-red-500">{{ __('Retirer') }}</button>
+                                        <button type="button" wire:click="clearDates" @click="enabled = false" class="text-neutral-400 hover:text-red-500">{{ __('Retirer') }}</button>
                                     </div>
                                 @endif
                             </div>

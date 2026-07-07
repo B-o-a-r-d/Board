@@ -367,3 +367,37 @@ test('the board owner cannot be removed', function () {
 
     expect($board->hasMember($owner))->toBeTrue();
 });
+
+test('a list WIP limit is set and cleared', function () {
+    ['board' => $board, 'owner' => $owner] = makeBoard();
+    $list = BoardList::factory()->create(['board_id' => $board->id]);
+
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+        ->call('setWipLimit', $list->id, 5);
+    expect($list->fresh()->wip_limit)->toBe(5);
+
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+        ->call('setWipLimit', $list->id, 0);
+    expect($list->fresh()->wip_limit)->toBeNull();
+});
+
+test('a list cover image is uploaded and removed', function () {
+    Storage::fake('public');
+    ['board' => $board, 'owner' => $owner] = makeBoard();
+    $list = BoardList::factory()->create(['board_id' => $board->id]);
+
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+        ->call('openListCover', $list->id)
+        ->set('listCoverUpload', UploadedFile::fake()->image('cover.jpg'))
+        ->call('uploadListCover')
+        ->assertHasNoErrors();
+
+    $path = $list->fresh()->cover_path;
+    expect($path)->not->toBeNull();
+    Storage::disk('public')->assertExists($path);
+
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+        ->call('removeListCover', $list->id);
+    expect($list->fresh()->cover_path)->toBeNull();
+    Storage::disk('public')->assertMissing($path);
+});

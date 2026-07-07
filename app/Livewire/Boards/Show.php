@@ -14,6 +14,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -282,6 +283,64 @@ class Show extends Component
         $this->authorize('view', $this->board);
 
         $this->listForBoard($listId)->update(['cover_color' => $color ?: null]);
+        $this->broadcastActivity('list.recolored');
+    }
+
+    public mixed $listCoverUpload = null;
+
+    public ?int $coverListId = null;
+
+    public function openListCover(int $listId): void
+    {
+        $this->authorize('view', $this->board);
+
+        $this->coverListId = $this->listForBoard($listId)->id;
+    }
+
+    public function closeListCover(): void
+    {
+        $this->reset('coverListId', 'listCoverUpload');
+    }
+
+    public function uploadListCover(): void
+    {
+        $this->authorize('view', $this->board);
+
+        $this->validate(['listCoverUpload' => ['required', 'image', 'max:10240']]);
+
+        $list = $this->listForBoard((int) $this->coverListId);
+
+        if ($list->cover_path) {
+            Storage::disk('public')->delete($list->cover_path);
+        }
+
+        $list->update(['cover_path' => $this->listCoverUpload->store("list-covers/{$this->board->id}", 'public')]);
+
+        $this->reset('listCoverUpload');
+        $this->broadcastActivity('list.recolored');
+        $this->dispatch('toast', message: __('Couverture de la liste mise à jour'), type: 'success');
+    }
+
+    public function removeListCover(int $listId): void
+    {
+        $this->authorize('view', $this->board);
+
+        $list = $this->listForBoard($listId);
+
+        if ($list->cover_path) {
+            Storage::disk('public')->delete($list->cover_path);
+            $list->update(['cover_path' => null]);
+            $this->broadcastActivity('list.recolored');
+        }
+    }
+
+    public function setWipLimit(int $listId, mixed $limit): void
+    {
+        $this->authorize('view', $this->board);
+
+        $limit = (int) $limit;
+
+        $this->listForBoard($listId)->update(['wip_limit' => $limit > 0 ? min($limit, 999) : null]);
         $this->broadcastActivity('list.recolored');
     }
 

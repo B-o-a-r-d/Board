@@ -53,6 +53,15 @@
             </div>
 
             <div class="flex gap-2">
+                <button type="button"
+                        x-data="{ allCollapsed: false }"
+                        @click="allCollapsed = ! allCollapsed; $dispatch(allCollapsed ? 'collapse-all' : 'expand-all')"
+                        class="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                        :title="allCollapsed ? '{{ __('Tout déplier') }}' : '{{ __('Tout replier') }}'">
+                    <x-phosphor-arrows-in-line-horizontal x-show="! allCollapsed" class="h-4 w-4"/>
+                    <x-phosphor-arrows-out-line-horizontal x-show="allCollapsed" x-cloak class="h-4 w-4"/>
+                </button>
+
                 @can('update', $board)
                     <x-context-menu>
                         <x-slot:trigger>
@@ -171,16 +180,40 @@
             <div
                 wire:key="list-{{ $list->id }}"
                 wire:sort:item="{{ $list->id }}"
-                x-data="{ cardCount: {{ $list->cards->count() }} }"
-                x-init="$nextTick(() => {
-                    if (! $refs.cards) return;
-                    const update = () => cardCount = $refs.cards.querySelectorAll(':scope > li').length;
-                    new MutationObserver(update).observe($refs.cards, { childList: true });
-                    update();
-                })"
-                class="flex max-h-full w-full shrink-0 snap-start flex-col overflow-hidden rounded-xl bg-neutral-200/70 sm:w-72 dark:bg-neutral-900"
+                x-data="{ cardCount: {{ $list->cards->count() }}, wipLimit: {{ $list->wip_limit ?? 'null' }}, collapsed: JSON.parse(localStorage.getItem('board-list-collapsed:{{ $list->public_id }}') ?? 'false') }"
+                x-init="
+                    $watch('collapsed', v => localStorage.setItem('board-list-collapsed:{{ $list->public_id }}', JSON.stringify(v)));
+                    $nextTick(() => {
+                        if (! $refs.cards) return;
+                        const update = () => cardCount = $refs.cards.querySelectorAll(':scope > li').length;
+                        new MutationObserver(update).observe($refs.cards, { childList: true });
+                        update();
+                    })
+                "
+                @collapse-all.window="collapsed = true"
+                @expand-all.window="collapsed = false"
+                :class="collapsed ? 'w-11 self-stretch' : 'w-full sm:w-72'"
+                class="flex max-h-full shrink-0 snap-start flex-col overflow-hidden rounded-xl bg-neutral-200/70 dark:bg-neutral-900"
             >
-                @if ($list->cover_color)
+                {{-- Collapsed strip --}}
+                <div x-show="collapsed" x-cloak @click="collapsed = false" class="flex flex-1 cursor-pointer select-none flex-col items-center gap-2 py-2.5" title="{{ $list->name }}">
+                    <button type="button" @click.stop="collapsed = false" class="shrink-0 rounded p-1 text-neutral-500 hover:bg-neutral-300 dark:hover:bg-neutral-800" title="{{ __('Déplier la liste') }}">
+                        <x-phosphor-arrows-out-line-horizontal class="h-4 w-4"/>
+                    </button>
+                    @if ($list->cover_path)
+                        <img src="{{ Storage::disk('public')->url($list->cover_path) }}" alt="" class="h-6 w-6 shrink-0 rounded object-cover">
+                    @elseif ($list->cover_color)
+                        <span class="h-6 w-1.5 shrink-0 rounded-full" style="background-color: {{ $list->cover_color }}"></span>
+                    @endif
+                    <span class="shrink-0 rounded-full bg-neutral-300/70 px-1.5 py-0.5 text-[10px] font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400" x-text="wipLimit ? cardCount + '/' + wipLimit : cardCount">{{ $list->cards->count() }}</span>
+                    <span class="mt-1 min-h-0 flex-1 overflow-hidden text-sm font-semibold tracking-wide [writing-mode:vertical-rl]">{{ Str::limit($list->name, 40) }}</span>
+                </div>
+
+                {{-- Expanded content --}}
+                <div x-show="! collapsed" class="flex min-h-0 flex-1 flex-col overflow-hidden">
+                @if ($list->cover_path)
+                    <img src="{{ Storage::disk('public')->url($list->cover_path) }}" alt="" class="h-16 w-full object-cover">
+                @elseif ($list->cover_color)
                     <div class="h-2 w-full" style="background-color: {{ $list->cover_color }}"></div>
                 @endif
 
@@ -196,13 +229,20 @@
                                 class="w-full min-w-0 truncate rounded bg-transparent px-1 py-0.5 text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:focus:bg-neutral-800"
                             >
                             <span
-                                class="shrink-0 rounded-full bg-neutral-300/70 px-1.5 py-0.5 text-xs font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
-                                x-text="cardCount">{{ $list->cards->count() }}</span>
+                                class="shrink-0 rounded-full px-1.5 py-0.5 text-xs font-medium transition-colors"
+                                :class="wipLimit && cardCount > wipLimit ? 'bg-red-200 text-red-700 dark:bg-red-500/25 dark:text-red-300' : 'bg-neutral-300/70 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'"
+                                :title="wipLimit && cardCount > wipLimit ? '{{ __('Limite WIP dépassée') }}' : ''"
+                                x-text="wipLimit ? cardCount + '/' + wipLimit : cardCount">{{ $list->cards->count() }}{{ $list->wip_limit ? '/'.$list->wip_limit : '' }}</span>
                         </div>
                         <button type="button" wire:sort:ignore @click="openAt($event.clientX, $event.clientY)"
                                 class="shrink-0 rounded p-1 text-neutral-400 hover:bg-neutral-300 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
                                 title="{{ __('Options de la liste (clic droit aussi)') }}">
                             <x-phosphor-dots-three class="h-4 w-4"/>
+                        </button>
+                        <button type="button" wire:sort:ignore @click.stop="collapsed = true"
+                                class="shrink-0 rounded p-1 text-neutral-400 hover:bg-neutral-300 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                                title="{{ __('Réduire la liste') }}">
+                            <x-phosphor-arrows-in-line-horizontal class="h-4 w-4"/>
                         </button>
                     </x-slot:trigger>
                     <x-slot:menu>
@@ -212,6 +252,11 @@
                                              @click="navigator.clipboard?.writeText('{{ $list->public_id }}'); window.toast('{{ __('ID copié') }}', { type: 'success' })">{{ __("Copier l'ID de la liste") }}</x-context-menu.item>
                         <x-context-menu.item icon="copy"
                                              wire:click="duplicateList({{ $list->id }})">{{ __('Dupliquer') }}</x-context-menu.item>
+                        <x-context-menu.item icon="image"
+                                             wire:click="openListCover({{ $list->id }})">{{ __('Image de couverture…') }}</x-context-menu.item>
+                        @if ($list->cover_path)
+                            <x-context-menu.item icon="x" wire:click="removeListCover({{ $list->id }})">{{ __("Retirer l'image") }}</x-context-menu.item>
+                        @endif
                         <x-context-menu.separator/>
                         <div class="px-2 py-1.5">
                             <p class="mb-1.5 text-xs text-neutral-500">{{ __('Couleur de la liste') }}</p>
@@ -227,6 +272,10 @@
                                     <x-phosphor-x class="h-3 w-3"/>
                                 </button>
                             </div>
+                        </div>
+                        <div class="px-2 py-1.5">
+                            <label class="mb-1 block text-xs text-neutral-500">{{ __('Limite de cartes (WIP)') }}</label>
+                            <input type="number" min="0" value="{{ $list->wip_limit }}" wire:change="setWipLimit({{ $list->id }}, $event.target.value)" placeholder="{{ __('Aucune') }}" class="w-24 rounded border border-neutral-300 bg-white px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
                         </div>
                         <x-context-menu.separator/>
                         <x-context-menu.item icon="archive" variant="danger"
@@ -392,6 +441,7 @@
                             </x-slot:menu>
                         </x-context-menu>
                     @endif
+                </div>
                 </div>
             </div>
         @endforeach
@@ -609,6 +659,26 @@
                         @endforelse
                     </div>
                 @endif
+            </div>
+        </x-modal>
+    @endif
+
+    {{-- List cover image panel --}}
+    @if ($coverListId)
+        @php $coverList = $lists->firstWhere('id', $coverListId); @endphp
+        <x-modal max-width="lg" on-close="$wire.closeListCover()">
+            <x-slot:header>
+                <span class="flex items-center gap-2"><x-phosphor-image class="h-5 w-5"/> {{ __('Image de couverture de la liste') }}</span>
+            </x-slot:header>
+
+            <div class="space-y-4 p-5">
+                @if ($coverList?->cover_path)
+                    <div class="relative overflow-hidden rounded-lg">
+                        <img src="{{ Storage::disk('public')->url($coverList->cover_path) }}" alt="" class="h-32 w-full object-cover">
+                        <button type="button" wire:click="removeListCover({{ $coverListId }})" class="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70" title="{{ __("Retirer l'image") }}"><x-phosphor-x class="h-4 w-4"/></button>
+                    </div>
+                @endif
+                <x-dropzone model="listCoverUpload" action="uploadListCover" accept="image/*" hint="{{ __('Image de couverture · 10 Mo max') }}"/>
             </div>
         </x-modal>
     @endif
