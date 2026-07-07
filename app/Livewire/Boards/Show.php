@@ -3,6 +3,7 @@
 namespace App\Livewire\Boards;
 
 use App\Automations\AutomationEngine;
+use App\Enums\Role;
 use App\Events\BoardActivity;
 use App\Models\Activity;
 use App\Models\Board;
@@ -12,6 +13,7 @@ use App\Models\CardTemplate;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -41,6 +43,66 @@ class Show extends Component
     public function toggleTrash(): void
     {
         $this->showTrash = ! $this->showTrash;
+    }
+
+    public bool $showMembers = false;
+
+    public function toggleMembers(): void
+    {
+        $this->authorize('view', $this->board);
+
+        $this->showMembers = ! $this->showMembers;
+    }
+
+    /**
+     * Add a workspace member to this board so they become assignable/mentionable.
+     */
+    public function addBoardMember(int $userId): void
+    {
+        $this->authorize('manageMembers', $this->board);
+
+        // Only members of the board's workspace may be added.
+        if (! $this->board->workspace->members()->whereKey($userId)->exists()) {
+            return;
+        }
+
+        $this->board->members()->syncWithoutDetaching([$userId => ['role' => Role::Member->value]]);
+        $this->broadcastActivity('board.members');
+    }
+
+    public function updateBoardMemberRole(int $userId, string $role): void
+    {
+        $this->authorize('manageMembers', $this->board);
+
+        $membership = $this->board->members()->whereKey($userId)->first();
+
+        if (! $membership || $membership->pivot->role === Role::Owner->value || ! in_array($role, [Role::Admin->value, Role::Member->value], true)) {
+            return;
+        }
+
+        $this->board->members()->updateExistingPivot($userId, ['role' => $role]);
+    }
+
+    public function removeBoardMember(int $userId): void
+    {
+        $this->authorize('manageMembers', $this->board);
+
+        $membership = $this->board->members()->whereKey($userId)->first();
+
+        // Not a member, or the board owner — cannot be removed.
+        if (! $membership || $membership->pivot->role === Role::Owner->value) {
+            return;
+        }
+
+        $this->board->members()->detach($userId);
+
+        // Drop their card assignments on this board so no orphan assignee remains.
+        DB::table('card_user')
+            ->whereIn('card_id', $this->board->cards()->select('id'))
+            ->where('user_id', $userId)
+            ->delete();
+
+        $this->broadcastActivity('board.members');
     }
 
     public function mount(Board $board): void
@@ -549,10 +611,17 @@ class Show extends Component
             ->orderBy('position')
             ->get();
 
+        $boardMembers = $this->board->members()->orderBy('name')->get();
+
         return view('livewire.boards.show', [
             'lists' => $lists,
             'labels' => $this->board->labels,
-            'members' => $this->board->members,
+            'members' => $boardMembers,
+            'boardMembers' => $boardMembers,
+            'addableMembers' => $this->showMembers
+                ? $this->board->workspace->members()->whereNotIn('users.id', $boardMembers->pluck('id'))->orderBy('name')->get()
+                : collect(),
+            'canManageMembers' => Auth::user()->can('manageMembers', $this->board),
             'archivedLists' => $this->showTrash ? $this->board->lists()->whereNotNull('archived_at')->orderBy('name')->get() : collect(),
             'archivedCards' => $this->showTrash ? $this->board->cards()->whereNotNull('archived_at')->with('list')->latest('archived_at')->get() : collect(),
             'cardTemplates' => CardTemplate::orderBy('name')->get(),

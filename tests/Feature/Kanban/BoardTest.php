@@ -300,3 +300,70 @@ test('outsiders are forbidden from the board component', function () {
         ->test(Show::class, ['board' => $board])
         ->assertForbidden();
 });
+
+test('a board admin adds a workspace member to the board', function () {
+    ['board' => $board, 'owner' => $owner] = makeBoard();
+    $workspaceMember = User::factory()->create();
+    $board->workspace->members()->attach($workspaceMember, ['role' => Role::Member->value]);
+
+    Livewire::actingAs($owner)
+        ->test(Show::class, ['board' => $board])
+        ->call('addBoardMember', $workspaceMember->id);
+
+    expect($board->hasMember($workspaceMember))->toBeTrue();
+});
+
+test('a user outside the workspace cannot be added to the board', function () {
+    ['board' => $board, 'owner' => $owner, 'outsider' => $outsider] = makeBoard();
+
+    Livewire::actingAs($owner)
+        ->test(Show::class, ['board' => $board])
+        ->call('addBoardMember', $outsider->id);
+
+    expect($board->hasMember($outsider))->toBeFalse();
+});
+
+test('a plain board member cannot manage board members', function () {
+    ['board' => $board] = makeBoard();
+    $plain = User::factory()->create();
+    $board->workspace->members()->attach($plain, ['role' => Role::Member->value]);
+    $board->members()->attach($plain, ['role' => Role::Member->value]);
+
+    $candidate = User::factory()->create();
+    $board->workspace->members()->attach($candidate, ['role' => Role::Member->value]);
+
+    Livewire::actingAs($plain)
+        ->test(Show::class, ['board' => $board])
+        ->call('addBoardMember', $candidate->id)
+        ->assertForbidden();
+
+    expect($board->hasMember($candidate))->toBeFalse();
+});
+
+test('removing a board member detaches them from the board and its cards', function () {
+    ['board' => $board, 'owner' => $owner] = makeBoard();
+    $member = User::factory()->create();
+    $board->workspace->members()->attach($member, ['role' => Role::Member->value]);
+    $board->members()->attach($member, ['role' => Role::Member->value]);
+
+    $list = BoardList::factory()->create(['board_id' => $board->id]);
+    $card = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id]);
+    $card->members()->attach($member);
+
+    Livewire::actingAs($owner)
+        ->test(Show::class, ['board' => $board])
+        ->call('removeBoardMember', $member->id);
+
+    expect($board->hasMember($member))->toBeFalse()
+        ->and($card->members()->whereKey($member->id)->exists())->toBeFalse();
+});
+
+test('the board owner cannot be removed', function () {
+    ['board' => $board, 'owner' => $owner] = makeBoard();
+
+    Livewire::actingAs($owner)
+        ->test(Show::class, ['board' => $board])
+        ->call('removeBoardMember', $owner->id);
+
+    expect($board->hasMember($owner))->toBeTrue();
+});

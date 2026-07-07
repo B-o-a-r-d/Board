@@ -1,13 +1,15 @@
 <div>
-    <button
-        type="button"
-        wire:click="open"
-        class="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-        title="{{ __('Automations') }}"
-        aria-label="{{ __('Automations du board') }}"
-    >
-        <x-phosphor-robot class="h-4 w-4" />
-    </button>
+    @if ($showTrigger)
+        <button
+            type="button"
+            wire:click="open"
+            class="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            title="{{ __('Automations') }}"
+            aria-label="{{ __('Automations du board') }}"
+        >
+            <x-phosphor-robot class="h-4 w-4" />
+        </button>
+    @endif
 
     @if ($showModal)
         <x-modal max-width="2xl" on-close="$wire.close()">

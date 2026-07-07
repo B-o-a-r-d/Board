@@ -53,17 +53,6 @@
             </div>
 
             <div class="flex gap-2">
-                <button type="button" wire:click="toggleTrash"
-                        class="flex items-center gap-1 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                        title="{{ __('Corbeille du board') }}">
-                    <x-phosphor-trash class="h-4 w-4"/>
-                    <span class="hidden sm:inline">{{ __('Corbeille') }}</span>
-                </button>
-
-                @can('update', $board)
-                    <livewire:boards.automations :board="$board" wire:key="automations-{{ $board->id }}"/>
-                @endcan
-
                 @can('update', $board)
                     <x-context-menu>
                         <x-slot:trigger>
@@ -78,6 +67,8 @@
                                                  wire:click="startRenameBoard">{{ __('Renommer') }}</x-context-menu.item>
                             <x-context-menu.item icon="hash"
                                                  @click="navigator.clipboard?.writeText('{{ $board->public_id }}'); window.toast('{{ __('ID copié') }}', { type: 'success' })">{{ __("Copier l'ID du board") }}</x-context-menu.item>
+                            <x-context-menu.item icon="robot"
+                                                 wire:click="$dispatch('open-automations')">{{ __('Automations') }}</x-context-menu.item>
                             @if (config('board.public_sharing'))
                                 <x-context-menu.item icon="share-network"
                                                      wire:click="openShare">{{ __('Partager…') }}</x-context-menu.item>
@@ -89,12 +80,22 @@
                             <x-context-menu.item icon="image"
                                                  wire:click="openBackground">{{ __('Fond du tableau…') }}</x-context-menu.item>
                             <x-context-menu.separator/>
+                            <x-context-menu.item icon="users"
+                                                 wire:click="toggleMembers">
+                                {{ __('Membres') }}
+                            </x-context-menu.item>
+                            <x-context-menu.separator/>
                             <x-context-menu.item icon="file-csv"
                                                  @click="window.location.href = '{{ route('boards.export', ['board' => $board->id, 'format' => 'csv']) }}'">{{ __('Exporter en CSV') }}</x-context-menu.item>
                             <x-context-menu.item icon="file-xls"
                                                  @click="window.location.href = '{{ route('boards.export', ['board' => $board->id, 'format' => 'xlsx']) }}'">{{ __('Exporter en XLSX') }}</x-context-menu.item>
                             <x-context-menu.item icon="download-simple"
                                                  @click="window.location.href = '{{ route('boards.export', ['board' => $board->id, 'format' => 'json']) }}'">{{ __('Exporter en JSON') }}</x-context-menu.item>
+                            <x-context-menu.separator/>
+                            <x-context-menu.item icon="trash"
+                                                 wire:click="toggleTrash">
+                                {{ __('Corbeille') }}
+                            </x-context-menu.item>
                             @can('delete', $board)
                                 <x-context-menu.separator/>
                                 <x-context-menu.item icon="trash" variant="danger"
@@ -553,6 +554,68 @@
             </div>
         </x-modal>
     @endif
+
+    {{-- Board members panel --}}
+    @if ($showMembers)
+        <x-modal max-width="lg" on-close="$wire.$set('showMembers', false)">
+            <x-slot:header>
+                <span class="flex items-center gap-2"><x-phosphor-users class="h-5 w-5"/> {{ __('Membres du board') }}</span>
+            </x-slot:header>
+
+            <div class="space-y-5 p-5">
+                {{-- Current members --}}
+                <ul class="divide-y divide-neutral-100 dark:divide-neutral-800">
+                    @foreach ($boardMembers as $member)
+                        @php $isOwner = $member->pivot->role === \App\Enums\Role::Owner->value; @endphp
+                        <li wire:key="bm-{{ $member->id }}" class="flex items-center justify-between gap-3 py-2">
+                            <div class="flex min-w-0 items-center gap-3">
+                                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">{{ Str::of($member->name)->substr(0, 1)->upper() }}</span>
+                                <div class="min-w-0">
+                                    <p class="truncate text-sm font-medium">{{ $member->name }}</p>
+                                    <p class="truncate text-xs text-neutral-500 dark:text-neutral-400">{{ $member->email }}</p>
+                                </div>
+                            </div>
+                            <div class="flex shrink-0 items-center gap-2">
+                                @if ($isOwner)
+                                    <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">{{ __('Propriétaire') }}</span>
+                                @elseif ($canManageMembers)
+                                    <select wire:change="updateBoardMemberRole({{ $member->id }}, $event.target.value)" class="rounded-lg border border-neutral-300 bg-white px-2 py-1 text-xs shadow-sm focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                        <option value="member" @selected($member->pivot->role === 'member')>{{ __('Membre') }}</option>
+                                        <option value="admin" @selected($member->pivot->role === 'admin')>{{ __('Administrateur') }}</option>
+                                    </select>
+                                    <button type="button" wire:click="removeBoardMember({{ $member->id }})" class="text-xs text-neutral-400 hover:text-red-500">{{ __('Retirer') }}</button>
+                                @else
+                                    <span class="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">{{ \App\Enums\Role::from($member->pivot->role)->label() }}</span>
+                                @endif
+                            </div>
+                        </li>
+                    @endforeach
+                </ul>
+
+                {{-- Add from the workspace --}}
+                @if ($canManageMembers)
+                    <div>
+                        <p class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Ajouter depuis le workspace') }}</p>
+                        @forelse ($addableMembers as $candidate)
+                            <div wire:key="add-{{ $candidate->id }}" class="flex items-center justify-between gap-3 py-1.5">
+                                <div class="flex min-w-0 items-center gap-2">
+                                    <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-xs font-semibold text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300">{{ Str::of($candidate->name)->substr(0, 1)->upper() }}</span>
+                                    <span class="truncate text-sm">{{ $candidate->name }}</span>
+                                </div>
+                                <button type="button" wire:click="addBoardMember({{ $candidate->id }})" class="shrink-0 rounded-lg bg-indigo-600 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-500">{{ __('Ajouter') }}</button>
+                            </div>
+                        @empty
+                            <p class="text-sm text-neutral-400">{{ __('Tous les membres du workspace sont déjà sur ce board.') }}</p>
+                        @endforelse
+                    </div>
+                @endif
+            </div>
+        </x-modal>
+    @endif
+
+    @can('update', $board)
+        <livewire:boards.automations :board="$board" :show-trigger="false" wire:key="automations-{{ $board->id }}"/>
+    @endcan
 
     <livewire:cards.card-detail :board="$board" wire:key="card-detail-{{ $board->id }}"/>
 </div>

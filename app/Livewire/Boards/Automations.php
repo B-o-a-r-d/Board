@@ -7,11 +7,14 @@ use App\Models\Board;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class Automations extends Component
 {
     public Board $board;
+
+    public bool $showTrigger = true;
 
     public bool $showModal = false;
 
@@ -31,11 +34,13 @@ class Automations extends Component
     /** @var array<string, mixed> */
     public array $actionConfig = [];
 
-    public function mount(Board $board): void
+    public function mount(Board $board, bool $showTrigger = true): void
     {
         $this->board = $board;
+        $this->showTrigger = $showTrigger;
     }
 
+    #[On('open-automations')]
     public function open(): void
     {
         $this->authorize('update', $this->board);

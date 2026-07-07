@@ -186,3 +186,13 @@ test('an inactive automation does not run', function () {
 
     expect($card->fresh()->completed_at)->toBeNull();
 });
+
+test('the automations modal opens from the board menu event', function () {
+    ['board' => $board, 'owner' => $owner] = makeAutoBoard();
+
+    Livewire::actingAs($owner)
+        ->test(Automations::class, ['board' => $board, 'showTrigger' => false])
+        ->assertSet('showModal', false)
+        ->dispatch('open-automations')
+        ->assertSet('showModal', true);
+});
