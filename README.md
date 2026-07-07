@@ -1,58 +1,100 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
-
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+  <img src="public/logo.png" alt="Board" width="220">
 </p>
 
-## About Laravel
+<h1 align="center">Board</h1>
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+<p align="center">
+  The open-source, self-hosted Kanban — real-time collaboration, a first-class
+  <strong>plugin SDK</strong>, and a built-in <strong>MCP server</strong> for AI agents.
+</p>
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+<p align="center">
+  <img alt="Laravel 13" src="https://img.shields.io/badge/Laravel-13-FF2D20?logo=laravel&logoColor=white">
+  <img alt="Livewire 4" src="https://img.shields.io/badge/Livewire-4-4E56A6">
+  <img alt="Tailwind 4" src="https://img.shields.io/badge/Tailwind_CSS-4-38BDF8?logo=tailwindcss&logoColor=white">
+  <img alt="PHP 8.3" src="https://img.shields.io/badge/PHP-8.3-777BB4?logo=php&logoColor=white">
+  <img alt="License MIT" src="https://img.shields.io/badge/License-MIT-22c55e">
+</p>
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+**Board** is a Trello-style project board you can run yourself. It is a real-time,
+multi-workspace Kanban with a clean mobile UI — and, unlike most alternatives, it
+ships a genuine **plugin architecture**: Power-Ups are ordinary Composer packages,
+auto-discovered and independently versioned.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Features
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- **Boards, lists & cards** — drag & drop (`wire:sort`), labels, checklists,
+  attachments (images / video / files), comments with **@mentions** and emoji
+  reactions, start/due dates, cover images and **custom fields**.
+- **Views** — board, **calendar**, saved filters/views, WIP limits, collapse,
+  bulk actions and keyboard shortcuts.
+- **Real-time** — live presence, comments and updates on every open board via
+  **Laravel Reverb**; per-user notification preferences.
+- **Activity** — a Trello-style activity slide-over with per-plugin tabs.
+- **Automations** — trigger/action rules and manual card buttons, plus scheduled runs.
+- **Power-Ups / Plugins** — install with `composer require`; a versioned
+  [SDK](https://github.com/B-o-a-r-d/Board-Plugin-SDK) lets plugins add read-only
+  **list sources**, **card enrichment**, **activity tabs**, **MCP tools** and their
+  own translations. First connector: [GitHub](https://github.com/B-o-a-r-d/Github-Plugin).
+- **MCP server** — drive boards from AI agents (Model Context Protocol); plugins
+  can contribute tools.
+- **API** — token auth via Laravel Sanctum, ULID public IDs everywhere.
+- **Exports** — CSV / XLSX / JSON. **Public sharing** links with live presence.
+- **i18n** — French, English, Spanish. **Dark mode**.
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Quick start (local)
 
 ```bash
-composer require laravel/boost --dev
+git clone https://github.com/B-o-a-r-d/board.git && cd board
+composer install
+cp .env.example .env && php artisan key:generate
+# configure DB + APP_TIMEZONE in .env, then:
+php artisan migrate
+npm install && npm run build
 
-php artisan boost:install
+# run everything (server + queue + reverb + vite) in one command:
+composer run dev
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Open the app, register the first user, and create a workspace.
 
-## Contributing
+> **Docker / production self-hosting**, GitHub OAuth, Reverb, MCP and more are
+> covered in the **[Wiki](../../wiki)**.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Stack
 
-## Code of Conduct
+Laravel 13 · Livewire 4 (bundled Alpine) · Tailwind CSS 4 · Laravel Reverb
+(WebSockets) · Sanctum · Laravel MCP · PostgreSQL (SQLite in tests) · Pest 4.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Plugins
 
-## Security Vulnerabilities
+Board's Power-Ups are separate, versioned Composer packages that depend only on the
+SDK — never on the app — so you can update a plugin without touching the core.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+composer require board/plugin-github
+```
+
+Building your own is a short guide away: **[Creating a plugin](../../wiki/Creating-a-Plugin)**.
+
+## Testing
+
+```bash
+php artisan test        # Pest — feature + unit
+vendor/bin/pint         # code style
+```
+
+## Ecosystem
+
+| Repo | What |
+|------|------|
+| [board](https://github.com/B-o-a-r-d/board) | The application (this repo) |
+| [Board-Plugin-SDK](https://github.com/B-o-a-r-d/Board-Plugin-SDK) | Contracts to build plugins |
+| [Github-Plugin](https://github.com/B-o-a-r-d/Github-Plugin) | GitHub Power-Up (commits / PRs / issues + card links) |
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Board is open-source software licensed under the [MIT license](https://opensource.org/licenses/MIT).
