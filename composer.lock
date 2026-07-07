@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "19e727d19c1180cab0725a12b285914c",
+    "content-hash": "8ccce32804113b3aafc54a089e27d06c",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -141,6 +141,98 @@
                 }
             ],
             "time": "2026-06-30T09:44:12+00:00"
+        },
+        {
+            "name": "board/plugin-github",
+            "version": "v0.1.1",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:B-o-a-r-d/Github-Plugin.git",
+                "reference": "eb6b4e18cc14e2b5b4323fd94290d972d3f54dfa"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/B-o-a-r-d/Github-Plugin/zipball/eb6b4e18cc14e2b5b4323fd94290d972d3f54dfa",
+                "reference": "eb6b4e18cc14e2b5b4323fd94290d972d3f54dfa",
+                "shasum": ""
+            },
+            "require": {
+                "board/plugin-sdk": "^0.1",
+                "illuminate/http": "^11 || ^12 || ^13",
+                "illuminate/support": "^11 || ^12 || ^13",
+                "php": "^8.3"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Board\\PluginGithub\\GitHubPluginServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Board\\PluginGithub\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "GitHub Power-Up for Board: read-only lists of commits, pull requests and issues.",
+            "keywords": [
+                "board",
+                "github",
+                "kanban",
+                "plugin"
+            ],
+            "support": {
+                "source": "https://github.com/B-o-a-r-d/Github-Plugin/tree/v0.1.1",
+                "issues": "https://github.com/B-o-a-r-d/Github-Plugin/issues"
+            },
+            "time": "2026-07-07T13:36:17+00:00"
+        },
+        {
+            "name": "board/plugin-sdk",
+            "version": "v0.1.0",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:B-o-a-r-d/Board-Plugin-SDK.git",
+                "reference": "3bd4f9a2be82a4bb196e27073e25bbca6de06a65"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/B-o-a-r-d/Board-Plugin-SDK/zipball/3bd4f9a2be82a4bb196e27073e25bbca6de06a65",
+                "reference": "3bd4f9a2be82a4bb196e27073e25bbca6de06a65",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/support": "^11 || ^12 || ^13",
+                "php": "^8.3"
+            },
+            "require-dev": {
+                "pestphp/pest": "^3 || ^4"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Board\\PluginSdk\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "SDK and contracts for building Board Kanban plugins (Power-Ups).",
+            "keywords": [
+                "board",
+                "kanban",
+                "plugin",
+                "sdk"
+            ],
+            "support": {
+                "source": "https://github.com/B-o-a-r-d/Board-Plugin-SDK/tree/v0.1.0",
+                "issues": "https://github.com/B-o-a-r-d/Board-Plugin-SDK/issues"
+            },
+            "time": "2026-07-07T13:15:10+00:00"
         },
         {
             "name": "brick/math",

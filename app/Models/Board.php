@@ -128,6 +128,11 @@ class Board extends Model
         return $this->hasMany(CustomField::class)->orderBy('position');
     }
 
+    public function plugins(): HasMany
+    {
+        return $this->hasMany(BoardPlugin::class);
+    }
+
     /**
      * @param  Builder<Board>  $query
      */

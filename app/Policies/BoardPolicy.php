@@ -61,6 +61,15 @@ class BoardPolicy
         return $this->canAdminister($user, $board);
     }
 
+    /**
+     * Board admins/owners and workspace admins may install and configure
+     * plugins (Power-Ups), which can hold OAuth credentials.
+     */
+    public function managePlugins(User $user, Board $board): bool
+    {
+        return $this->canAdminister($user, $board);
+    }
+
     private function canAdminister(User $user, Board $board): bool
     {
         if ($board->memberRole($user)?->isAdministrator()) {

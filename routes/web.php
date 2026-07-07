@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BoardExportController;
+use App\Http\Controllers\PluginOAuthController;
 use App\Http\Controllers\PublicBoardPresenceController;
 use App\Livewire\Boards\PublicBoard;
 use App\Livewire\Boards\Show as BoardShow;
@@ -31,4 +32,10 @@ Route::post('/share/{token}/presence-auth', PublicBoardPresenceController::class
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', Profile::class)->name('profile.edit');
+
+    // Plugin (Power-Up) OAuth connection flow — one pair per provider.
+    Route::get('/plugins/{boardPlugin}/oauth/github/redirect', [PluginOAuthController::class, 'githubRedirect'])
+        ->name('plugins.oauth.github.redirect');
+    Route::get('/plugins/oauth/github/callback', [PluginOAuthController::class, 'githubCallback'])
+        ->name('plugins.oauth.github.callback');
 });

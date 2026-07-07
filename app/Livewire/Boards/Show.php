@@ -11,6 +11,9 @@ use App\Models\Board;
 use App\Models\BoardList;
 use App\Models\Card;
 use App\Models\CardTemplate;
+use App\Plugins\PluginEngine;
+use Board\PluginSdk\Contracts\ProvidesListSource;
+use Board\PluginSdk\PluginRegistry;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
@@ -148,6 +151,187 @@ class Show extends Component
 
         $this->board->customFields()->whereKey($fieldId)->delete();
         $this->dispatch('board-refresh');
+    }
+
+    public bool $showPlugins = false;
+
+    /** The installed plugin instance currently being turned into a list. */
+    public ?int $configuringPluginId = null;
+
+    public string $newPluginListName = '';
+
+    public string $newPluginListMode = '';
+
+    /** @var array<string, mixed> */
+    public array $newPluginListConfig = [];
+
+    public function togglePlugins(): void
+    {
+        $this->authorize('managePlugins', $this->board);
+
+        $this->showPlugins = ! $this->showPlugins;
+        $this->configuringPluginId = null;
+    }
+
+    public function installPlugin(string $pluginKey): void
+    {
+        $this->authorize('managePlugins', $this->board);
+
+        $plugin = app(PluginRegistry::class)->get($pluginKey);
+
+        // One instance per plugin key per board (keeps the UI simple for now).
+        if ($plugin === null || $this->board->plugins()->where('plugin_key', $pluginKey)->exists()) {
+            return;
+        }
+
+        $this->board->plugins()->create([
+            'plugin_key' => $pluginKey,
+            'name' => $plugin->label(),
+            'config' => [],
+            'is_active' => true,
+        ]);
+
+        $this->dispatch('board-refresh');
+    }
+
+    public function uninstallPlugin(int $pluginId): void
+    {
+        $this->authorize('managePlugins', $this->board);
+
+        // Plugin lists keep existing but lose their source (nullOnDelete),
+        // degrading to empty normal lists.
+        $this->board->plugins()->whereKey($pluginId)->delete();
+        $this->configuringPluginId = null;
+        $this->dispatch('board-refresh');
+    }
+
+    public function togglePluginActive(int $pluginId): void
+    {
+        $this->authorize('managePlugins', $this->board);
+
+        $plugin = $this->board->plugins()->findOrFail($pluginId);
+        $plugin->update(['is_active' => ! $plugin->is_active]);
+        $this->dispatch('board-refresh');
+    }
+
+    /** The installed plugin instance whose credentials are being edited. */
+    public ?int $editingPluginId = null;
+
+    /** @var array<string, mixed> */
+    public array $pluginConfigDraft = [];
+
+    public function startPluginConfig(int $pluginId): void
+    {
+        $this->authorize('managePlugins', $this->board);
+
+        $instance = $this->board->plugins()->findOrFail($pluginId);
+        $definition = app(PluginRegistry::class)->get($instance->plugin_key);
+
+        $this->editingPluginId = $pluginId;
+        $this->pluginConfigDraft = [];
+
+        // Prefill non-secret fields; secrets stay blank (never sent to the client).
+        foreach ($definition?->configFields($instance->config ?? []) ?? [] as $field) {
+            $this->pluginConfigDraft[$field['key']] = ($field['type'] ?? 'text') === 'password'
+                ? ''
+                : (string) ($instance->config[$field['key']] ?? '');
+        }
+    }
+
+    public function savePluginConfig(): void
+    {
+        $this->authorize('managePlugins', $this->board);
+
+        $instance = $this->board->plugins()->findOrFail($this->editingPluginId);
+        $definition = app(PluginRegistry::class)->get($instance->plugin_key);
+        $config = $instance->config ?? [];
+
+        foreach ($definition?->configFields($config) ?? [] as $field) {
+            $key = $field['key'];
+            $value = trim((string) ($this->pluginConfigDraft[$key] ?? ''));
+
+            // A blank secret keeps the stored value (so it isn't wiped on edit).
+            if (($field['type'] ?? 'text') === 'password' && $value === '') {
+                continue;
+            }
+
+            $config[$key] = $value;
+        }
+
+        $instance->update(['config' => $config]);
+
+        $this->editingPluginId = null;
+        $this->reset('pluginConfigDraft');
+        $this->dispatch('board-refresh');
+        $this->dispatch('toast', message: __('Configuration enregistrée'), type: 'success');
+    }
+
+    public function startPluginList(int $pluginId): void
+    {
+        $this->authorize('managePlugins', $this->board);
+
+        $this->configuringPluginId = $pluginId;
+        $this->reset('newPluginListName', 'newPluginListMode', 'newPluginListConfig');
+    }
+
+    public function createPluginList(): void
+    {
+        $this->authorize('managePlugins', $this->board);
+
+        $instance = $this->board->plugins()->findOrFail($this->configuringPluginId);
+        $plugin = app(PluginRegistry::class)->get($instance->plugin_key);
+
+        if (! $plugin instanceof ProvidesListSource) {
+            return;
+        }
+
+        $data = $this->validate([
+            'newPluginListName' => ['required', 'string', 'max:60'],
+            'newPluginListMode' => ['required', 'string'],
+        ]);
+
+        $validModes = collect($plugin->sourceModes())->pluck('key')->all();
+
+        if (! in_array($data['newPluginListMode'], $validModes, true)) {
+            $this->addError('newPluginListMode', __('Mode de source invalide.'));
+
+            return;
+        }
+
+        $this->board->lists()->create([
+            'name' => $data['newPluginListName'],
+            'position' => (int) $this->board->lists()->max('position') + 1,
+            'source_plugin_id' => $instance->id,
+            'source_mode' => $data['newPluginListMode'],
+            'source_config' => array_filter(
+                $this->newPluginListConfig,
+                fn ($value): bool => $value !== '' && $value !== null,
+            ),
+        ]);
+
+        $this->configuringPluginId = null;
+        $this->reset('newPluginListName', 'newPluginListMode', 'newPluginListConfig');
+        $this->dispatch('board-refresh');
+        $this->dispatch('toast', message: __('Liste créée depuis le plugin'), type: 'success');
+    }
+
+    /**
+     * Manually refresh a plugin list's items and let other viewers update live.
+     */
+    public function refreshPluginList(int $listId): void
+    {
+        $this->authorize('view', $this->board);
+
+        $list = $this->board->lists()->findOrFail($listId);
+
+        if (! $list->isPluginList()) {
+            return;
+        }
+
+        app(PluginEngine::class)->refresh($list);
+
+        broadcast(new BoardActivity($this->board->id, 'plugin.refreshed', Auth::id()))->toOthers();
+        $this->dispatch('toast', message: __('Liste actualisée'), type: 'success');
     }
 
     /**
@@ -933,10 +1117,18 @@ class Show extends Component
                     'cards.labels',
                     'cards.checklists.items',
                     'cards.customFieldValues',
+                    'sourcePlugin',
                 ])
                 ->orderBy('position')
                 ->get()
             : collect();
+
+        // Read-only virtual items for plugin-sourced lists (cached per list).
+        $pluginItems = $lists
+            ->filter(fn (BoardList $list): bool => $list->isPluginList())
+            ->mapWithKeys(fn (BoardList $list): array => [
+                $list->id => app(PluginEngine::class)->listItems($list),
+            ]);
 
         $boardMembers = $this->board->members()->orderBy('name')->get();
 
@@ -958,6 +1150,10 @@ class Show extends Component
                 ? $this->board->activities()->with(['user', 'card'])->latest()->limit(60)->get()
                 : collect(),
             'customFields' => $this->board->customFields,
+            'pluginItems' => $pluginItems,
+            'pluginRegistry' => app(PluginRegistry::class),
+            'availablePlugins' => $this->showPlugins ? app(PluginRegistry::class)->all() : [],
+            'installedPlugins' => $this->showPlugins ? $this->board->plugins()->get() : collect(),
         ]);
     }
 

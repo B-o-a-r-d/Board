@@ -6,6 +6,7 @@ use App\Automations\Actions;
 use App\Automations\AutomationRegistry;
 use App\Automations\Triggers;
 use App\Models\User;
+use Board\PluginSdk\PluginRegistry;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -44,6 +45,11 @@ class AppServiceProvider extends ServiceProvider
 
             return $registry;
         });
+
+        // Plugins (Power-Ups) register themselves into this singleton from their
+        // own package service providers (Laravel auto-discovery), so installing
+        // a plugin is just `composer require`.
+        $this->app->singleton(PluginRegistry::class, fn (): PluginRegistry => new PluginRegistry);
     }
 
     /**

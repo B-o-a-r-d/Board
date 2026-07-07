@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['board_id', 'name', 'cover_color', 'cover_path', 'wip_limit', 'position', 'archived_at'])]
+#[Fillable(['board_id', 'name', 'cover_color', 'cover_path', 'wip_limit', 'position', 'archived_at', 'source_plugin_id', 'source_mode', 'source_config'])]
 class BoardList extends Model
 {
     /** @use HasFactory<BoardListFactory> */
@@ -24,6 +24,7 @@ class BoardList extends Model
         return [
             'archived_at' => 'datetime',
             'wip_limit' => 'integer',
+            'source_config' => 'array',
         ];
     }
 
@@ -35,5 +36,19 @@ class BoardList extends Model
     public function cards(): HasMany
     {
         return $this->hasMany(Card::class)->orderBy('position');
+    }
+
+    public function sourcePlugin(): BelongsTo
+    {
+        return $this->belongsTo(BoardPlugin::class, 'source_plugin_id');
+    }
+
+    /**
+     * A plugin-sourced list renders read-only virtual cards instead of stored
+     * cards (no manual add, no drag & drop).
+     */
+    public function isPluginList(): bool
+    {
+        return $this->source_plugin_id !== null;
     }
 }

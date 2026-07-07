@@ -41,7 +41,7 @@ use Laravel\Mcp\Server\Tool;
 
 #[Name('Board')]
 #[Version('1.2.0')]
-#[Instructions('Full control of the B0ard Kanban app on behalf of the authenticated user. Boards, lists, cards, checklists, labels, member assignments, comments, attachments (by URL), and manual automations. Use get-board to explore, get-board-meta for label/member ids, and get-card for full card detail (including checklist item ids). All actions respect the user membership/role, are logged as "mcp:" activities, and broadcast live like web UI actions.')]
+#[Instructions('Full control of the Board Kanban app on behalf of the authenticated user. Boards, lists, cards, checklists, labels, member assignments, comments, attachments (by URL), and manual automations. Use get-board to explore, get-board-meta for label/member ids, and get-card for full card detail (including checklist item ids). All actions respect the user membership/role, are logged as "mcp:" activities, and broadcast live like web UI actions.')]
 class BoardServer extends Server
 {
     /**

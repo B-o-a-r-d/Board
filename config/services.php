@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    // GitHub OAuth app used by the GitHub Power-Up (board/plugin-github).
+    'github' => [
+        'client_id' => env('GITHUB_CLIENT_ID'),
+        'client_secret' => env('GITHUB_CLIENT_SECRET'),
+        'scopes' => env('GITHUB_SCOPES', 'repo read:org'),
+    ],
+
 ];

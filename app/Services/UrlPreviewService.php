@@ -89,7 +89,7 @@ class UrlPreviewService
 
         try {
             $response = Http::withHeaders([
-                'User-Agent' => 'B0ardBot/1.0 (+link-preview)',
+                'User-Agent' => 'BoardBot/1.0 (+link-preview)',
                 'Accept' => 'text/html,application/xhtml+xml',
             ])
                 ->connectTimeout(3)

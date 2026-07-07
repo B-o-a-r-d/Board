@@ -136,6 +136,12 @@
                                                  wire:click="toggleCustomFields">
                                 {{ __('Champs personnalisés') }}
                             </x-context-menu.item>
+                            @can('managePlugins', $board)
+                                <x-context-menu.item icon="puzzle-piece"
+                                                     wire:click="togglePlugins">
+                                    {{ __('Power-Ups') }}
+                                </x-context-menu.item>
+                            @endcan
                             <x-context-menu.separator/>
                             <x-context-menu.item icon="file-csv"
                                                  @click="window.location.href = '{{ route('boards.export', ['board' => $board->id, 'format' => 'csv']) }}'">{{ __('Exporter en CSV') }}</x-context-menu.item>
@@ -328,11 +334,15 @@
                                 wire:change="renameList({{ $list->id }}, $event.target.value)"
                                 class="w-full min-w-0 truncate rounded bg-transparent px-1 py-0.5 text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:focus:bg-neutral-800"
                             >
-                            <span
-                                class="shrink-0 rounded-full px-1.5 py-0.5 text-xs font-medium transition-colors"
-                                :class="wipLimit && cardCount > wipLimit ? 'bg-red-200 text-red-700 dark:bg-red-500/25 dark:text-red-300' : 'bg-neutral-300/70 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'"
-                                :title="wipLimit && cardCount > wipLimit ? '{{ __('Limite WIP dépassée') }}' : ''"
-                                x-text="wipLimit ? cardCount + '/' + wipLimit : cardCount">{{ $list->cards->count() }}{{ $list->wip_limit ? '/'.$list->wip_limit : '' }}</span>
+                            @if ($list->isPluginList())
+                                <span class="shrink-0 rounded-full bg-neutral-300/70 px-1.5 py-0.5 text-xs font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">{{ ($pluginItems[$list->id] ?? collect())->count() }}</span>
+                            @else
+                                <span
+                                    class="shrink-0 rounded-full px-1.5 py-0.5 text-xs font-medium transition-colors"
+                                    :class="wipLimit && cardCount > wipLimit ? 'bg-red-200 text-red-700 dark:bg-red-500/25 dark:text-red-300' : 'bg-neutral-300/70 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'"
+                                    :title="wipLimit && cardCount > wipLimit ? '{{ __('Limite WIP dépassée') }}' : ''"
+                                    x-text="wipLimit ? cardCount + '/' + wipLimit : cardCount">{{ $list->cards->count() }}{{ $list->wip_limit ? '/'.$list->wip_limit : '' }}</span>
+                            @endif
                         </div>
                         <button type="button" wire:sort:ignore @click="openAt($event.clientX, $event.clientY)"
                                 class="shrink-0 rounded p-1 text-neutral-400 hover:bg-neutral-300 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
@@ -383,6 +393,7 @@
                     </x-slot:menu>
                 </x-context-menu>
 
+                @if (! $list->isPluginList())
                 {{-- Cards --}}
                 <ul
                     x-ref="cards"
@@ -578,6 +589,59 @@
                         </x-context-menu>
                     @endif
                 </div>
+                @else
+                    {{-- Plugin-sourced list: read-only virtual cards --}}
+                    @php
+                        $pItems = $pluginItems[$list->id] ?? collect();
+                        $pDef = $pluginRegistry->get(optional($list->sourcePlugin)->plugin_key);
+                        $badgeColors = [
+                            'green' => 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400',
+                            'red' => 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400',
+                            'amber' => 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
+                            'indigo' => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300',
+                            'neutral' => 'bg-neutral-200 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300',
+                        ];
+                    @endphp
+                    <div class="flex items-center justify-between gap-2 px-3 pb-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+                        <span class="inline-flex min-w-0 items-center gap-1 truncate">
+                            <x-dynamic-component :component="'phosphor-'.($pDef?->icon() ?? 'puzzle-piece')" class="h-3.5 w-3.5 shrink-0"/>
+                            <span class="truncate">{{ optional($list->sourcePlugin)->name }}</span>
+                            @unless (optional($list->sourcePlugin)->is_active)
+                                <span class="shrink-0 rounded bg-neutral-200 px-1 text-[10px] dark:bg-neutral-700">{{ __('inactif') }}</span>
+                            @endunless
+                        </span>
+                        <button type="button" wire:click="refreshPluginList({{ $list->id }})"
+                                class="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 hover:bg-neutral-200 dark:hover:bg-neutral-800"
+                                title="{{ __('Rafraîchir') }}">
+                            <x-phosphor-arrows-clockwise class="h-3.5 w-3.5" wire:loading.class="animate-spin" wire:target="refreshPluginList({{ $list->id }})"/>
+                        </button>
+                    </div>
+                    <ul class="flex min-h-2 flex-col gap-2 overflow-y-auto px-2 pb-2">
+                        @forelse ($pItems as $item)
+                            <li>
+                                <a @if ($item->url) href="{{ $item->url }}" target="_blank" rel="noopener noreferrer" @endif
+                                   class="flex flex-col gap-1 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm shadow-sm transition hover:border-indigo-300 dark:border-neutral-700 dark:bg-neutral-800 dark:hover:border-indigo-500/50">
+                                    <div class="flex items-start gap-2">
+                                        @if ($item->icon)
+                                            <x-dynamic-component :component="'phosphor-'.$item->icon" class="mt-0.5 h-4 w-4 shrink-0 text-neutral-400"/>
+                                        @endif
+                                        <span class="min-w-0 flex-1 font-medium leading-snug">{{ $item->title }}</span>
+                                        @if ($item->badge)
+                                            <span class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium {{ $badgeColors[$item->badgeColor] ?? $badgeColors['neutral'] }}">{{ $item->badge }}</span>
+                                        @endif
+                                    </div>
+                                    @if ($item->subtitle)
+                                        <span class="truncate text-xs text-neutral-500 dark:text-neutral-400">{{ $item->subtitle }}</span>
+                                    @endif
+                                </a>
+                            </li>
+                        @empty
+                            <li class="px-2 py-6 text-center text-xs text-neutral-400 dark:text-neutral-500">
+                                {{ optional($list->sourcePlugin)->is_active ? __('Aucun élément.') : __('Plugin désactivé.') }}
+                            </li>
+                        @endforelse
+                    </ul>
+                @endif
                 </div>
             </div>
         @endforeach
@@ -899,6 +963,201 @@
                         <x-phosphor-plus class="h-4 w-4"/> {{ __('Ajouter le champ') }}
                     </button>
                 </form>
+            </div>
+        </x-modal>
+    @endif
+
+    {{-- Power-Ups (plugins) panel --}}
+    @if ($showPlugins)
+        <x-modal max-width="2xl" on-close="$wire.$set('showPlugins', false)">
+            <x-slot:header>
+                <span class="flex items-center gap-2"><x-phosphor-puzzle-piece class="h-5 w-5"/> {{ __('Power-Ups') }}</span>
+            </x-slot:header>
+
+            <div class="space-y-6 p-5">
+                {{-- Installed instances --}}
+                <div class="space-y-3">
+                    <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Installés') }}</h3>
+                    @forelse ($installedPlugins as $instance)
+                        @php
+                            $def = $pluginRegistry->get($instance->plugin_key);
+                            $connected = $instance->isConnected();
+                            $needsOAuth = $def?->requiresOAuth() ?? false;
+                            $configFields = $def?->configFields($instance->config ?? []) ?? [];
+                            $isConfigured = collect($configFields)->every(fn ($f) => filled($instance->config[$f['key']] ?? null));
+                        @endphp
+                        <div wire:key="plugin-{{ $instance->id }}" class="rounded-xl border border-neutral-200 p-3 dark:border-neutral-800">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex min-w-0 items-start gap-2">
+                                    <x-dynamic-component :component="'phosphor-'.($def?->icon() ?? 'puzzle-piece')" class="mt-0.5 h-5 w-5 shrink-0 text-neutral-500"/>
+                                    <div class="min-w-0">
+                                        <p class="flex items-center gap-2 text-sm font-medium">
+                                            {{ $instance->name }}
+                                            @if (! $instance->is_active)
+                                                <span class="rounded bg-neutral-200 px-1.5 text-[10px] font-normal text-neutral-500 dark:bg-neutral-700 dark:text-neutral-400">{{ __('inactif') }}</span>
+                                            @endif
+                                        </p>
+                                        <p class="truncate text-xs text-neutral-500 dark:text-neutral-400">
+                                            @if ($needsOAuth)
+                                                @if ($connected)
+                                                    <span class="inline-flex items-center gap-1 text-green-600 dark:text-green-400"><x-phosphor-plugs-connected class="h-3.5 w-3.5"/> {{ __('Connecté') }}@if (! empty($instance->config['account'])) · {{ $instance->config['account'] }}@endif</span>
+                                                @else
+                                                    <span class="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400"><x-phosphor-plug class="h-3.5 w-3.5"/> {{ __('Non connecté') }}</span>
+                                                @endif
+                                            @else
+                                                {{ $def?->description() }}
+                                            @endif
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="flex shrink-0 items-center gap-1">
+                                    @if (! empty($configFields))
+                                        <button type="button" wire:click="startPluginConfig({{ $instance->id }})"
+                                                class="rounded-lg border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">
+                                            {{ __('Configurer') }}
+                                        </button>
+                                    @endif
+                                    @if ($needsOAuth && $isConfigured)
+                                        <a href="{{ route('plugins.oauth.'.$def->oauthProvider().'.redirect', $instance) }}"
+                                           class="rounded-lg border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">
+                                            {{ $connected ? __('Reconnecter') : __('Connecter') }}
+                                        </a>
+                                    @endif
+                                    <button type="button" wire:click="togglePluginActive({{ $instance->id }})"
+                                            class="rounded-lg border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">
+                                        {{ $instance->is_active ? __('Désactiver') : __('Activer') }}
+                                    </button>
+                                    <button type="button"
+                                            @click="$store.confirm.open({ title: '{{ __('Désinstaller le plugin') }}', message: '{{ __('Retirer ce Power-Up ? Les listes qui en dépendent deviendront vides.') }}', confirmLabel: '{{ __('Désinstaller') }}', danger: true }).then(ok => ok && $wire.uninstallPlugin({{ $instance->id }}))"
+                                            class="rounded-lg p-1.5 text-neutral-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10" title="{{ __('Désinstaller') }}">
+                                        <x-phosphor-trash class="h-4 w-4"/>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- Credentials configuration --}}
+                            @if ($editingPluginId === $instance->id && ! empty($configFields))
+                                <form wire:submit="savePluginConfig" class="mt-3 space-y-3 border-t border-neutral-100 pt-3 dark:border-neutral-800">
+                                    @if ($needsOAuth)
+                                        <div class="rounded-lg bg-neutral-50 p-2.5 text-xs text-neutral-600 dark:bg-neutral-800/50 dark:text-neutral-300">
+                                            <p class="mb-1 font-medium">{{ __("URL de rappel à renseigner dans l'app OAuth :") }}</p>
+                                            <div class="flex items-center gap-2">
+                                                <code class="min-w-0 flex-1 truncate rounded bg-white px-2 py-1 dark:bg-neutral-900">{{ route('plugins.oauth.'.$def->oauthProvider().'.callback') }}</code>
+                                                <button type="button" class="shrink-0 rounded p-1 hover:bg-neutral-200 dark:hover:bg-neutral-700"
+                                                        @click="navigator.clipboard?.writeText('{{ route('plugins.oauth.'.$def->oauthProvider().'.callback') }}'); window.toast('{{ __('Copié') }}', { type: 'success' })" title="{{ __('Copier') }}">
+                                                    <x-phosphor-copy class="h-3.5 w-3.5"/>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    @endif
+
+                                    @foreach ($configFields as $field)
+                                        <div>
+                                            <label class="mb-1 block text-xs font-medium text-neutral-500">{{ $field['label'] }}</label>
+                                            <input type="{{ ($field['type'] ?? 'text') === 'password' ? 'password' : 'text' }}"
+                                                   wire:model="pluginConfigDraft.{{ $field['key'] }}"
+                                                   placeholder="{{ ($field['type'] ?? 'text') === 'password' && filled($instance->config[$field['key']] ?? null) ? '••••••••' : ($field['placeholder'] ?? '') }}"
+                                                   autocomplete="off"
+                                                   class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                            @if (! empty($field['help'])) <p class="mt-1 text-xs text-neutral-400">{{ $field['help'] }}</p> @endif
+                                        </div>
+                                    @endforeach
+
+                                    <div class="flex items-center gap-2">
+                                        <button type="submit" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700">{{ __('Enregistrer') }}</button>
+                                        <button type="button" wire:click="$set('editingPluginId', null)" class="rounded-lg px-3 py-1.5 text-sm text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800">{{ __('Annuler') }}</button>
+                                    </div>
+                                </form>
+                            @elseif ($needsOAuth && ! $isConfigured)
+                                <p class="mt-2 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                                    <x-phosphor-warning class="h-3.5 w-3.5"/> {{ __("Renseignez les identifiants OAuth pour connecter.") }}
+                                </p>
+                            @endif
+
+                            {{-- Create a list from this plugin --}}
+                            @if ($def instanceof \Board\PluginSdk\Contracts\ProvidesListSource && ($instance->is_active) && (! $needsOAuth || $connected))
+                                @if ($configuringPluginId === $instance->id)
+                                    <form wire:submit="createPluginList" class="mt-3 space-y-3 border-t border-neutral-100 pt-3 dark:border-neutral-800">
+                                        <div class="grid gap-3 sm:grid-cols-2">
+                                            <div>
+                                                <label class="mb-1 block text-xs font-medium text-neutral-500">{{ __('Nom de la liste') }}</label>
+                                                <input type="text" wire:model="newPluginListName" placeholder="{{ __('Commits, PRs…') }}"
+                                                       class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                                @error('newPluginListName') <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                                            </div>
+                                            <div>
+                                                <label class="mb-1 block text-xs font-medium text-neutral-500">{{ __('Type de source') }}</label>
+                                                <select wire:model="newPluginListMode"
+                                                        class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                                    <option value="">{{ __('Choisir…') }}</option>
+                                                    @foreach ($def->sourceModes() as $sourceMode)
+                                                        <option value="{{ $sourceMode['key'] }}">{{ $sourceMode['label'] }}</option>
+                                                    @endforeach
+                                                </select>
+                                                @error('newPluginListMode') <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                                            </div>
+                                        </div>
+
+                                        @foreach ($def->listConfigFields($instance->config ?? []) as $field)
+                                            <div>
+                                                <label class="mb-1 block text-xs font-medium text-neutral-500">{{ $field['label'] }}</label>
+                                                @if (($field['type'] ?? 'text') === 'select')
+                                                    <select wire:model="newPluginListConfig.{{ $field['key'] }}"
+                                                            class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                                        <option value="">{{ __('Choisir…') }}</option>
+                                                        @foreach ($field['options'] ?? [] as $opt)
+                                                            <option value="{{ $opt['value'] }}">{{ $opt['label'] }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                @else
+                                                    <input type="text" wire:model="newPluginListConfig.{{ $field['key'] }}" placeholder="{{ $field['placeholder'] ?? '' }}"
+                                                           class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                                @endif
+                                                @if (! empty($field['help'])) <p class="mt-1 text-xs text-neutral-400">{{ $field['help'] }}</p> @endif
+                                            </div>
+                                        @endforeach
+
+                                        <div class="flex items-center gap-2">
+                                            <button type="submit" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700">{{ __('Créer la liste') }}</button>
+                                            <button type="button" wire:click="$set('configuringPluginId', null)" class="rounded-lg px-3 py-1.5 text-sm text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800">{{ __('Annuler') }}</button>
+                                        </div>
+                                    </form>
+                                @else
+                                    <button type="button" wire:click="startPluginList({{ $instance->id }})"
+                                            class="mt-3 inline-flex items-center gap-1 rounded-lg border border-dashed border-neutral-300 px-2.5 py-1 text-xs text-neutral-600 hover:border-indigo-400 hover:text-indigo-600 dark:border-neutral-700 dark:text-neutral-300">
+                                        <x-phosphor-plus class="h-3.5 w-3.5"/> {{ __('Créer une liste') }}
+                                    </button>
+                                @endif
+                            @elseif ($needsOAuth && ! $connected)
+                                <p class="mt-2 text-xs text-neutral-400">{{ __('Connectez le plugin pour créer des listes.') }}</p>
+                            @endif
+                        </div>
+                    @empty
+                        <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ __('Aucun Power-Up installé.') }}</p>
+                    @endforelse
+                </div>
+
+                {{-- Catalog --}}
+                @php $installedKeys = $installedPlugins->pluck('plugin_key')->all(); @endphp
+                @php $catalog = collect($availablePlugins)->reject(fn ($p, $key) => in_array($key, $installedKeys, true)); @endphp
+                @if ($catalog->isNotEmpty())
+                    <div class="space-y-3 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+                        <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Catalogue') }}</h3>
+                        @foreach ($catalog as $key => $def)
+                            <div wire:key="catalog-{{ $key }}" class="flex items-center justify-between gap-3 rounded-xl border border-neutral-200 p-3 dark:border-neutral-800">
+                                <div class="flex min-w-0 items-start gap-2">
+                                    <x-dynamic-component :component="'phosphor-'.$def->icon()" class="mt-0.5 h-5 w-5 shrink-0 text-neutral-500"/>
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-medium">{{ $def->label() }}</p>
+                                        <p class="text-xs text-neutral-500 dark:text-neutral-400">{{ $def->description() }}</p>
+                                    </div>
+                                </div>
+                                <button type="button" wire:click="installPlugin('{{ $key }}')"
+                                        class="shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700">{{ __('Installer') }}</button>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
             </div>
         </x-modal>
     @endif
