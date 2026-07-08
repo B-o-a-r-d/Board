@@ -119,9 +119,54 @@
                                     </div>
                                     <ul class="space-y-1">
                                         @foreach ($checklist->items as $item)
+                                            @php $itemOverdue = $item->due_at && ! $item->is_completed && $item->due_at->isPast(); @endphp
                                             <li wire:key="item-{{ $item->id }}" class="group flex items-center gap-2 text-sm">
                                                 <x-checkbox :checked="$item->is_completed" :label="$item->content" wire:click="toggleChecklistItem({{ $item->id }})" wire:key="cbitem-{{ $item->id }}-{{ $item->is_completed }}" />
-                                                <button type="button" wire:click="deleteChecklistItem({{ $item->id }})" class="ml-auto text-xs text-neutral-300 opacity-100 hover:text-red-500 group-hover:opacity-100 sm:opacity-0"><x-phosphor-x class="h-3.5 w-3.5" /></button>
+
+                                                <div class="ml-auto flex shrink-0 items-center gap-1">
+                                                    {{-- Due date --}}
+                                                    <div x-data="{ o: false }" @click.outside="o = false" class="relative">
+                                                        <button type="button" @click="o = ! o" title="{{ __('Échéance') }}"
+                                                                class="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs {{ $item->due_at ? ($itemOverdue ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300' : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300') : 'text-neutral-300 opacity-0 group-hover:opacity-100 dark:text-neutral-600' }}">
+                                                            <x-phosphor-calendar-blank class="h-3.5 w-3.5"/>
+                                                            @if ($item->due_at)<span>{{ $item->due_at->translatedFormat('d M') }}</span>@endif
+                                                        </button>
+                                                        <div x-show="o" x-cloak class="absolute right-0 z-20 mt-1 w-44 rounded-lg border border-neutral-200 bg-white p-2 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+                                                            <input type="date" value="{{ $item->due_at?->toDateString() }}"
+                                                                   @change="$wire.setChecklistItemDue({{ $item->id }}, $event.target.value); o = false"
+                                                                   class="w-full rounded border border-neutral-300 bg-white px-1.5 py-1 text-xs focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                                            @if ($item->due_at)
+                                                                <button type="button" wire:click="setChecklistItemDue({{ $item->id }}, '')" @click="o = false" class="mt-1 w-full rounded px-1.5 py-1 text-left text-xs text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10">{{ __("Retirer l'échéance") }}</button>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+
+                                                    {{-- Assignee --}}
+                                                    <div x-data="{ o: false }" @click.outside="o = false" class="relative">
+                                                        <button type="button" @click="o = ! o" title="{{ __('Assigner') }}" class="flex items-center rounded">
+                                                            @if ($item->assignee)
+                                                                <x-user-avatar :user="$item->assignee" size="xs" :hover-card="false" />
+                                                            @else
+                                                                <span class="text-neutral-300 opacity-0 transition group-hover:opacity-100 dark:text-neutral-600"><x-phosphor-user-circle-plus class="h-4 w-4"/></span>
+                                                            @endif
+                                                        </button>
+                                                        <div x-show="o" x-cloak class="absolute right-0 z-20 mt-1 max-h-56 w-48 overflow-y-auto rounded-lg border border-neutral-200 bg-white p-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+                                                            @foreach ($board->members as $checklistMember)
+                                                                <button type="button" wire:click="assignChecklistItem({{ $item->id }}, {{ $checklistMember->id }})" @click="o = false" class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800">
+                                                                    <x-user-avatar :user="$checklistMember" size="xs" :hover-card="false" />
+                                                                    <span class="min-w-0 flex-1 truncate">{{ $checklistMember->name }}</span>
+                                                                    @if ($item->assigned_to === $checklistMember->id)<x-phosphor-check class="h-3.5 w-3.5 shrink-0 text-indigo-600 dark:text-indigo-400"/>@endif
+                                                                </button>
+                                                            @endforeach
+                                                            @if ($item->assignee)
+                                                                <button type="button" wire:click="assignChecklistItem({{ $item->id }}, null)" @click="o = false" class="mt-1 w-full rounded border-t border-neutral-100 px-2 py-1.5 text-left text-xs text-red-600 hover:bg-red-50 dark:border-neutral-800 dark:text-red-400 dark:hover:bg-red-500/10">{{ __('Désassigner') }}</button>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+
+                                                    {{-- Delete --}}
+                                                    <button type="button" wire:click="deleteChecklistItem({{ $item->id }})" class="text-neutral-300 opacity-100 hover:text-red-500 group-hover:opacity-100 dark:text-neutral-600 sm:opacity-0"><x-phosphor-x class="h-3.5 w-3.5" /></button>
+                                                </div>
                                             </li>
                                         @endforeach
                                     </ul>

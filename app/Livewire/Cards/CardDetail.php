@@ -464,6 +464,44 @@ class CardDetail extends Component
         $this->touched('checklist.item.deleted');
     }
 
+    /**
+     * Assign (or clear, with null) a board member to a checklist item — turning
+     * items into real sub-tasks.
+     */
+    public function assignChecklistItem(int $itemId, ?int $userId): void
+    {
+        $card = $this->guardedCard();
+        $item = $this->guardedChecklistItem($card, $itemId);
+
+        if ($userId !== null && ! $this->board->hasMember(User::findOrNew($userId))) {
+            return;
+        }
+
+        $item->update(['assigned_to' => $userId]);
+        $this->touched('checklist.item.assigned');
+    }
+
+    /**
+     * Set (or clear, with an empty value) a checklist item due date (noon).
+     */
+    public function setChecklistItemDue(int $itemId, ?string $date): void
+    {
+        $card = $this->guardedCard();
+        $item = $this->guardedChecklistItem($card, $itemId);
+
+        $item->update([
+            'due_at' => ($date !== null && $date !== '') ? Carbon::parse($date)->setTime(12, 0) : null,
+        ]);
+        $this->touched('checklist.item.due');
+    }
+
+    private function guardedChecklistItem(Card $card, int $itemId): ChecklistItem
+    {
+        return ChecklistItem::query()
+            ->whereHas('checklist', fn ($query) => $query->where('card_id', $card->id))
+            ->findOrFail($itemId);
+    }
+
     public function saveAttachment(): void
     {
         $card = $this->guardedCard();
@@ -852,7 +890,7 @@ class CardDetail extends Component
     {
         $card = $this->cardId
             ? $this->board->cards()
-                ->with(['members', 'watchers', 'labels', 'checklists.items', 'attachments.uploader', 'comments.user', 'comments.reactions', 'activities.user', 'customFieldValues'])
+                ->with(['members', 'watchers', 'labels', 'checklists.items.assignee', 'attachments.uploader', 'comments.user', 'comments.reactions', 'activities.user', 'customFieldValues'])
                 ->find($this->cardId)
             : null;
 
