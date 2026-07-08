@@ -80,6 +80,32 @@ test('a non-admin non-author cannot delete a comment', function () {
     expect(Comment::whereKey($comment->id)->exists())->toBeTrue();
 });
 
+test('the composer posts a comment via the body argument', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+
+    Livewire::actingAs($owner)
+        ->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->call('addComment', '**Bravo** @alice')
+        ->assertHasNoErrors();
+
+    expect($card->comments()->firstOrFail()->body)->toBe('**Bravo** @alice');
+});
+
+test('comment rendering converts markdown to html', function () {
+    ['board' => $board] = makeCardContext();
+    $board->load('members');
+
+    $component = new CardDetail;
+    $component->board = $board;
+
+    $html = $component->renderCommentBody("**bold** and *italic*\n\n- one\n- two");
+
+    expect($html)->toContain('<strong>bold</strong>')
+        ->and($html)->toContain('<em>italic</em>')
+        ->and($html)->toContain('<li>one</li>');
+});
+
 test('comment rendering highlights member mentions and escapes html', function () {
     ['board' => $board, 'owner' => $owner] = makeCardContext();
     $owner->update(['name' => 'Alice']);

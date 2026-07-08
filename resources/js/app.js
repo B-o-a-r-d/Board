@@ -9,6 +9,7 @@
 import './echo';
 import './context-menu';
 import './markdown-editor';
+import './comment-editor';
 import './public-presence';
 import './dropzone';
 import './confirm';

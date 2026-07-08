@@ -63,6 +63,27 @@
     <section class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
         <h2 class="text-base font-semibold">{{ __('Informations') }}</h2>
 
+        {{-- Avatar --}}
+        <div class="mt-4 flex items-center gap-4">
+            @if ($avatar && str_starts_with((string) $avatar->getMimeType(), 'image/'))
+                <img src="{{ $avatar->temporaryUrl() }}" alt="" class="h-20 w-20 shrink-0 rounded-full object-cover">
+            @else
+                <x-user-avatar :user="auth()->user()" size="xl" />
+            @endif
+            <div class="flex flex-col items-start gap-1.5">
+                <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">
+                    <x-phosphor-upload-simple class="h-4 w-4"/>
+                    <span>{{ __("Changer l'avatar") }}</span>
+                    <input type="file" wire:model="avatar" accept="image/*" class="hidden">
+                </label>
+                <p wire:loading wire:target="avatar" class="text-xs text-neutral-500">{{ __('Téléversement…') }}</p>
+                @error('avatar') <p class="text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                @if (auth()->user()->avatar_path)
+                    <button type="button" wire:click="removeAvatar" class="text-xs text-red-600 hover:underline dark:text-red-400">{{ __("Retirer l'avatar") }}</button>
+                @endif
+            </div>
+        </div>
+
         @if (session('profile-status'))
             <div class="mt-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-500/10 dark:text-green-400">
                 {{ session('profile-status') }}

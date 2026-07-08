@@ -551,9 +551,15 @@ class CardDetail extends Component
         $this->dispatch('toast', message: 'Carte enregistrée comme modèle global', type: 'success');
     }
 
-    public function addComment(): void
+    public function addComment(string $body = ''): void
     {
         $card = $this->guardedCard();
+
+        // The TipTap composer passes the markdown body directly; fall back to the
+        // bound property so other callers/tests keep working.
+        if (trim($body) !== '') {
+            $this->newComment = trim($body);
+        }
 
         $data = $this->validate(['newComment' => ['required', 'string', 'max:5000']]);
 
@@ -702,24 +708,19 @@ class CardDetail extends Component
     {
         $members = $this->board->members;
 
-        $html = (string) preg_replace_callback('/@([\p{L}0-9_-]+)/u', function (array $match) use ($members) {
+        // Render the stored markdown; raw HTML is escaped (never rendered).
+        $html = Str::markdown($body, ['html_input' => 'escape', 'allow_unsafe_links' => false]);
+
+        // Highlight @slug mentions that resolve to a board member.
+        return (string) preg_replace_callback('/@([\p{L}0-9_-]+)/u', function (array $match) use ($members) {
             $token = $match[1];
 
             $member = $members->first(fn ($user) => Str::slug($user->name) === Str::slug($token)
                 || Str::lower(Str::before($user->name, ' ')) === Str::lower($token));
 
-            if ($member) {
-                return '<span class="rounded bg-indigo-100 px-1 font-medium text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">@'.e($member->name).'</span>';
-            }
-
-            return $match[0];
-        }, e($body));
-
-        // Linkify plain URLs (the text is already HTML-escaped; the regex stops at "<").
-        return (string) preg_replace_callback('#https?://[^\s<]+#', function (array $match) {
-            $url = $match[0];
-
-            return '<a href="'.$url.'" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline dark:text-indigo-400">'.$url.'</a>';
+            return $member
+                ? '<span class="rounded bg-indigo-100 px-1 font-medium text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">@'.e($member->name).'</span>'
+                : $match[0];
         }, $html);
     }
 

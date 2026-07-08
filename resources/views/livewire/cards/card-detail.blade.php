@@ -281,145 +281,70 @@
                         </div>
 
                         {{-- Comments (real-time) --}}
+                        @php
+                            $mentionMembers = $boardMembers->map(fn ($m) => [
+                                'id' => $m->id,
+                                'name' => $m->name,
+                                'slug' => \Illuminate\Support\Str::slug($m->name),
+                                'avatar_url' => $m->avatarUrl(),
+                            ])->values();
+                        @endphp
                         <div
+                            wire:key="comment-composer-{{ $card->id }}"
                             class="space-y-3"
-                            data-uname="{{ auth()->user()->name }}"
-                            data-members="{{ json_encode($boardMembers->map(fn ($m) => ['id' => $m->id, 'name' => $m->name, 'slug' => \Illuminate\Support\Str::slug($m->name)])->values()) }}"
-                            x-data='{
-                                typers: {},
-                                channel: null,
-                                timers: {},
-                                lastPing: 0,
-                                members: [],
-                                showList: false,
-                                items: [],
-                                index: 0,
-                                caretTop: 0,
-                                caretLeft: 0,
-                                init() {
-                                    this.members = JSON.parse(this.$root.dataset.members || "[]");
-                                    if (! window.Echo) return;
-                                    this.channel = window.Echo.private("board.{{ $board->id }}");
-                                    this.channel.listenForWhisper("typing", (e) => {
-                                        if (e.cardId !== {{ $card->id }} || e.id === {{ auth()->id() }}) return;
-                                        this.typers = { ...this.typers, [e.id]: e.name };
-                                        clearTimeout(this.timers[e.id]);
-                                        this.timers[e.id] = setTimeout(() => {
-                                            let t = { ...this.typers }; delete t[e.id]; this.typers = t;
-                                        }, 2500);
-                                    });
-                                },
-                                ping() {
-                                    const now = Date.now();
-                                    if (now - this.lastPing < 800) return;
-                                    this.lastPing = now;
-                                    if (this.channel) this.channel.whisper("typing", { id: {{ auth()->id() }}, name: this.$root.dataset.uname, cardId: {{ $card->id }} });
-                                },
-                                onInput() {
-                                    this.ping();
-                                    this.detect();
-                                },
-                                detect() {
-                                    const el = this.$refs.input;
-                                    const before = el.value.substring(0, el.selectionStart);
-                                    const m = before.match(/(?:^|\s)@([\p{L}0-9_-]*)$/u);
-                                    if (! m) { this.showList = false; return; }
-                                    const q = m[1].toLowerCase();
-                                    this.items = this.members.filter(u => u.name.toLowerCase().includes(q) || u.slug.includes(q)).slice(0, 6);
-                                    this.index = 0;
-                                    this.showList = this.items.length > 0;
-                                    if (this.showList) this.position();
-                                },
-                                position() {
-                                    const el = this.$refs.input;
-                                    const div = document.createElement("div");
-                                    const s = getComputedStyle(el);
-                                    ["fontFamily","fontSize","fontWeight","lineHeight","letterSpacing","paddingTop","paddingRight","paddingBottom","paddingLeft","borderTopWidth","borderLeftWidth","boxSizing","textTransform"].forEach(p => div.style[p] = s[p]);
-                                    div.style.position = "absolute"; div.style.visibility = "hidden"; div.style.whiteSpace = "pre-wrap"; div.style.wordWrap = "break-word"; div.style.width = el.offsetWidth + "px";
-                                    div.textContent = el.value.substring(0, el.selectionStart);
-                                    const marker = document.createElement("span"); marker.textContent = "​"; div.appendChild(marker);
-                                    document.body.appendChild(div);
-                                    this.caretTop = marker.offsetTop - el.scrollTop;
-                                    this.caretLeft = Math.min(marker.offsetLeft, el.offsetWidth - 180);
-                                    document.body.removeChild(div);
-                                },
-                                onKeydown(e) {
-                                    if (! this.showList) return;
-                                    if (e.key === "ArrowDown") { e.preventDefault(); this.index = (this.index + 1) % this.items.length; }
-                                    else if (e.key === "ArrowUp") { e.preventDefault(); this.index = (this.index - 1 + this.items.length) % this.items.length; }
-                                    else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); this.pick(this.items[this.index]); }
-                                    else if (e.key === "Escape") { this.showList = false; }
-                                },
-                                pick(member) {
-                                    const el = this.$refs.input;
-                                    const caret = el.selectionStart;
-                                    const before = el.value.substring(0, caret);
-                                    const after = el.value.substring(caret);
-                                    const replaced = before.replace(/@([\p{L}0-9_-]*)$/u, "@" + member.slug + " ");
-                                    el.value = replaced + after;
-                                    const pos = replaced.length;
-                                    el.dispatchEvent(new Event("input"));
-                                    this.$nextTick(() => { el.focus(); el.setSelectionRange(pos, pos); });
-                                    this.showList = false;
-                                },
-                                get typingText() {
-                                    const n = Object.values(this.typers);
-                                    if (! n.length) return "";
-                                    return n.length === 1 ? n[0] + " écrit…" : n.length + " personnes écrivent…";
-                                }
-                            }'
+                            x-data="commentEditor(@js([
+                                'members' => $mentionMembers,
+                                'boardId' => $board->id,
+                                'cardId' => $card->id,
+                                'userId' => auth()->id(),
+                                'userName' => auth()->user()->name,
+                            ]))"
+                            x-init="init()"
                         >
                             <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Commentaires') }}</h3>
 
-                            <form wire:submit="addComment" class="space-y-2">
-                                <div class="relative">
-                                    <textarea
-                                        x-ref="input"
-                                        wire:model="newComment"
-                                        @input="onInput()"
-                                        @keydown="onKeydown($event)"
-                                        @blur="setTimeout(() => showList = false, 150)"
-                                        rows="2"
-                                        placeholder="{{ __('Écrire un commentaire… (mentionnez avec @nom)') }}"
-                                        class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800"
-                                    ></textarea>
+                            <div class="relative">
+                                <div class="rounded-lg border border-neutral-300 focus-within:border-indigo-500 dark:border-neutral-700">
+                                    <div class="flex flex-wrap items-center gap-0.5 border-b border-neutral-200 p-1 dark:border-neutral-700">
+                                        <button type="button" @click="run('toggleBold')" :class="isActive('bold') && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }} font-bold" title="{{ __('Gras') }}">B</button>
+                                        <button type="button" @click="run('toggleItalic')" :class="isActive('italic') && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }} italic" title="{{ __('Italique') }}">I</button>
+                                        <button type="button" @click="run('toggleStrike')" :class="isActive('strike') && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }} line-through" title="{{ __('Barré') }}">S</button>
+                                        <span class="mx-1 h-5 w-px bg-neutral-200 dark:bg-neutral-700"></span>
+                                        <button type="button" @click="run('toggleBulletList')" :class="isActive('bulletList') && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }}" title="{{ __('Liste à puces') }}"><x-phosphor-list-bullets class="h-4 w-4" /></button>
+                                        <button type="button" @click="run('toggleOrderedList')" :class="isActive('orderedList') && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }}" title="{{ __('Liste numérotée') }}"><x-phosphor-list-numbers class="h-4 w-4" /></button>
+                                        <button type="button" @click="toggleLink()" :class="isActive('link') && 'bg-neutral-200 dark:bg-neutral-700'" class="{{ $tbBtn }}" title="{{ __('Lien') }}"><x-phosphor-link class="h-4 w-4" /></button>
+                                    </div>
 
-                                    {{-- Mention autocomplete popup (anchored above the caret) --}}
-                                    <div
-                                        x-show="showList"
-                                        x-cloak
-                                        class="absolute z-50 w-48 -translate-y-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
-                                        :style="`top: ${caretTop - 4}px; left: ${caretLeft}px;`"
-                                    >
-                                        <template x-for="(u, i) in items" :key="u.id">
-                                            <button
-                                                type="button"
-                                                @mousedown.prevent="pick(u)"
-                                                @mouseenter="index = i"
-                                                class="flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm"
-                                                :class="i === index ? 'bg-indigo-50 dark:bg-indigo-500/10' : ''"
-                                            >
-                                                <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-semibold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300" x-text="u.name.charAt(0).toUpperCase()"></span>
-                                                <span class="truncate" x-text="u.name"></span>
-                                            </button>
-                                        </template>
+                                    <div class="js-comment-mount" wire:ignore x-ignore></div>
+
+                                    <div class="flex items-center justify-between gap-2 border-t border-neutral-200 p-1.5 dark:border-neutral-700">
+                                        <span class="text-xs text-indigo-500" x-text="typingText"></span>
+                                        <button type="button" @click="submit()" :disabled="empty" class="rounded-lg bg-indigo-600 px-3 py-1 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50">{{ __('Commenter') }}</button>
                                     </div>
                                 </div>
 
-                                <div class="flex items-center justify-between">
-                                    <span class="text-xs text-indigo-500" x-text="typingText"></span>
-                                    <button type="submit" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">{{ __('Commenter') }}</button>
+                                {{-- @mention suggestions (driven by TipTap) --}}
+                                <div x-show="mention.open" x-cloak
+                                     class="fixed z-[60] max-h-56 w-56 overflow-auto rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
+                                     :style="`top: ${mention.top}px; left: ${mention.left}px`">
+                                    <template x-for="(m, i) in mention.items" :key="m.id">
+                                        <button type="button" @mousedown.prevent="pickMention(i)" @mouseenter="mention.index = i"
+                                                class="flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm"
+                                                :class="i === mention.index ? 'bg-indigo-50 dark:bg-indigo-500/10' : ''">
+                                            <template x-if="m.avatar_url"><img :src="m.avatar_url" alt="" class="h-5 w-5 shrink-0 rounded-full object-cover"></template>
+                                            <template x-if="! m.avatar_url"><span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-semibold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300" x-text="m.name.charAt(0).toUpperCase()"></span></template>
+                                            <span class="truncate" x-text="m.name"></span>
+                                        </button>
+                                    </template>
                                 </div>
-                                @error('newComment') <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
-                            </form>
+                                @error('newComment') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                            </div>
 
                             <div class="space-y-3">
                                 @foreach ($card->comments as $comment)
                                     @php $canDelete = $comment->user_id === auth()->id() || $board->memberRole(auth()->user())?->isAdministrator(); @endphp
                                     <div wire:key="comment-{{ $comment->id }}" id="comment-{{ $comment->id }}" class="group/comment flex gap-2">
-                                        <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-xs font-semibold text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300">
-                                            {{ Str::of($comment->user?->name ?? '?')->substr(0, 1)->upper() }}
-                                        </span>
+                                        <x-user-avatar :user="$comment->user" size="sm" class="mt-0.5" />
                                         <div class="min-w-0 flex-1">
                                             <div class="flex items-center gap-2">
                                                 <span class="text-sm font-medium">{{ $comment->user?->name ?? 'Utilisateur supprimé' }}</span>
@@ -444,7 +369,7 @@
                                                     </div>
                                                 </form>
                                             @else
-                                                <div class="mt-0.5 whitespace-pre-wrap break-words text-sm text-neutral-700 dark:text-neutral-300">{!! $this->renderCommentBody($comment->body) !!}</div>
+                                                <div class="markdown mt-0.5 break-words text-sm text-neutral-700 dark:text-neutral-300">{!! $this->renderCommentBody($comment->body) !!}</div>
                                                 @foreach ($this->linkPreviews($comment->body) as $preview)
                                                     <x-link-preview
                                                         :preview="$preview"
@@ -600,9 +525,7 @@
                                 @foreach ($boardMembers as $member)
                                     @php $assigned = $card->members->contains($member->id); @endphp
                                     <button type="button" wire:click="toggleMember({{ $member->id }})" class="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-sm {{ $assigned ? 'bg-indigo-50 dark:bg-indigo-500/10' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800' }}">
-                                        <span class="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
-                                            {{ Str::of($member->name)->substr(0, 1)->upper() }}
-                                        </span>
+                                        <x-user-avatar :user="$member" size="sm" />
                                         <span class="truncate">{{ $member->name }}</span>
                                         @if ($assigned) <x-phosphor-check class="ml-auto h-4 w-4 text-indigo-600 dark:text-indigo-400" /> @endif
                                     </button>

@@ -9,14 +9,21 @@ use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Layout('components.layouts.app')]
 #[Title('Profil')]
 class Profile extends Component
 {
+    use WithFileUploads;
+
+    /** Temporary upload bound to the avatar file input. */
+    public $avatar = null;
+
     public string $name = '';
 
     public string $email = '';
@@ -47,6 +54,43 @@ class Profile extends Component
         $this->locale = $user->locale ?: app()->getLocale();
         $this->mcpEnabled = Setting::mcpEnabled();
         $this->notificationPreferences = $user->notificationPreferences();
+    }
+
+    /**
+     * Store the freshly selected avatar on the public disk and point the user at
+     * it, removing any previous file. Runs as soon as a file is chosen.
+     */
+    public function updatedAvatar(): void
+    {
+        $this->validate([
+            'avatar' => ['image', 'max:2048', 'mimes:jpg,jpeg,png,webp,gif'],
+        ]);
+
+        $user = Auth::user();
+        $old = $user->avatar_path;
+
+        $path = $this->avatar->store('avatars', 'public');
+        $user->update(['avatar_path' => $path]);
+
+        if ($old) {
+            Storage::disk('public')->delete($old);
+        }
+
+        $this->reset('avatar');
+        $this->dispatch('toast', message: __('Avatar mis à jour'), type: 'success');
+    }
+
+    public function removeAvatar(): void
+    {
+        $user = Auth::user();
+
+        if ($user->avatar_path) {
+            Storage::disk('public')->delete($user->avatar_path);
+            $user->update(['avatar_path' => null]);
+        }
+
+        $this->reset('avatar');
+        $this->dispatch('toast', message: __('Avatar retiré'), type: 'info');
     }
 
     public function updateNotificationPreference(string $key, bool $value): void

@@ -514,11 +514,7 @@
                                         @if ($card->members->isNotEmpty())
                                             <div class="mt-2 flex -space-x-1.5">
                                                 @foreach ($card->members as $member)
-                                                    <span
-                                                        class="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-semibold text-indigo-700 ring-2 ring-white dark:bg-indigo-500/20 dark:text-indigo-300 dark:ring-neutral-800"
-                                                        title="{{ $member->name }}">
-                                                        {{ Str::of($member->name)->substr(0, 1)->upper() }}
-                                                    </span>
+                                                    <x-user-avatar :user="$member" size="xs" class="ring-2 ring-white dark:ring-neutral-800" />
                                                 @endforeach
                                             </div>
                                         @endif
@@ -820,7 +816,7 @@
                         @php $isOwner = $member->pivot->role === \App\Enums\Role::Owner->value; @endphp
                         <li wire:key="bm-{{ $member->id }}" class="flex items-center justify-between gap-3 py-2">
                             <div class="flex min-w-0 items-center gap-3">
-                                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">{{ Str::of($member->name)->substr(0, 1)->upper() }}</span>
+                                <x-user-avatar :user="$member" />
                                 <div class="min-w-0">
                                     <p class="truncate text-sm font-medium">{{ $member->name }}</p>
                                     <p class="truncate text-xs text-neutral-500 dark:text-neutral-400">{{ $member->email }}</p>
@@ -850,7 +846,7 @@
                         @forelse ($addableMembers as $candidate)
                             <div wire:key="add-{{ $candidate->id }}" class="flex items-center justify-between gap-3 py-1.5">
                                 <div class="flex min-w-0 items-center gap-2">
-                                    <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-xs font-semibold text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300">{{ Str::of($candidate->name)->substr(0, 1)->upper() }}</span>
+                                    <x-user-avatar :user="$candidate" size="sm" />
                                     <span class="truncate text-sm">{{ $candidate->name }}</span>
                                 </div>
                                 <button type="button" wire:click="addBoardMember({{ $candidate->id }})" class="shrink-0 rounded-lg bg-indigo-600 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-500">{{ __('Ajouter') }}</button>

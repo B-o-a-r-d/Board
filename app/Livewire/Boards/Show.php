@@ -812,6 +812,9 @@ class Show extends Component
 
         $this->newCardTitle[$listId] = '';
         $this->broadcastActivity('card.created');
+
+        // Open the new card's detail modal so the user can fill it in right away.
+        $this->dispatch('open-card', cardId: $card->id);
     }
 
     public function addCardFromTemplate(int $listId, int $templateId): void
