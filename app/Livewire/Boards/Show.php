@@ -12,6 +12,8 @@ use App\Models\BoardList;
 use App\Models\Card;
 use App\Models\CardLink;
 use App\Models\CardTemplate;
+use App\Models\User;
+use App\Notifications\CardNotification;
 use Board\PluginSdk\Contracts\DefinesActivities;
 use Board\PluginSdk\Contracts\ProvidesListSource;
 use Board\PluginSdk\PluginRegistry;
@@ -534,6 +536,72 @@ class Show extends Component
         }
 
         $this->broadcastActivity('card.due_changed');
+    }
+
+    /**
+     * Toggle a board member on a card from the table view (assign / unassign),
+     * mirroring the card modal: notifies a freshly-assigned member.
+     */
+    public function toggleCardMember(int $cardId, int $userId): void
+    {
+        $this->authorize('view', $this->board);
+
+        $card = $this->cardForBoard($cardId);
+
+        if (! $this->board->hasMember(User::findOrNew($userId))) {
+            return;
+        }
+
+        $result = $card->members()->toggle($userId);
+
+        if (in_array($userId, $result['attached'], true) && $userId !== Auth::id()) {
+            $assignee = User::find($userId);
+            $this->logActivity('member.assigned', $card->id, ['user_id' => $userId, 'user_name' => $assignee?->name]);
+            $assignee?->notify(new CardNotification($card, 'assigned', Auth::user()));
+        }
+
+        $this->broadcastActivity('card.members');
+    }
+
+    public function toggleCardLabel(int $cardId, int $labelId): void
+    {
+        $this->authorize('view', $this->board);
+
+        $card = $this->cardForBoard($cardId);
+        $label = $this->board->labels()->findOrFail($labelId);
+
+        $card->labels()->toggle($label->id);
+
+        $this->broadcastActivity('card.labels');
+    }
+
+    /**
+     * Set (or clear) a card custom field value from the table view, coercing by
+     * field type exactly like the card modal.
+     */
+    public function setCardCustomField(int $cardId, int $fieldId, mixed $value): void
+    {
+        $this->authorize('view', $this->board);
+
+        $card = $this->cardForBoard($cardId);
+        $field = $this->board->customFields()->findOrFail($fieldId);
+
+        $stored = match ($field->type) {
+            CustomFieldType::Checkbox => $value ? '1' : null,
+            CustomFieldType::Select => in_array($value, $field->options ?? [], true) ? $value : null,
+            default => ($value === '' || $value === null) ? null : (string) $value,
+        };
+
+        if ($stored === null) {
+            $card->customFieldValues()->where('custom_field_id', $field->id)->delete();
+        } else {
+            $card->customFieldValues()->updateOrCreate(
+                ['custom_field_id' => $field->id],
+                ['value' => $stored],
+            );
+        }
+
+        $this->broadcastActivity('card.updated');
     }
 
     /**
