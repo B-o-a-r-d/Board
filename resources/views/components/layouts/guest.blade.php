@@ -32,7 +32,6 @@
         <div class="w-full max-w-md">
             <a href="{{ url('/') }}" class="mb-8 flex items-center justify-center gap-2">
                 <img srcset="{{ asset('logo.png') }}" alt="icon" class="h-10"/>
-                <span class="hidden font-semibold tracking-tight sm:inline">{{ config('app.name') }}</span>
             </a>
 
             <div class="rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">

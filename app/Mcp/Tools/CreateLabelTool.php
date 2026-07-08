@@ -25,7 +25,7 @@ class CreateLabelTool extends Tool
 
         $board = $this->resolvePublicId(Board::class, $request->get('board_id'));
 
-        if ($error = $this->denyUnlessBoardAccess($request, $board)) {
+        if ($error = $this->denyUnlessCanContribute($request, $board)) {
             return $error;
         }
 

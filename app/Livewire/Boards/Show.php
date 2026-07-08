@@ -69,6 +69,9 @@ class Show extends Component
 
     public string $tableDir = 'asc';
 
+    /** Whether the current user may edit content (false for read-only Observers). */
+    public bool $canContribute = false;
+
     public bool $showTrash = false;
 
     public function toggleTrash(): void
@@ -353,11 +356,15 @@ class Show extends Component
 
         $membership = $this->board->members()->whereKey($userId)->first();
 
-        if (! $membership || $membership->pivot->role === Role::Owner->value || ! in_array($role, [Role::Admin->value, Role::Member->value], true)) {
+        // Any of the workspace's roles may be assigned, except Owner (protected).
+        $assignable = $this->board->workspace->roles()->where('key', '!=', 'owner')->pluck('key');
+
+        if (! $membership || $membership->pivot->role === Role::Owner->value || ! $assignable->contains($role)) {
             return;
         }
 
         $this->board->members()->updateExistingPivot($userId, ['role' => $role]);
+        $this->broadcastActivity('board.members');
     }
 
     public function removeBoardMember(int $userId): void
@@ -395,6 +402,7 @@ class Show extends Component
         $this->authorize('view', $board);
 
         $this->board = $board;
+        $this->canContribute = Auth::user()->can('contribute', $board);
 
         if ($this->calendarMonth === '') {
             $this->calendarMonth = now()->format('Y-m');
@@ -414,6 +422,15 @@ class Show extends Component
     public function loadCards(): void
     {
         $this->cardsReady = true;
+    }
+
+    /**
+     * Guard a content mutation: contributors only. Read-only roles (Observer)
+     * can `view` but not `contribute`, so this 403s them.
+     */
+    private function authorizeContribution(): void
+    {
+        $this->authorize('contribute', $this->board);
     }
 
     public function setView(string $view): void
@@ -447,7 +464,7 @@ class Show extends Component
      */
     public function setCardSchedule(int $cardId, ?string $startDate, ?string $dueDate): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $card = $this->cardForBoard($cardId);
 
@@ -501,7 +518,7 @@ class Show extends Component
      */
     public function renameCard(int $cardId, string $title): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $title = trim($title);
 
@@ -521,7 +538,7 @@ class Show extends Component
      */
     public function setCardDue(int $cardId, ?string $date): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $card = $this->cardForBoard($cardId);
         $hadDue = $card->due_at !== null;
@@ -544,7 +561,7 @@ class Show extends Component
      */
     public function toggleCardMember(int $cardId, int $userId): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $card = $this->cardForBoard($cardId);
 
@@ -565,7 +582,7 @@ class Show extends Component
 
     public function toggleCardLabel(int $cardId, int $labelId): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $card = $this->cardForBoard($cardId);
         $label = $this->board->labels()->findOrFail($labelId);
@@ -581,7 +598,7 @@ class Show extends Component
      */
     public function setCardCustomField(int $cardId, int $fieldId, mixed $value): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $card = $this->cardForBoard($cardId);
         $field = $this->board->customFields()->findOrFail($fieldId);
@@ -611,7 +628,7 @@ class Show extends Component
      */
     public function rescheduleCard(int $cardId, string $date): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $card = $this->cardForBoard($cardId);
         $target = Carbon::parse($date);
@@ -638,7 +655,7 @@ class Show extends Component
      */
     public function createCardOnDate(string $date, string $title): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $title = trim($title);
 
@@ -927,7 +944,7 @@ class Show extends Component
 
     public function addList(): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $data = $this->validate([
             'newListName' => ['required', 'string', 'max:255'],
@@ -944,7 +961,7 @@ class Show extends Component
 
     public function renameList(int $listId, string $name): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $name = trim($name);
 
@@ -958,7 +975,7 @@ class Show extends Component
 
     public function setListColor(int $listId, ?string $color): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $this->listForBoard($listId)->update(['cover_color' => $color ?: null]);
         $this->broadcastActivity('list.recolored');
@@ -970,7 +987,7 @@ class Show extends Component
 
     public function openListCover(int $listId): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $this->coverListId = $this->listForBoard($listId)->id;
     }
@@ -982,7 +999,7 @@ class Show extends Component
 
     public function uploadListCover(): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $this->validate(['listCoverUpload' => ['required', 'image', 'max:10240']]);
 
@@ -1001,7 +1018,7 @@ class Show extends Component
 
     public function removeListCover(int $listId): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $list = $this->listForBoard($listId);
 
@@ -1014,7 +1031,7 @@ class Show extends Component
 
     public function setWipLimit(int $listId, mixed $limit): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $limit = (int) $limit;
 
@@ -1024,7 +1041,7 @@ class Show extends Component
 
     public function archiveList(int $listId): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $this->listForBoard($listId)->update(['archived_at' => now()]);
         $this->broadcastActivity('list.archived');
@@ -1032,7 +1049,7 @@ class Show extends Component
 
     public function restoreList(int $listId): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $this->board->lists()->whereKey($listId)->update(['archived_at' => null]);
         $this->broadcastActivity('list.restored');
@@ -1040,7 +1057,7 @@ class Show extends Component
 
     public function deleteListPermanently(int $listId): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $this->board->lists()->whereKey($listId)->delete();
         $this->broadcastActivity('list.deleted');
@@ -1048,7 +1065,7 @@ class Show extends Component
 
     public function duplicateList(int $listId): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $source = $this->board->lists()->with(['cards' => fn ($q) => $q->whereNull('archived_at')->orderBy('position'), 'cards.labels', 'cards.members'])->findOrFail($listId);
 
@@ -1079,7 +1096,7 @@ class Show extends Component
 
     public function reorderLists(int $id, int $position): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $ids = $this->board->lists()
             ->where('id', '!=', $id)
@@ -1104,7 +1121,7 @@ class Show extends Component
 
     public function addCard(int $listId): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $title = trim($this->newCardTitle[$listId] ?? '');
 
@@ -1134,7 +1151,7 @@ class Show extends Component
 
     public function addCardFromTemplate(int $listId, int $templateId): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $list = $this->listForBoard($listId);
         $template = CardTemplate::findOrFail($templateId);
@@ -1166,7 +1183,7 @@ class Show extends Component
 
     public function archiveCard(int $cardId): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $card = $this->cardForBoard($cardId);
         $card->update(['archived_at' => now()]);
@@ -1176,7 +1193,7 @@ class Show extends Component
 
     public function restoreCard(int $cardId): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $card = $this->cardForBoard($cardId);
         $card->update(['archived_at' => null]);
@@ -1186,7 +1203,7 @@ class Show extends Component
 
     public function deleteCardPermanently(int $cardId): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $card = $this->cardForBoard($cardId);
 
@@ -1204,7 +1221,7 @@ class Show extends Component
 
     public function duplicateCard(int $cardId): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $card = $this->board->cards()->with(['labels', 'members'])->findOrFail($cardId);
 
@@ -1229,7 +1246,7 @@ class Show extends Component
 
     public function moveCard(int $id, int $position, int $listId): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $card = $this->cardForBoard($id);
         $targetList = $this->listForBoard($listId);
@@ -1271,7 +1288,7 @@ class Show extends Component
      */
     public function moveCardToList(int $cardId, int $listId): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $card = $this->cardForBoard($cardId);
         $targetList = $this->listForBoard($listId);
@@ -1306,7 +1323,7 @@ class Show extends Component
      */
     public function bulkArchive(array $cardIds): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $cards = $this->board->cards()->whereIn('id', $cardIds)->whereNull('archived_at')->get();
 
@@ -1328,7 +1345,7 @@ class Show extends Component
      */
     public function bulkMove(array $cardIds, int $listId): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         $target = $this->listForBoard($listId);
         $cards = $this->board->cards()->whereIn('id', $cardIds)->whereNull('archived_at')->get();
@@ -1354,7 +1371,7 @@ class Show extends Component
      */
     public function bulkAddLabel(array $cardIds, int $labelId): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorizeContribution();
 
         if (! $this->board->labels()->whereKey($labelId)->exists()) {
             return;
@@ -1469,6 +1486,7 @@ class Show extends Component
             'labels' => $this->board->labels,
             'members' => $boardMembers,
             'boardMembers' => $boardMembers,
+            'boardRoles' => $this->board->workspace->roles()->orderBy('position')->get(),
             'addableMembers' => $this->showMembers
                 ? $this->board->workspace->members()->whereNotIn('users.id', $boardMembers->pluck('id'))->orderBy('name')->get()
                 : collect(),

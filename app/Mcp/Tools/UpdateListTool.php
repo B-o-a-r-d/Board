@@ -25,7 +25,7 @@ class UpdateListTool extends Tool
 
         $list = $this->resolvePublicId(BoardList::class, $request->get('list_id'));
 
-        if ($error = $this->denyUnlessBoardAccess($request, $list?->board)) {
+        if ($error = $this->denyUnlessCanContribute($request, $list?->board)) {
             return $error;
         }
 

@@ -1,0 +1,125 @@
+<?php
+
+use App\Enums\Permission;
+use App\Livewire\Boards\Show;
+use App\Livewire\Cards\CardDetail;
+use App\Models\Board;
+use App\Models\Card;
+use App\Models\User;
+use Livewire\Livewire;
+
+/**
+ * @return array{board: Board, owner: User, observer: User, card: Card}
+ */
+function boardWithObserver(): array
+{
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+    $observer = User::factory()->create();
+    $board->members()->attach($observer, ['role' => 'observer']);
+
+    return compact('board', 'owner', 'observer', 'card');
+}
+
+test('a workspace seeds the four system roles on creation', function () {
+    ['board' => $board] = makeCardContext();
+
+    $keys = $board->workspace->roles()->orderBy('key')->pluck('key')->all();
+
+    expect($keys)->toBe(['admin', 'member', 'observer', 'owner']);
+});
+
+test('system roles carry the expected permissions', function () {
+    ['board' => $board, 'owner' => $owner, 'member' => $member] = makeCardContext();
+    $observer = User::factory()->create();
+    $board->members()->attach($observer, ['role' => 'observer']);
+
+    expect($board->userCan($owner, Permission::MemberManage))->toBeTrue()
+        ->and($board->userCan($member, Permission::CardManage))->toBeTrue()
+        ->and($board->userCan($member, Permission::CommentPost))->toBeTrue()
+        ->and($board->userCan($member, Permission::MemberManage))->toBeFalse()
+        ->and($board->userCan($observer, Permission::BoardView))->toBeTrue()
+        ->and($board->userCan($observer, Permission::CardManage))->toBeFalse()
+        ->and($board->userCan($observer, Permission::CommentPost))->toBeFalse();
+});
+
+test('an observer is forbidden from adding a card', function () {
+    ['board' => $board, 'observer' => $observer] = boardWithObserver();
+    $list = $board->lists()->firstOrFail();
+
+    Livewire::actingAs($observer)->test(Show::class, ['board' => $board])
+        ->set("newCardTitle.{$list->id}", 'Interdit')
+        ->call('addCard', $list->id)
+        ->assertForbidden();
+
+    expect($list->cards()->where('title', 'Interdit')->exists())->toBeFalse();
+});
+
+test('an observer can open a card to read but cannot edit it', function () {
+    ['board' => $board, 'observer' => $observer, 'card' => $card] = boardWithObserver();
+
+    Livewire::actingAs($observer)->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->assertOk()
+        ->set('title', 'Piraté')
+        ->call('saveDetails')
+        ->assertForbidden();
+
+    expect($card->fresh()->title)->not->toBe('Piraté');
+});
+
+test('an observer cannot comment', function () {
+    ['board' => $board, 'observer' => $observer, 'card' => $card] = boardWithObserver();
+
+    Livewire::actingAs($observer)->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->call('addComment', 'Coucou')
+        ->assertForbidden();
+
+    expect($card->comments()->count())->toBe(0);
+});
+
+test('a member can still add a card', function () {
+    ['board' => $board, 'member' => $member] = makeCardContext();
+    $list = $board->lists()->firstOrFail();
+
+    Livewire::actingAs($member)->test(Show::class, ['board' => $board])
+        ->set("newCardTitle.{$list->id}", 'OK membre')
+        ->call('addCard', $list->id)
+        ->assertHasNoErrors();
+
+    expect($list->cards()->where('title', 'OK membre')->exists())->toBeTrue();
+});
+
+test('the board view renders read-only for an observer', function () {
+    ['board' => $board, 'observer' => $observer] = boardWithObserver();
+
+    Livewire::actingAs($observer)->test(Show::class, ['board' => $board])
+        ->assertSee('Lecture seule')
+        ->assertDontSee('+ Ajouter une carte')
+        ->assertDontSee('+ Ajouter une liste');
+});
+
+test('the board view shows edit affordances to a member', function () {
+    ['board' => $board, 'member' => $member] = makeCardContext();
+
+    Livewire::actingAs($member)->test(Show::class, ['board' => $board])
+        ->assertDontSee('Lecture seule')
+        ->assertSee('+ Ajouter une carte');
+});
+
+test('a custom role enforces its own permission set', function () {
+    ['board' => $board] = makeCardContext();
+    $reviewer = User::factory()->create();
+    $board->workspace->roles()->create([
+        'key' => 'reviewer',
+        'name' => 'Relecteur',
+        'permissions' => [Permission::BoardView->value, Permission::CommentPost->value],
+        'is_system' => false,
+        'position' => 10,
+    ]);
+    $board->members()->attach($reviewer, ['role' => 'reviewer']);
+
+    expect($board->userCan($reviewer, Permission::CommentPost))->toBeTrue()
+        ->and($board->userCan($reviewer, Permission::CardManage))->toBeFalse()
+        ->and($board->userCan($reviewer, Permission::BoardView))->toBeTrue();
+});

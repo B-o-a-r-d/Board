@@ -2,8 +2,10 @@
 @php $calOverdue = $card->due_at && ! $card->completed_at && $card->due_at->isPast(); @endphp
 <button
     type="button"
+    @if ($canContribute ?? true)
     draggable="true"
     x-on:dragstart="$event.dataTransfer.setData('text/card-id', '{{ $card->id }}'); $event.dataTransfer.effectAllowed = 'move'"
+    @endif
     wire:click="$dispatch('open-card', { cardId: {{ $card->id }} })"
     title="{{ $card->title }}"
     class="flex w-full items-center gap-1 rounded border border-l-4 px-1.5 py-1 text-left text-xs shadow-sm transition hover:brightness-95 {{ $card->completed_at ? 'border-green-200 border-l-green-500 bg-green-50 text-green-800 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-300' : ($calOverdue ? 'border-red-200 border-l-red-500 bg-red-50 text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300' : 'border-neutral-200 border-l-indigo-500 bg-white text-neutral-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200') }}"

@@ -18,15 +18,15 @@ class CardPolicy
     }
 
     /**
-     * Any member who can view the board can edit its cards (Trello-style collaboration).
+     * A contributing member (not a read-only Observer) can edit the board's cards.
      */
     public function update(User $user, Card $card): bool
     {
-        return $this->boardPolicy->view($user, $card->board);
+        return $this->boardPolicy->contribute($user, $card->board);
     }
 
     public function delete(User $user, Card $card): bool
     {
-        return $this->boardPolicy->view($user, $card->board);
+        return $this->boardPolicy->contribute($user, $card->board);
     }
 }

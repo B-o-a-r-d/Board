@@ -24,7 +24,7 @@ class CardController extends Controller
 
     public function store(Request $request, BoardList $list): JsonResponse
     {
-        $this->authorize('view', $list->board);
+        $this->authorize('contribute', $list->board);
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],

@@ -2,7 +2,7 @@
      dated card a bar spanning start_at → due_at. Data from Show::buildTimeline().
      Day width is fixed at 40px (must match dayWidth in timeline.js). --}}
 @php $end = $timeline['start']->copy()->addDays($timeline['days'] - 1); @endphp
-<div x-data="timeline"
+<div @if ($canContribute) x-data="timeline" @endif
      class="flex min-h-0 flex-1 flex-col overflow-hidden transition-opacity"
      wire:loading.class.delay="opacity-40"
      wire:target="search, filterLabels, filterMembers, toggleLabel, toggleMember, toggleUnassigned, filterDue, resetFilters, applyFilter, applyView, timelineStep, timelineToday, setCardSchedule">
@@ -73,11 +73,11 @@
                                     class="group absolute z-10 flex h-8 items-center overflow-hidden rounded-md border shadow-sm {{ $barClass }}"
                                     style="left: {{ $bar['offset'] * 40 }}px; width: {{ max($bar['span'] * 40 - 4, 24) }}px; top: {{ $i * 36 + 4 }}px;"
                                 >
-                                    <span data-tl-handle="start" class="absolute left-0 top-0 z-10 h-full w-1.5 cursor-ew-resize opacity-0 group-hover:opacity-100" title="{{ __('Modifier le début') }}"></span>
+                                    @if ($canContribute)<span data-tl-handle="start" class="absolute left-0 top-0 z-10 h-full w-1.5 cursor-ew-resize opacity-0 group-hover:opacity-100" title="{{ __('Modifier le début') }}"></span>@endif
                                     <button type="button" data-tl-handle="move"
                                             wire:click="$dispatch('open-card', { cardId: {{ $c->id }} })"
                                             title="{{ $c->title }}"
-                                            class="flex h-full w-full cursor-grab items-center gap-1 px-2 text-left text-xs">
+                                            class="flex h-full w-full items-center gap-1 px-2 text-left text-xs {{ $canContribute ? 'cursor-grab' : 'cursor-pointer' }}">
                                         @if ($c->labels->isNotEmpty())
                                             <span class="h-2 w-2 shrink-0 rounded-full" style="background-color: {{ $c->labels->first()->color }}"></span>
                                         @endif
@@ -86,7 +86,7 @@
                                             <span class="ml-auto flex shrink-0 items-center gap-0.5 pl-1 opacity-70"><x-phosphor-user class="h-3 w-3"/>{{ $c->members->count() }}</span>
                                         @endif
                                     </button>
-                                    <span data-tl-handle="end" class="absolute right-0 top-0 z-10 h-full w-1.5 cursor-ew-resize opacity-0 group-hover:opacity-100" title="{{ __("Modifier l'échéance") }}"></span>
+                                    @if ($canContribute)<span data-tl-handle="end" class="absolute right-0 top-0 z-10 h-full w-1.5 cursor-ew-resize opacity-0 group-hover:opacity-100" title="{{ __("Modifier l'échéance") }}"></span>@endif
                                 </div>
                             @endforeach
                         </div>

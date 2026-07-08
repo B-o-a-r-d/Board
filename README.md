@@ -29,8 +29,11 @@ auto-discovered and independently versioned.
 - **Boards, lists & cards** — drag & drop (`wire:sort`), labels, checklists,
   attachments (images / video / files), comments with **@mentions** and emoji
   reactions, start/due dates, cover images and **custom fields**.
-- **Views** — board, **calendar**, saved filters/views, WIP limits, collapse,
-  bulk actions and keyboard shortcuts.
+- **Views** — board, **calendar**, **timeline (Gantt)**, **table** and **dashboard**,
+  saved filters/views, WIP limits, collapse, bulk actions and keyboard shortcuts.
+- **Roles & permissions** — full RBAC: system roles (owner / admin / member /
+  read-only **observer**) plus **custom roles** with granular permissions, managed
+  per workspace and copyable between them, enforced across web, API and MCP.
 - **Real-time** — live presence, comments and updates on every open board via
   **Laravel Reverb**; per-user notification preferences.
 - **Activity** — a Trello-style activity slide-over with per-plugin tabs.

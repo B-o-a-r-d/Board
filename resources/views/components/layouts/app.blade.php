@@ -33,7 +33,6 @@
             <nav class="mx-auto flex h-14 max-w-full items-center justify-between px-4 sm:px-6 lg:px-8">
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-2">
                     <img srcset="{{ asset('logo.png') }}" alt="icon" class="h-10"/>
-                    <span class="hidden font-semibold tracking-tight sm:inline">{{ config('app.name') }}</span>
                 </a>
 
                 <div class="flex items-center gap-2">

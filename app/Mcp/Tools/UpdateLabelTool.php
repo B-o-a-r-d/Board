@@ -25,7 +25,7 @@ class UpdateLabelTool extends Tool
 
         $label = Label::with('board')->where('public_id', $request->get('label_id'))->first();
 
-        if ($error = $this->denyUnlessBoardAccess($request, $label?->board)) {
+        if ($error = $this->denyUnlessCanContribute($request, $label?->board)) {
             return $error;
         }
 

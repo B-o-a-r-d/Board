@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Enums\BoardVisibility;
+use App\Enums\Permission;
 use App\Enums\Role;
 use App\Models\Concerns\HasPublicId;
+use App\Models\Role as RoleModel;
 use Database\Factories\BoardFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -151,5 +153,29 @@ class Board extends Model
         $membership = $this->members()->whereKey($user->getKey())->first();
 
         return $membership ? Role::tryFrom($membership->pivot->role) : null;
+    }
+
+    /**
+     * The board role definition for a user (resolved by their board pivot key
+     * against the workspace's role set), or null when they are not a board member.
+     */
+    public function roleFor(User $user): ?RoleModel
+    {
+        $membership = $this->members()->whereKey($user->getKey())->first();
+
+        return $membership ? $this->workspace->roles()->where('key', $membership->pivot->role)->first() : null;
+    }
+
+    /**
+     * Whether a user holds a permission on this board. Workspace administrators
+     * may do anything on any of their boards; otherwise the board role decides.
+     */
+    public function userCan(User $user, Permission $permission): bool
+    {
+        if ($this->workspace->memberRole($user)?->isAdministrator()) {
+            return true;
+        }
+
+        return (bool) $this->roleFor($user)?->hasPermission($permission);
     }
 }

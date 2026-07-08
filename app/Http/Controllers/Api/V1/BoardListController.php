@@ -24,7 +24,7 @@ class BoardListController extends Controller
 
     public function store(Request $request, Board $board): JsonResponse
     {
-        $this->authorize('view', $board);
+        $this->authorize('contribute', $board);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -42,7 +42,7 @@ class BoardListController extends Controller
 
     public function update(Request $request, BoardList $list): BoardListResource
     {
-        $this->authorize('view', $list->board);
+        $this->authorize('contribute', $list->board);
 
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
@@ -57,7 +57,7 @@ class BoardListController extends Controller
 
     public function destroy(BoardList $list): Response
     {
-        $this->authorize('view', $list->board);
+        $this->authorize('contribute', $list->board);
 
         $list->delete();
 

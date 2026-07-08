@@ -34,6 +34,7 @@
                 <div class="mt-6 grid gap-6 p-4 sm:grid-cols-3 sm:p-6">
                     {{-- Main column --}}
                     <div class="space-y-6 sm:col-span-2">
+                        @if ($canContribute)
                         <form wire:submit="saveDetails" class="flex items-start gap-2">
                             <div class="flex-1">
                                 <input
@@ -46,11 +47,15 @@
                             </div>
                             <button type="submit" title="{{ __('Enregistrer') }}" class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white hover:bg-indigo-500"><x-phosphor-floppy-disk-duotone class="h-4 w-4" /></button>
                         </form>
+                        @else
+                            <h2 class="px-2 py-1 text-lg font-semibold">{{ $card->title }}</h2>
+                        @endif
 
                         {{-- Description : éditeur WYSIWYG (TipTap → markdown) --}}
                         @php
                             $tbBtn = 'flex h-7 min-w-[1.75rem] items-center justify-center rounded px-1.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700';
                         @endphp
+                        @if ($canContribute)
                         <div wire:key="desc-{{ $card->id }}" wire:ignore x-data="markdownEditor(@js((string) $card->description))">
                             <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Description') }}</label>
 
@@ -87,6 +92,18 @@
                                 </div>
                             </div>
                         </div>
+                        @else
+                            <div>
+                                <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Description') }}</label>
+                                <div class="markdown min-h-[3rem] rounded-lg border border-transparent bg-neutral-50 p-3 text-sm dark:bg-neutral-800/50">
+                                    @if (filled($card->description))
+                                        {!! Str::markdown($card->description, ['html_input' => 'strip', 'allow_unsafe_links' => false]) !!}
+                                    @else
+                                        <span class="text-neutral-400">{{ __('Aucune description.') }}</span>
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
 
                         {{-- Description link previews --}}
                         @foreach ($this->linkPreviews($card->description) as $preview)
@@ -109,7 +126,7 @@
                                 <div wire:key="checklist-{{ $checklist->id }}" class="rounded-lg border border-neutral-200 p-3 dark:border-neutral-700">
                                     <div class="mb-2 flex items-center justify-between">
                                         <span class="text-sm font-medium">{{ $checklist->title }}</span>
-                                        <button type="button" wire:click="deleteChecklist({{ $checklist->id }})" class="text-xs text-neutral-400 hover:text-red-500">{{ __('Supprimer') }}</button>
+                                        @if ($canContribute)<button type="button" wire:click="deleteChecklist({{ $checklist->id }})" class="text-xs text-neutral-400 hover:text-red-500">{{ __('Supprimer') }}</button>@endif
                                     </div>
                                     <div class="mb-2 flex items-center gap-2">
                                         <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
@@ -121,6 +138,7 @@
                                         @foreach ($checklist->items as $item)
                                             @php $itemOverdue = $item->due_at && ! $item->is_completed && $item->due_at->isPast(); @endphp
                                             <li wire:key="item-{{ $item->id }}" class="group flex items-center gap-2 text-sm">
+                                                @if ($canContribute)
                                                 <x-checkbox :checked="$item->is_completed" :label="$item->content" wire:click="toggleChecklistItem({{ $item->id }})" wire:key="cbitem-{{ $item->id }}-{{ $item->is_completed }}" />
 
                                                 <div class="ml-auto flex shrink-0 items-center gap-1">
@@ -167,12 +185,24 @@
                                                     {{-- Delete --}}
                                                     <button type="button" wire:click="deleteChecklistItem({{ $item->id }})" class="text-neutral-300 opacity-100 hover:text-red-500 group-hover:opacity-100 dark:text-neutral-600 sm:opacity-0"><x-phosphor-x class="h-3.5 w-3.5" /></button>
                                                 </div>
+                                                @else
+                                                <span class="flex h-4 w-4 shrink-0 items-center justify-center rounded border {{ $item->is_completed ? 'border-green-500 bg-green-500 text-white' : 'border-neutral-300 dark:border-neutral-600' }}">@if ($item->is_completed)<x-phosphor-check class="h-3 w-3"/>@endif</span>
+                                                <span class="min-w-0 flex-1 {{ $item->is_completed ? 'text-neutral-400 line-through' : '' }}">{{ $item->content }}</span>
+                                                <div class="ml-auto flex shrink-0 items-center gap-1.5">
+                                                    @if ($item->due_at)
+                                                        <span class="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs {{ $itemOverdue ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300' : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300' }}"><x-phosphor-calendar-blank class="h-3.5 w-3.5"/>{{ $item->due_at->translatedFormat('d M') }}</span>
+                                                    @endif
+                                                    @if ($item->assignee)<x-user-avatar :user="$item->assignee" size="xs" :hover-card="false" />@endif
+                                                </div>
+                                                @endif
                                             </li>
                                         @endforeach
                                     </ul>
+                                    @if ($canContribute)
                                     <form wire:submit="addChecklistItem({{ $checklist->id }})" class="mt-2">
                                         <input type="text" wire:model="newChecklistItem.{{ $checklist->id }}" placeholder="{{ __('+ Ajouter un élément') }}" class="w-full rounded border border-neutral-200 bg-white px-2 py-1 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
                                     </form>
+                                    @endif
                                 </div>
                             @endforeach
 
@@ -216,6 +246,7 @@
                             @endif
 
                             {{-- Add a link --}}
+                            @if ($canContribute)
                             <div x-data="{ open: false }" @click.outside="open = false" class="flex items-center gap-2">
                                 <select wire:model="linkType" class="shrink-0 rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-sm focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
                                     <option value="blocks">{{ __('Bloque') }}</option>
@@ -237,6 +268,7 @@
                                     </div>
                                 </div>
                             </div>
+                            @endif
                         </div>
 
                         {{-- Attachments --}}
@@ -286,12 +318,14 @@
                                                     @endif
                                                     <div class="flex items-center justify-between gap-1 p-2">
                                                         <span class="truncate text-xs" title="{{ $attachment->name }}">{{ $attachment->name }}</span>
+                                                        @if ($canContribute)
                                                         <div class="flex shrink-0 gap-1">
                                                             @if ($attachment->isImage())
                                                                 <button type="button" wire:click="setCover({{ $attachment->id }})" class="text-neutral-400 hover:text-amber-500" title="{{ __('Définir comme couverture') }}"><x-phosphor-star class="h-4 w-4" /></button>
                                                             @endif
                                                             <button type="button" wire:click="deleteAttachment({{ $attachment->id }})" class="text-neutral-400 hover:text-red-500"><x-phosphor-x class="h-3.5 w-3.5" /></button>
                                                         </div>
+                                                        @endif
                                                     </div>
                                                 </div>
                                             @endforeach
@@ -312,16 +346,18 @@
                                                         <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-neutral-100 dark:bg-neutral-800"><x-phosphor-file class="h-5 w-5 text-neutral-400" /></span>
                                                     @endif
                                                     <span class="min-w-0 flex-1 truncate text-xs" title="{{ $attachment->name }}">{{ $attachment->name }}</span>
-                                                    @if ($attachment->isImage())
-                                                        <button type="button" wire:click="setCover({{ $attachment->id }})" class="shrink-0 text-neutral-400 hover:text-amber-500" title="{{ __('Définir comme couverture') }}"><x-phosphor-star class="h-4 w-4" /></button>
+                                                    @if ($canContribute)
+                                                        @if ($attachment->isImage())
+                                                            <button type="button" wire:click="setCover({{ $attachment->id }})" class="shrink-0 text-neutral-400 hover:text-amber-500" title="{{ __('Définir comme couverture') }}"><x-phosphor-star class="h-4 w-4" /></button>
+                                                        @endif
+                                                        <button type="button" wire:click="deleteAttachment({{ $attachment->id }})" class="shrink-0 text-neutral-400 hover:text-red-500"><x-phosphor-x class="h-3.5 w-3.5" /></button>
                                                     @endif
-                                                    <button type="button" wire:click="deleteAttachment({{ $attachment->id }})" class="shrink-0 text-neutral-400 hover:text-red-500"><x-phosphor-x class="h-3.5 w-3.5" /></button>
                                                 </div>
                                             @endforeach
                                         </div>
                                     </div>
                                 @endif
-                                <x-dropzone model="upload" action="saveAttachment" accept="image/*,video/*" />
+                                @if ($canContribute)<x-dropzone model="upload" action="saveAttachment" accept="image/*,video/*" />@endif
                             </div>
                         </div>
 
@@ -348,6 +384,7 @@
                         >
                             <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Commentaires') }}</h3>
 
+                            @if ($canComment)
                             <div class="relative">
                                 <div class="rounded-lg border border-neutral-300 focus-within:border-indigo-500 dark:border-neutral-700">
                                     <div class="flex flex-wrap items-center gap-0.5 border-b border-neutral-200 p-1 dark:border-neutral-700">
@@ -384,6 +421,9 @@
                                 </div>
                                 @error('newComment') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                             </div>
+                            @else
+                                <p class="rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">{{ __('Lecture seule : vous ne pouvez pas commenter.') }}</p>
+                            @endif
 
                             <div class="space-y-3">
                                 @foreach ($card->comments as $comment)
@@ -430,6 +470,7 @@
                                                 $grouped = $comment->reactions->groupBy('emoji');
                                                 $myReactions = $comment->reactions->where('user_id', auth()->id())->pluck('emoji')->all();
                                             @endphp
+                                            @if ($canComment)
                                             <div class="mt-1.5 flex flex-wrap items-center gap-1" x-data="{ picker: false }">
                                                 @foreach ($grouped as $emoji => $group)
                                                     <button type="button" wire:click="toggleReaction({{ $comment->id }}, '{{ $emoji }}')"
@@ -448,6 +489,13 @@
                                                     </div>
                                                 </div>
                                             </div>
+                                            @else
+                                                <div class="mt-1.5 flex flex-wrap items-center gap-1">
+                                                    @foreach ($grouped as $emoji => $group)
+                                                        <span class="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-xs text-neutral-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"><span>{{ $emoji }}</span><span class="font-medium">{{ $group->count() }}</span></span>
+                                                    @endforeach
+                                                </div>
+                                            @endif
                                         </div>
                                     </div>
                                 @endforeach
@@ -493,6 +541,7 @@
                     {{-- Sidebar --}}
                     <div class="space-y-5">
                         @php $isWatching = $card->watchers->contains(fn ($w) => $w->id === auth()->id()); @endphp
+                        @if ($canContribute)
                         <div class="flex items-center gap-2">
                             <button type="button" wire:click="toggleComplete" title="{{ $card->completed_at ? __('Terminée') : __('Marquer terminée') }}"
                                     class="flex h-9 flex-1 items-center justify-center rounded-lg transition {{ $card->completed_at ? 'bg-green-600 text-white hover:bg-green-500' : 'border border-neutral-300 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800' }}">
@@ -512,9 +561,10 @@
                                 </button>
                             @endcan
                         </div>
+                        @endif
 
                         {{-- Manual automation buttons --}}
-                        @if ($cardButtons->isNotEmpty())
+                        @if ($canContribute && $cardButtons->isNotEmpty())
                             <div class="space-y-1.5">
                                 <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Actions rapides') }}</h3>
                                 @foreach ($cardButtons as $button)
@@ -527,6 +577,7 @@
 
                         {{-- Dates: start + due (toggleable, like Members / Labels) --}}
                         @php $dueOverdue = $card->due_at && ! $card->completed_at && $card->due_at->isPast(); @endphp
+                        @if ($canContribute)
                         <div x-data="{ enabled: @js((bool) ($card->start_at || $card->due_at)) }">
                             <div class="mb-2 flex items-center justify-between">
                                 <h3 class="text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Dates') }}</h3>
@@ -569,10 +620,24 @@
                                 @endif
                             </div>
                         </div>
+                        @else
+                            <div>
+                                <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Dates') }}</h3>
+                                @if ($card->start_at || $card->due_at)
+                                    <div class="space-y-1 text-sm">
+                                        @if ($card->start_at)<p class="text-neutral-600 dark:text-neutral-300">{{ __('Début') }} : {{ $card->start_at->translatedFormat('d M Y') }}</p>@endif
+                                        @if ($card->due_at)<p class="{{ $dueOverdue ? 'font-medium text-red-600 dark:text-red-400' : 'text-neutral-600 dark:text-neutral-300' }}">{{ __('Échéance') }} : {{ $card->due_at->translatedFormat('d M Y \à H:i') }}{{ $dueOverdue ? __(' · en retard') : '' }}</p>@endif
+                                    </div>
+                                @else
+                                    <p class="text-sm text-neutral-400">{{ __('Aucune date.') }}</p>
+                                @endif
+                            </div>
+                        @endif
 
                         {{-- Members --}}
                         <div>
                             <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Membres') }}</h3>
+                            @if ($canContribute)
                             <div class="space-y-1">
                                 @foreach ($boardMembers as $member)
                                     @php $assigned = $card->members->contains($member->id); @endphp
@@ -583,12 +648,23 @@
                                     </button>
                                 @endforeach
                             </div>
+                            @else
+                                @forelse ($card->members as $member)
+                                    <div class="flex items-center gap-2 px-2 py-1 text-sm">
+                                        <x-user-avatar :user="$member" size="sm" />
+                                        <span class="truncate">{{ $member->name }}</span>
+                                    </div>
+                                @empty
+                                    <p class="text-sm text-neutral-400">{{ __('Aucun membre.') }}</p>
+                                @endforelse
+                            @endif
                         </div>
 
                         {{-- Labels --}}
                         <div>
                             <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Labels') }}</h3>
                             @php $labelPalette = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b']; @endphp
+                            @if ($canContribute)
                             <div class="space-y-2">
                                 @foreach ($boardLabels as $label)
                                     @php $on = $card->labels->contains($label->id); @endphp
@@ -627,6 +703,13 @@
                                 <input type="text" wire:model="newLabelName" placeholder="{{ __('Nouveau label') }}" class="flex-1 rounded-lg border border-neutral-300 bg-white px-2 py-1 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
                                 <button type="submit" class="rounded-lg border border-neutral-300 px-2 py-1 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">+</button>
                             </form>
+                            @else
+                                @forelse ($card->labels as $label)
+                                    <span class="mb-1 mr-1 inline-block max-w-full truncate rounded px-2 py-0.5 text-xs font-medium text-white" style="background-color: {{ $label->color }}">{{ $label->name ?? '—' }}</span>
+                                @empty
+                                    <p class="text-sm text-neutral-400">{{ __('Aucun label.') }}</p>
+                                @endforelse
+                            @endif
                         </div>
 
                         {{-- Custom fields --}}
@@ -638,6 +721,7 @@
                                     @foreach ($customFields as $field)
                                         @php $val = optional($cfValues->get($field->id))->value; @endphp
                                         <div wire:key="cf-input-{{ $field->id }}">
+                                            @if ($canContribute)
                                             @if ($field->type === \App\Enums\CustomFieldType::Checkbox)
                                                 <label class="flex items-center gap-2 text-sm">
                                                     <input type="checkbox" @checked($val)
@@ -666,6 +750,17 @@
                                                            class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
                                                 @endif
                                             @endif
+                                            @else
+                                                @if ($field->type === \App\Enums\CustomFieldType::Checkbox)
+                                                    <label class="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-300">
+                                                        <span class="flex h-4 w-4 items-center justify-center rounded border {{ $val ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-neutral-300 dark:border-neutral-600' }}">@if ($val)<x-phosphor-check class="h-3 w-3"/>@endif</span>
+                                                        {{ $field->name }}
+                                                    </label>
+                                                @else
+                                                    <label class="mb-0.5 block text-xs text-neutral-500">{{ $field->name }}</label>
+                                                    <p class="text-sm text-neutral-700 dark:text-neutral-200">{{ $val !== null && $val !== '' ? $val : '—' }}</p>
+                                                @endif
+                                            @endif
                                         </div>
                                     @endforeach
                                 </div>
@@ -673,6 +768,7 @@
                         @endif
 
                         {{-- Cover: solid color or uploaded image (collapsed by default, at the bottom) --}}
+                        @if ($canContribute)
                         @php $coverPalette = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b']; @endphp
                         <div x-data="{ open: false }">
                             <button type="button" @click="open = ! open" class="mb-2 flex w-full items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-neutral-500">
@@ -704,6 +800,7 @@
                                 </div>
                             </div>
                         </div>
+                        @endif
                     </div>
                 </div>
         </x-modal>

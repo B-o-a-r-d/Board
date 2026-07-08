@@ -28,6 +28,28 @@ test('the api requires authentication', function () {
     $this->getJson('/api/v1/boards')->assertUnauthorized();
 });
 
+test('an observer cannot create a list via the api but a member can', function () {
+    ['board' => $board] = apiBoard();
+
+    $observer = User::factory()->create();
+    $board->members()->attach($observer, ['role' => 'observer']);
+
+    Sanctum::actingAs($observer);
+    $this->postJson("/api/v1/boards/{$board->public_id}/lists", ['name' => 'Interdit'])
+        ->assertForbidden();
+
+    expect($board->lists()->where('name', 'Interdit')->exists())->toBeFalse();
+
+    $member = User::factory()->create();
+    $board->members()->attach($member, ['role' => Role::Member->value]);
+
+    Sanctum::actingAs($member);
+    $this->postJson("/api/v1/boards/{$board->public_id}/lists", ['name' => 'Autorisé'])
+        ->assertCreated();
+
+    expect($board->lists()->where('name', 'Autorisé')->exists())->toBeTrue();
+});
+
 test('a personal access token authenticates api requests', function () {
     ['board' => $board, 'owner' => $owner] = apiBoard();
 

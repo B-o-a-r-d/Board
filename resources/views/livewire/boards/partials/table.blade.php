@@ -39,18 +39,25 @@
                     @foreach ($tableCards as $card)
                         <tr wire:key="row-{{ $card->id }}" class="border-b border-neutral-100 hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-800/40">
                             {{-- Title (inline edit) --}}
-                            <td class="px-3 py-1.5" x-data="{ editing: false }">
-                                <div x-show="!editing" @click="editing = true; $nextTick(() => $refs.t.focus())"
-                                     class="min-w-[10rem] cursor-text rounded px-1 py-0.5 {{ $card->completed_at ? 'text-neutral-400 line-through' : '' }}">{{ $card->title }}</div>
-                                <input x-show="editing" x-cloak x-ref="t" type="text" value="{{ $card->title }}" maxlength="255"
-                                       @keydown.enter.prevent="$el.blur()"
-                                       @keydown.escape="$el.value = @js($card->title); $el.blur()"
-                                       @blur="$wire.renameCard({{ $card->id }}, $el.value); editing = false"
-                                       class="w-full min-w-[10rem] rounded border border-indigo-400 bg-white px-1 py-0.5 focus:outline-none dark:bg-neutral-800">
+                            <td class="px-3 py-1.5">
+                                @if ($canContribute)
+                                <div x-data="{ editing: false }">
+                                    <div x-show="!editing" @click="editing = true; $nextTick(() => $refs.t.focus())"
+                                         class="min-w-[10rem] cursor-text rounded px-1 py-0.5 {{ $card->completed_at ? 'text-neutral-400 line-through' : '' }}">{{ $card->title }}</div>
+                                    <input x-show="editing" x-cloak x-ref="t" type="text" value="{{ $card->title }}" maxlength="255"
+                                           @keydown.enter.prevent="$el.blur()"
+                                           @keydown.escape="$el.value = @js($card->title); $el.blur()"
+                                           @blur="$wire.renameCard({{ $card->id }}, $el.value); editing = false"
+                                           class="w-full min-w-[10rem] rounded border border-indigo-400 bg-white px-1 py-0.5 focus:outline-none dark:bg-neutral-800">
+                                </div>
+                                @else
+                                    <span class="min-w-[10rem] {{ $card->completed_at ? 'text-neutral-400 line-through' : '' }}">{{ $card->title }}</span>
+                                @endif
                             </td>
 
                             {{-- List (move dropdown) --}}
                             <td class="px-3 py-1.5">
+                                @if ($canContribute)
                                 <div x-data="{ o: false }" @click.outside="o = false" class="relative">
                                     <button type="button" @click="o = !o" class="flex items-center gap-1 whitespace-nowrap rounded px-1 py-0.5 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-700">
                                         <span class="truncate">{{ $card->list?->name }}</span>
@@ -63,18 +70,26 @@
                                         @endforeach
                                     </div>
                                 </div>
+                                @else
+                                    <span class="whitespace-nowrap text-neutral-600 dark:text-neutral-300">{{ $card->list?->name }}</span>
+                                @endif
                             </td>
 
                             {{-- Due date (inline edit) --}}
                             <td class="whitespace-nowrap px-3 py-1.5">
+                                @if ($canContribute)
                                 <input type="date" value="{{ $card->due_at?->toDateString() }}"
                                        @change="$wire.setCardDue({{ $card->id }}, $event.target.value)"
                                        class="rounded border border-neutral-300 bg-white px-1.5 py-0.5 text-xs focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 {{ $card->due_at && ! $card->completed_at && $card->due_at->isPast() ? 'text-red-600 dark:text-red-400' : '' }}">
+                                @else
+                                    <span class="text-xs {{ $card->due_at && ! $card->completed_at && $card->due_at->isPast() ? 'text-red-600 dark:text-red-400' : 'text-neutral-600 dark:text-neutral-300' }}">{{ $card->due_at?->translatedFormat('d M Y') ?? '—' }}</span>
+                                @endif
                             </td>
 
                             {{-- Members (inline picker) --}}
                             <td class="px-3 py-1.5">
                                 @php $memberIds = $card->members->pluck('id'); @endphp
+                                @if ($canContribute)
                                 <div x-data="{ o: false }" @click.outside="o = false" class="relative">
                                     <button type="button" @click="o = !o" class="flex min-h-[1.5rem] items-center gap-0 rounded px-1 hover:bg-neutral-100 dark:hover:bg-neutral-700">
                                         @forelse ($card->members as $member)
@@ -93,11 +108,21 @@
                                         @endforeach
                                     </div>
                                 </div>
+                                @else
+                                    <div class="flex min-h-[1.5rem] items-center">
+                                        @forelse ($card->members as $member)
+                                            <span class="-ml-1.5 first:ml-0"><x-user-avatar :user="$member" size="xs" :hover-card="false" class="ring-2 ring-white dark:ring-neutral-900" /></span>
+                                        @empty
+                                            <span class="text-neutral-300 dark:text-neutral-600">—</span>
+                                        @endforelse
+                                    </div>
+                                @endif
                             </td>
 
                             {{-- Labels (inline picker) --}}
                             <td class="px-3 py-1.5">
                                 @php $labelIds = $card->labels->pluck('id'); @endphp
+                                @if ($canContribute)
                                 <div x-data="{ o: false }" @click.outside="o = false" class="relative">
                                     <button type="button" @click="o = !o" class="flex min-h-[1.5rem] flex-wrap items-center gap-1 rounded px-1 hover:bg-neutral-100 dark:hover:bg-neutral-700">
                                         @forelse ($card->labels as $label)
@@ -118,12 +143,22 @@
                                         @endforelse
                                     </div>
                                 </div>
+                                @else
+                                    <div class="flex min-h-[1.5rem] flex-wrap items-center gap-1">
+                                        @forelse ($card->labels as $label)
+                                            <span class="inline-block max-w-[8rem] truncate rounded px-1.5 py-0.5 text-[11px] font-medium text-white" style="background-color: {{ $label->color }}">{{ $label->name ?? '·' }}</span>
+                                        @empty
+                                            <span class="text-neutral-300 dark:text-neutral-600">—</span>
+                                        @endforelse
+                                    </div>
+                                @endif
                             </td>
 
                             {{-- Custom fields (inline editors, one per type) --}}
                             @foreach ($customFields as $field)
                                 @php $cfv = $card->customFieldValues->firstWhere('custom_field_id', $field->id)?->value; @endphp
                                 <td class="whitespace-nowrap px-3 py-1.5">
+                                    @if ($canContribute)
                                     @switch($field->type->value)
                                         @case('checkbox')
                                             <input type="checkbox" @change="$wire.setCardCustomField({{ $card->id }}, {{ $field->id }}, $event.target.checked)" @checked($cfv === '1')
@@ -150,6 +185,13 @@
                                             <input type="text" value="{{ $cfv }}" @change="$wire.setCardCustomField({{ $card->id }}, {{ $field->id }}, $event.target.value)"
                                                    class="w-32 rounded border border-neutral-300 bg-white px-1.5 py-0.5 text-xs focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
                                     @endswitch
+                                    @else
+                                        @if ($field->type->value === 'checkbox')
+                                            <span class="flex h-4 w-4 items-center justify-center rounded border {{ $cfv === '1' ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-neutral-300 dark:border-neutral-600' }}">@if ($cfv === '1')<x-phosphor-check class="h-3 w-3"/>@endif</span>
+                                        @else
+                                            <span class="text-xs text-neutral-600 dark:text-neutral-300">{{ $cfv !== null && $cfv !== '' ? $cfv : '—' }}</span>
+                                        @endif
+                                    @endif
                                 </td>
                             @endforeach
 

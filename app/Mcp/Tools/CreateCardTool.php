@@ -27,7 +27,7 @@ class CreateCardTool extends Tool
         $user = $request->user();
         $list = $this->resolvePublicId(BoardList::class, $request->get('list_id'));
 
-        if (! $list || ! Gate::forUser($user)->allows('view', $list->board)) {
+        if (! $list || ! Gate::forUser($user)->allows('contribute', $list->board)) {
             return Response::error('Liste introuvable ou accès refusé.');
         }
 

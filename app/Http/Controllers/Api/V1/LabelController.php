@@ -22,7 +22,7 @@ class LabelController extends Controller
 
     public function store(Request $request, Board $board): JsonResponse
     {
-        $this->authorize('view', $board);
+        $this->authorize('contribute', $board);
 
         $data = $request->validate([
             'name' => ['nullable', 'string', 'max:255'],
@@ -39,7 +39,7 @@ class LabelController extends Controller
 
     public function update(Request $request, Label $label): LabelResource
     {
-        $this->authorize('view', $label->board);
+        $this->authorize('contribute', $label->board);
 
         $data = $request->validate([
             'name' => ['nullable', 'string', 'max:255'],
@@ -53,7 +53,7 @@ class LabelController extends Controller
 
     public function destroy(Label $label): Response
     {
-        $this->authorize('view', $label->board);
+        $this->authorize('contribute', $label->board);
 
         $label->delete();
 

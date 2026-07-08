@@ -7,6 +7,20 @@
         <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ __('Membres & invitations') }}</p>
     </div>
 
+    @if ($canManage)
+        <a href="{{ route('workspaces.roles', $workspace) }}" wire:navigate
+           class="flex items-center justify-between rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:border-indigo-300 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-indigo-500/40">
+            <span class="flex items-center gap-3">
+                <x-phosphor-shield-check class="h-5 w-5 text-indigo-500"/>
+                <span>
+                    <span class="block text-sm font-semibold">{{ __('Rôles et permissions') }}</span>
+                    <span class="block text-xs text-neutral-500 dark:text-neutral-400">{{ __('Rôles sur mesure, permissions, observateurs.') }}</span>
+                </span>
+            </span>
+            <x-phosphor-caret-right class="h-4 w-4 text-neutral-400"/>
+        </a>
+    @endif
+
     @if (session('workspace-status'))
         <div class="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-500/10 dark:text-green-400">
             {{ session('workspace-status') }}

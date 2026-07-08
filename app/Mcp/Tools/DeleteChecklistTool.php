@@ -21,7 +21,7 @@ class DeleteChecklistTool extends Tool
 
         $checklist = Checklist::with('card')->where('public_id', $request->get('checklist_id'))->first();
 
-        if ($error = $this->denyUnlessBoardAccess($request, $checklist?->card?->board)) {
+        if ($error = $this->denyUnlessCanContribute($request, $checklist?->card?->board)) {
             return $error;
         }
 

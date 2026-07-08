@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\BoardVisibility;
+use App\Enums\Permission;
 use App\Models\Board;
 use App\Models\User;
 
@@ -38,44 +39,51 @@ class BoardPolicy
     }
 
     /**
-     * Board admins/owners and workspace admins may update the board.
+     * Contribute to the board's content: create/edit/move cards, lists,
+     * checklists, dates, labels, members. Denied to read-only roles (Observer).
+     */
+    public function contribute(User $user, Board $board): bool
+    {
+        return $board->userCan($user, Permission::CardManage);
+    }
+
+    /**
+     * Post comments and reactions.
+     */
+    public function comment(User $user, Board $board): bool
+    {
+        return $board->userCan($user, Permission::CommentPost);
+    }
+
+    /**
+     * Update board settings (rename, background, lists config, custom fields).
      */
     public function update(User $user, Board $board): bool
     {
-        return $this->canAdminister($user, $board);
+        return $board->userCan($user, Permission::BoardSettings);
     }
 
     /**
-     * Board admins/owners and workspace admins may manage board members.
+     * Manage board members and their roles.
      */
     public function manageMembers(User $user, Board $board): bool
     {
-        return $this->canAdminister($user, $board);
+        return $board->userCan($user, Permission::MemberManage);
     }
 
     /**
-     * Board admins/owners and workspace admins may delete the board.
+     * Delete the board.
      */
     public function delete(User $user, Board $board): bool
     {
-        return $this->canAdminister($user, $board);
+        return $board->userCan($user, Permission::BoardDelete);
     }
 
     /**
-     * Board admins/owners and workspace admins may install and configure
-     * plugins (Power-Ups), which can hold OAuth credentials.
+     * Install and configure plugins (Power-Ups), which can hold OAuth credentials.
      */
     public function managePlugins(User $user, Board $board): bool
     {
-        return $this->canAdminister($user, $board);
-    }
-
-    private function canAdminister(User $user, Board $board): bool
-    {
-        if ($board->memberRole($user)?->isAdministrator()) {
-            return true;
-        }
-
-        return $board->workspace->memberRole($user)?->isAdministrator() ?? false;
+        return $board->userCan($user, Permission::PluginManage);
     }
 }

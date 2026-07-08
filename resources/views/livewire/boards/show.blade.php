@@ -35,6 +35,11 @@
                     <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">{{ $board->name }}</h1>
                 @endif
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ $board->workspace->name }}</p>
+                @unless ($canContribute)
+                    <span class="mt-1 inline-flex items-center gap-1 rounded-full bg-neutral-200 px-2 py-0.5 text-xs font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300" title="{{ __('Votre rôle est en lecture seule sur ce tableau.') }}">
+                        <x-phosphor-eye class="h-3.5 w-3.5"/> {{ __('Lecture seule') }}
+                    </span>
+                @endunless
             </div>
         </div>
 
@@ -129,12 +134,14 @@
                         <x-phosphor-arrows-out-line-horizontal x-show="allCollapsed" x-cloak class="h-4 w-4"/>
                     </button>
 
+                    @if ($canContribute)
                     <button type="button" @click="selectMode = ! selectMode; if (! selectMode) selected = []"
                             class="flex h-9 w-9 items-center justify-center rounded-lg border transition"
                             :class="selectMode ? 'border-indigo-400 bg-indigo-50 text-indigo-600 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300' : 'border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800'"
                             title="{{ __('Sélectionner des cartes') }}">
                         <x-phosphor-check-square class="h-4 w-4"/>
                     </button>
+                    @endif
                 @endif
 
                 @can('update', $board)
@@ -383,7 +390,7 @@
     @if ($view === 'board')
     {{-- Lists (columns) --}}
     <div
-        wire:sort="reorderLists"
+        @if ($canContribute) wire:sort="reorderLists" @endif
         wire:loading.class.delay="opacity-40"
         wire:target="search, filterLabels, filterMembers, toggleLabel, toggleMember, toggleUnassigned, filterDue, resetFilters, applyFilter, applyView"
         @if ($boardBg) style="background: {{ $boardBg }};" @endif
@@ -503,9 +510,9 @@
                 @if ($cardsReady)
                 <ul
                     x-ref="cards"
-                    x-init="window.initCardSortable($el, $wire)"
+                    @if ($canContribute) x-init="window.initCardSortable($el, $wire)" @endif
                     data-list-id="{{ $list->id }}"
-                    class="flex min-h-2 flex-col gap-2 overflow-y-auto px-2"
+                    class="flex min-h-2 flex-col gap-2 overflow-y-auto px-2 @unless ($canContribute) pb-3 @endunless"
                 >
                     @foreach ($list->cards as $card)
                         @php
@@ -675,6 +682,7 @@
                 @endif
 
                 {{-- Add card --}}
+                @if ($canContribute)
                 <div class="flex items-center gap-1 p-2">
                     <form wire:submit="addCard({{ $list->id }})" class="min-w-0 flex-1">
                         <input
@@ -704,6 +712,7 @@
                         </x-context-menu>
                     @endif
                 </div>
+                @endif
                 @else
                     {{-- Plugin-sourced list: rendered by a lazy child (skeleton until loaded). --}}
                     <livewire:boards.plugin-list :list="$list" wire:key="plugin-list-{{ $list->id }}"/>
@@ -713,6 +722,7 @@
         @endforeach
 
         {{-- Add list --}}
+        @if ($canContribute)
         <form wire:submit="addList" class="w-full shrink-0 snap-start sm:w-72">
             <input
                 type="text"
@@ -722,6 +732,7 @@
             >
             @error('newListName') <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
         </form>
+        @endif
     </div>
 
     {{-- Bulk actions bar (shown when cards are multi-selected) --}}
@@ -938,17 +949,25 @@
                                     <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">{{ __('Propriétaire') }}</span>
                                 @elseif ($canManageMembers)
                                     <select wire:change="updateBoardMemberRole({{ $member->id }}, $event.target.value)" class="rounded-lg border border-neutral-300 bg-white px-2 py-1 text-xs shadow-sm focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
-                                        <option value="member" @selected($member->pivot->role === 'member')>{{ __('Membre') }}</option>
-                                        <option value="admin" @selected($member->pivot->role === 'admin')>{{ __('Administrateur') }}</option>
+                                        @foreach ($boardRoles as $wsRole)
+                                            @continue($wsRole->key === 'owner')
+                                            <option value="{{ $wsRole->key }}" @selected($member->pivot->role === $wsRole->key)>{{ $wsRole->name }}</option>
+                                        @endforeach
                                     </select>
                                     <button type="button" wire:click="removeBoardMember({{ $member->id }})" class="text-xs text-neutral-400 hover:text-red-500">{{ __('Retirer') }}</button>
                                 @else
-                                    <span class="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">{{ \App\Enums\Role::from($member->pivot->role)->label() }}</span>
+                                    <span class="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">{{ optional($boardRoles->firstWhere('key', $member->pivot->role))->name ?? $member->pivot->role }}</span>
                                 @endif
                             </div>
                         </li>
                     @endforeach
                 </ul>
+
+                @if ($canManageMembers)
+                    <a href="{{ route('workspaces.roles', $board->workspace) }}" wire:navigate class="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">
+                        <x-phosphor-shield-check class="h-3.5 w-3.5"/> {{ __('Gérer les rôles et permissions') }}
+                    </a>
+                @endif
 
                 {{-- Add from the workspace --}}
                 @if ($canManageMembers)

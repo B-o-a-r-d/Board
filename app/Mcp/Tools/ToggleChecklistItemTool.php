@@ -24,7 +24,7 @@ class ToggleChecklistItemTool extends Tool
 
         $item = ChecklistItem::with('checklist.card')->where('public_id', $request->get('item_id'))->first();
 
-        if ($error = $this->denyUnlessBoardAccess($request, $item?->checklist?->card?->board)) {
+        if ($error = $this->denyUnlessCanContribute($request, $item?->checklist?->card?->board)) {
             return $error;
         }
 

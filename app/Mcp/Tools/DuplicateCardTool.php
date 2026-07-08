@@ -21,7 +21,7 @@ class DuplicateCardTool extends Tool
 
         $card = Card::with(['labels', 'members'])->where('public_id', $request->get('card_id'))->first();
 
-        if ($error = $this->denyUnlessBoardAccess($request, $card?->board)) {
+        if ($error = $this->denyUnlessCanContribute($request, $card?->board)) {
             return $error;
         }
 

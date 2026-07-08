@@ -29,13 +29,15 @@
                     {{-- Each day is a drop target: dropping a card here reschedules it (rescheduleCard). --}}
                     <div wire:key="cal-day-{{ $day['date']->toDateString() }}"
                          x-data="{ adding: false, over: false }"
+                         @if ($canContribute)
                          x-on:dragover.prevent="over = true"
                          x-on:dragleave="over = false"
                          x-on:drop.prevent="over = false; $wire.rescheduleCard($event.dataTransfer.getData('text/card-id'), '{{ $day['date']->toDateString() }}')"
                          :class="over ? 'ring-2 ring-inset ring-indigo-400' : ''"
+                         @endif
                          class="group/day relative min-h-[6rem] border-b border-r border-neutral-200 p-1 dark:border-neutral-800/60 {{ $day['inMonth'] ? 'bg-white dark:bg-transparent' : 'bg-neutral-100/70 dark:bg-neutral-900/40' }}">
                         <div class="mb-1 flex items-center justify-between gap-1">
-                            @if ($day['inMonth'])
+                            @if ($day['inMonth'] && $canContribute)
                                 <button type="button" x-show="!adding"
                                         x-on:click="adding = true; $nextTick(() => $refs.addInput?.focus())"
                                         class="flex h-5 w-5 items-center justify-center rounded text-neutral-400 opacity-0 transition hover:bg-neutral-100 hover:text-indigo-600 group-hover/day:opacity-100 dark:hover:bg-neutral-800 dark:hover:text-indigo-400"
@@ -48,7 +50,7 @@
                             <span class="flex h-6 w-6 items-center justify-center rounded-full text-xs {{ $day['isToday'] ? 'bg-indigo-600 font-semibold text-white' : ($day['inMonth'] ? 'text-neutral-600 dark:text-neutral-300' : 'text-neutral-400') }}">{{ $day['day'] }}</span>
                         </div>
 
-                        @if ($day['inMonth'])
+                        @if ($day['inMonth'] && $canContribute)
                             <form x-show="adding" x-cloak class="mb-1"
                                   x-on:submit.prevent="$wire.createCardOnDate('{{ $day['date']->toDateString() }}', $refs.addInput.value); $refs.addInput.value = ''; adding = false">
                                 <input x-ref="addInput" type="text" maxlength="255"

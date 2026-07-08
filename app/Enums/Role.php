@@ -7,6 +7,7 @@ enum Role: string
     case Owner = 'owner';
     case Admin = 'admin';
     case Member = 'member';
+    case Observer = 'observer';
 
     /**
      * Human readable label.
@@ -17,6 +18,7 @@ enum Role: string
             self::Owner => 'Propriétaire',
             self::Admin => 'Administrateur',
             self::Member => 'Membre',
+            self::Observer => 'Observateur',
         };
     }
 
@@ -26,5 +28,20 @@ enum Role: string
     public function isAdministrator(): bool
     {
         return in_array($this, [self::Owner, self::Admin], true);
+    }
+
+    /**
+     * Default permission set for this system role — the seed for the per-workspace
+     * `roles` rows. Custom roles override these freely.
+     *
+     * @return array<int, Permission>
+     */
+    public function permissions(): array
+    {
+        return match ($this) {
+            self::Owner, self::Admin => Permission::cases(),
+            self::Member => [Permission::BoardView, Permission::CardManage, Permission::CommentPost],
+            self::Observer => [Permission::BoardView],
+        };
     }
 }

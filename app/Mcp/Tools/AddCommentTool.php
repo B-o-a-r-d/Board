@@ -26,7 +26,7 @@ class AddCommentTool extends Tool
         $user = $request->user();
         $card = $this->resolvePublicId(Card::class, $request->get('card_id'));
 
-        if (! $card || ! Gate::forUser($user)->allows('view', $card->board)) {
+        if (! $card || ! Gate::forUser($user)->allows('comment', $card->board)) {
             return Response::error('Carte introuvable ou accès refusé.');
         }
 

@@ -4,6 +4,7 @@ namespace App\Livewire\Cards;
 
 use App\Automations\AutomationEngine;
 use App\Enums\CustomFieldType;
+use App\Enums\Permission;
 use App\Events\BoardActivity;
 use App\Models\Activity;
 use App\Models\Board;
@@ -616,7 +617,7 @@ class CardDetail extends Component
 
     public function addComment(string $body = ''): void
     {
-        $card = $this->guardedCard();
+        $card = $this->guardedCard(Permission::CommentPost);
 
         // The TipTap composer passes the markdown body directly; fall back to the
         // bound property so other callers/tests keep working.
@@ -687,11 +688,11 @@ class CardDetail extends Component
 
     public function deleteComment(int $commentId): void
     {
-        $card = $this->guardedCard();
+        $card = $this->guardedCard(Permission::CommentPost);
         $comment = $card->comments()->findOrFail($commentId);
 
         abort_unless(
-            $comment->user_id === Auth::id() || $this->board->memberRole(Auth::user())?->isAdministrator(),
+            $comment->user_id === Auth::id() || $this->board->userCan(Auth::user(), Permission::MemberManage),
             403,
         );
 
@@ -701,11 +702,11 @@ class CardDetail extends Component
 
     public function startEditComment(int $commentId): void
     {
-        $card = $this->guardedCard();
+        $card = $this->guardedCard(Permission::CommentPost);
         $comment = $card->comments()->findOrFail($commentId);
 
         abort_unless(
-            $comment->user_id === Auth::id() || $this->board->memberRole(Auth::user())?->isAdministrator(),
+            $comment->user_id === Auth::id() || $this->board->userCan(Auth::user(), Permission::MemberManage),
             403,
         );
 
@@ -715,11 +716,11 @@ class CardDetail extends Component
 
     public function saveComment(): void
     {
-        $card = $this->guardedCard();
+        $card = $this->guardedCard(Permission::CommentPost);
         $comment = $card->comments()->findOrFail($this->editingCommentId);
 
         abort_unless(
-            $comment->user_id === Auth::id() || $this->board->memberRole(Auth::user())?->isAdministrator(),
+            $comment->user_id === Auth::id() || $this->board->userCan(Auth::user(), Permission::MemberManage),
             403,
         );
 
@@ -741,7 +742,7 @@ class CardDetail extends Component
      */
     public function toggleReaction(int $commentId, string $emoji): void
     {
-        $card = $this->guardedCard();
+        $card = $this->guardedCard(Permission::CommentPost);
         $comment = $card->comments()->findOrFail($commentId);
 
         abort_unless(in_array($emoji, self::REACTIONS, true), 422);
@@ -873,9 +874,14 @@ class CardDetail extends Component
         ]);
     }
 
-    private function guardedCard(): Card
+    /**
+     * Fetch the open card, guarding by permission — every write funnels through
+     * here. Card mutations require CardManage; comment/reaction writes pass
+     * CommentPost. Read-only roles (Observer) hold neither, so they get a 403.
+     */
+    private function guardedCard(Permission $permission = Permission::CardManage): Card
     {
-        $this->authorize('view', $this->board);
+        abort_unless($this->board->userCan(Auth::user(), $permission), 403);
 
         return $this->board->cards()->findOrFail($this->cardId);
     }
@@ -928,6 +934,8 @@ class CardDetail extends Component
             'cardLinks' => $cardLinks,
             'linkCandidates' => $linkCandidates,
             'customFields' => $this->board->customFields,
+            'canContribute' => Auth::user()->can('contribute', $this->board),
+            'canComment' => Auth::user()->can('comment', $this->board),
         ]);
     }
 }

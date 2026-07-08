@@ -52,11 +52,32 @@ trait InteractsWithMcpBoard
     }
 
     /**
-     * Ensure the user can access the board; return an error response if not.
+     * Ensure the user can view the board; return an error response if not.
      */
     protected function denyUnlessBoardAccess(Request $request, ?Board $board): ?Response
     {
-        if (! $board || ! Gate::forUser($request->user())->allows('view', $board)) {
+        return $this->denyUnlessAbility($request, $board, 'view');
+    }
+
+    /**
+     * Ensure the user may contribute (write cards/content) to the board.
+     */
+    protected function denyUnlessCanContribute(Request $request, ?Board $board): ?Response
+    {
+        return $this->denyUnlessAbility($request, $board, 'contribute');
+    }
+
+    /**
+     * Ensure the user may comment on the board.
+     */
+    protected function denyUnlessCanComment(Request $request, ?Board $board): ?Response
+    {
+        return $this->denyUnlessAbility($request, $board, 'comment');
+    }
+
+    private function denyUnlessAbility(Request $request, ?Board $board, string $ability): ?Response
+    {
+        if (! $board || ! Gate::forUser($request->user())->allows($ability, $board)) {
             return Response::error('Ressource introuvable ou accès refusé.');
         }
 

@@ -29,7 +29,7 @@ class UpdateCardTool extends Tool
 
         $card = $this->resolvePublicId(Card::class, $request->get('card_id'));
 
-        if ($error = $this->denyUnlessBoardAccess($request, $card?->board)) {
+        if ($error = $this->denyUnlessCanContribute($request, $card?->board)) {
             return $error;
         }
 

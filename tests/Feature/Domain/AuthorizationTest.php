@@ -77,7 +77,7 @@ test('board administration is limited to board and workspace admins', function (
         ->and($member->can('delete', $board))->toBeFalse();
 });
 
-test('cards inherit board view permissions', function () {
+test('cards inherit board view, but editing needs a contributing role', function () {
     ['workspace' => $workspace, 'member' => $member, 'outsider' => $outsider] = makeWorkspaceWithRoles();
 
     $board = Board::factory()->create([
@@ -86,7 +86,14 @@ test('cards inherit board view permissions', function () {
     ]);
     $card = Card::factory()->create(['board_id' => $board->id]);
 
+    // A workspace member sees a workspace-visible board's cards, but may only
+    // edit them once given a contributing board role (RBAC).
     expect($member->can('view', $card))->toBeTrue()
-        ->and($member->can('update', $card))->toBeTrue()
+        ->and($member->can('update', $card))->toBeFalse()
         ->and($outsider->can('view', $card))->toBeFalse();
+
+    // Add them to the board as a Member → now they can contribute.
+    $board->members()->attach($member, ['role' => 'member']);
+
+    expect($member->can('update', $card->fresh()))->toBeTrue();
 });

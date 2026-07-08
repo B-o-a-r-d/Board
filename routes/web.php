@@ -8,6 +8,7 @@ use App\Livewire\Boards\Show as BoardShow;
 use App\Livewire\Dashboard;
 use App\Livewire\Invitations\AcceptInvitation;
 use App\Livewire\Settings\Profile;
+use App\Livewire\Workspaces\Roles as WorkspaceRoles;
 use App\Livewire\Workspaces\WorkspaceSettings;
 use Illuminate\Support\Facades\Route;
 
@@ -20,6 +21,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/boards/{board:public_id}', BoardShow::class)->name('boards.show');
     Route::get('/boards/{board:public_id}/export/{format}', BoardExportController::class)->name('boards.export');
     Route::get('/workspaces/{workspace:public_id}/settings', WorkspaceSettings::class)->name('workspaces.settings');
+    Route::get('/workspaces/{workspace:public_id}/roles', WorkspaceRoles::class)->name('workspaces.roles');
 });
 
 // Invitation links are reachable by guests: an invitee without an account is
