@@ -58,6 +58,9 @@ class Show extends Component
     /** Currently displayed calendar month as 'Y-m'. */
     public string $calendarMonth = '';
 
+    /** Timeline window start as 'Y-m-d' (Monday-aligned). */
+    public string $timelineStart = '';
+
     public bool $showTrash = false;
 
     public function toggleTrash(): void
@@ -389,8 +392,12 @@ class Show extends Component
             $this->calendarMonth = now()->format('Y-m');
         }
 
-        if (! in_array($this->view, ['board', 'calendar'], true)) {
+        if (! in_array($this->view, ['board', 'calendar', 'timeline'], true)) {
             $this->view = 'board';
+        }
+
+        if ($this->timelineStart === '') {
+            $this->timelineStart = now()->startOfWeek(Carbon::MONDAY)->format('Y-m-d');
         }
 
         $this->cardsReady = app()->runningUnitTests();
@@ -403,7 +410,7 @@ class Show extends Component
 
     public function setView(string $view): void
     {
-        $this->view = in_array($view, ['board', 'calendar'], true) ? $view : 'board';
+        $this->view = in_array($view, ['board', 'calendar', 'timeline'], true) ? $view : 'board';
     }
 
     public function calendarStep(int $months): void
@@ -414,6 +421,53 @@ class Show extends Component
     public function calendarToday(): void
     {
         $this->calendarMonth = now()->format('Y-m');
+    }
+
+    public function timelineStep(int $weeks): void
+    {
+        $this->timelineStart = Carbon::parse($this->timelineStart)->addWeeks($weeks)->format('Y-m-d');
+    }
+
+    public function timelineToday(): void
+    {
+        $this->timelineStart = now()->startOfWeek(Carbon::MONDAY)->format('Y-m-d');
+    }
+
+    /**
+     * Set a card's start and/or due date from the timeline (drag to move, drag an
+     * edge to resize). Dates keep any existing time-of-day, else default to noon.
+     */
+    public function setCardSchedule(int $cardId, ?string $startDate, ?string $dueDate): void
+    {
+        $this->authorize('view', $this->board);
+
+        $card = $this->cardForBoard($cardId);
+
+        $start = $startDate ? $this->dateWithTime($card->start_at, $startDate) : null;
+        $due = $dueDate ? $this->dateWithTime($card->due_at, $dueDate) : null;
+
+        if ($start !== null && $due !== null && $due->lt($start)) {
+            return;
+        }
+
+        $hadDue = $card->due_at !== null;
+
+        $card->update(['start_at' => $start, 'due_at' => $due]);
+
+        if ($due !== null) {
+            $this->logActivity($hadDue ? 'card.due_changed' : 'card.due_set', $card->id, ['value' => $due->translatedFormat('d M Y')]);
+        }
+
+        $this->broadcastActivity('card.due_changed');
+    }
+
+    private function dateWithTime(?Carbon $existing, string $date): Carbon
+    {
+        $parsed = Carbon::parse($date);
+
+        return $existing
+            ? $parsed->setTime($existing->hour, $existing->minute)
+            : $parsed->setTime(12, 0);
     }
 
     /**
@@ -1271,6 +1325,7 @@ class Show extends Component
         return view('livewire.boards.show', [
             'lists' => $lists,
             'calendar' => $this->view === 'calendar' ? $this->buildCalendar() : null,
+            'timeline' => $this->view === 'timeline' ? $this->buildTimeline() : null,
             'labels' => $this->board->labels,
             'members' => $boardMembers,
             'boardMembers' => $boardMembers,
@@ -1291,6 +1346,82 @@ class Show extends Component
             'availablePlugins' => $this->showPlugins ? app(PluginRegistry::class)->all() : [],
             'installedPlugins' => $this->showPlugins ? $this->board->plugins()->get() : collect(),
         ]);
+    }
+
+    /**
+     * Build the timeline (Gantt) view: an 8-week day window with one swimlane per
+     * list, each dated card rendered as a bar spanning start_at → due_at (a single
+     * date yields a one-day bar). Positions/spans are in day units; the blade
+     * multiplies by a fixed day width. Respects the active card filters.
+     *
+     * @return array{start: Carbon, days: int, dayList: array<int, array{date: Carbon, day: int, weekday: string, month: string, isToday: bool, isWeekend: bool, isMonthStart: bool}>, todayOffset: int|null, lanes: array<int, array{list: BoardList, bars: array<int, array{card: Card, offset: int, span: int, overdue: bool}>}>}
+     */
+    private function buildTimeline(): array
+    {
+        $days = 56;
+        $start = Carbon::parse($this->timelineStart)->startOfDay();
+        $end = $start->copy()->addDays($days - 1)->endOfDay();
+
+        $dayList = [];
+        for ($i = 0; $i < $days; $i++) {
+            $day = $start->copy()->addDays($i);
+            $dayList[] = [
+                'date' => $day,
+                'day' => $day->day,
+                'weekday' => $day->translatedFormat('D'),
+                'month' => $day->translatedFormat('MMM'),
+                'isToday' => $day->isToday(),
+                'isWeekend' => $day->isWeekend(),
+                'isMonthStart' => $day->day === 1,
+            ];
+        }
+
+        $query = $this->board->cards()
+            ->whereNull('archived_at')
+            ->where(fn ($q) => $q->whereNotNull('due_at')->orWhereNotNull('start_at'))
+            ->with(['labels', 'members']);
+
+        $this->applyCardFilters($query);
+
+        $cards = $query->get()->groupBy('board_list_id');
+
+        $lanes = [];
+        foreach ($this->board->lists()->whereNull('archived_at')->orderBy('position')->get() as $list) {
+            $bars = [];
+
+            foreach ($cards->get($list->id, collect()) as $card) {
+                $cardStart = ($card->start_at ?? $card->due_at)->copy()->startOfDay();
+                $cardEnd = ($card->due_at ?? $card->start_at)->copy()->startOfDay();
+
+                if ($cardEnd->lt($start) || $cardStart->gt($end->copy()->startOfDay())) {
+                    continue;
+                }
+
+                $spanStart = $cardStart->lt($start) ? $start->copy() : $cardStart;
+                $spanEnd = $cardEnd->gt($end) ? $end->copy()->startOfDay() : $cardEnd;
+
+                $bars[] = [
+                    'card' => $card,
+                    'offset' => (int) $start->diffInDays($spanStart),
+                    'span' => (int) $spanStart->diffInDays($spanEnd) + 1,
+                    'overdue' => $card->due_at && ! $card->completed_at && $card->due_at->isPast(),
+                ];
+            }
+
+            if ($bars !== []) {
+                $lanes[] = ['list' => $list, 'bars' => $bars];
+            }
+        }
+
+        $today = now()->startOfDay();
+
+        return [
+            'start' => $start,
+            'days' => $days,
+            'dayList' => $dayList,
+            'todayOffset' => ($today->gte($start) && $today->lte($end)) ? (int) $start->diffInDays($today) : null,
+            'lanes' => $lanes,
+        ];
     }
 
     /**

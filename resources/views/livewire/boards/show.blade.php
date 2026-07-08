@@ -5,6 +5,7 @@
         if ($event.key === '/') { $event.preventDefault(); document.getElementById('board-search')?.focus(); }
         else if ($event.key === 'b') { $wire.setView('board'); }
         else if ($event.key === 'c') { $wire.setView('calendar'); }
+        else if ($event.key === 't') { $wire.setView('timeline'); }
         else if ($event.key === '?') { helpOpen = true; }
      "
      @open-shortcuts.window="helpOpen = true"
@@ -121,6 +122,11 @@
                             class="flex items-center gap-1 rounded-md px-2 py-1 text-sm transition {{ $view === 'calendar' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200' }}"
                             title="{{ __('Calendrier') }}">
                         <x-phosphor-calendar-blank class="h-4 w-4"/><span class="hidden sm:inline">{{ __('Calendrier') }}</span>
+                    </button>
+                    <button type="button" wire:click="setView('timeline')"
+                            class="flex items-center gap-1 rounded-md px-2 py-1 text-sm transition {{ $view === 'timeline' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200' }}"
+                            title="{{ __('Timeline') }}">
+                        <x-phosphor-chart-bar-horizontal class="h-4 w-4"/><span class="hidden sm:inline">{{ __('Timeline') }}</span>
                     </button>
                 </div>
 
@@ -289,24 +295,24 @@
 
                 <div x-show="open" x-cloak x-transition
                      class="absolute right-0 z-40 mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-neutral-200 bg-white p-1 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
-                    @forelse ($views as $view)
-                        @php $isCalendarView = ($view->filters['view'] ?? 'board') === 'calendar'; @endphp
-                        <div wire:key="view-{{ $view->id }}" x-data="{ editing: false }" class="group/view flex items-center gap-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800">
+                    @forelse ($views as $savedView)
+                        @php $isCalendarView = ($savedView->filters['view'] ?? 'board') === 'calendar'; @endphp
+                        <div wire:key="view-{{ $savedView->id }}" x-data="{ editing: false }" class="group/view flex items-center gap-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800">
                             <template x-if="!editing">
-                                <button type="button" wire:click="applyView({{ $view->id }})" @click="open = false"
+                                <button type="button" wire:click="applyView({{ $savedView->id }})" @click="open = false"
                                         class="flex min-w-0 flex-1 items-center gap-1.5 px-2.5 py-1.5 text-left text-sm text-neutral-700 dark:text-neutral-300">
                                     @if ($isCalendarView)
                                         <x-phosphor-calendar-blank class="h-3.5 w-3.5 shrink-0 opacity-60"/>
                                     @else
                                         <x-phosphor-squares-four class="h-3.5 w-3.5 shrink-0 opacity-60"/>
                                     @endif
-                                    <span class="truncate">{{ $view->name }}</span>
+                                    <span class="truncate">{{ $savedView->name }}</span>
                                 </button>
                             </template>
                             <template x-if="editing">
                                 <form class="flex min-w-0 flex-1 items-center px-1.5 py-1" @click.stop
-                                      x-on:submit.prevent="$wire.renameView({{ $view->id }}, $refs.renameInput.value); editing = false">
-                                    <input x-ref="renameInput" type="text" value="{{ $view->name }}" maxlength="60"
+                                      x-on:submit.prevent="$wire.renameView({{ $savedView->id }}, $refs.renameInput.value); editing = false">
+                                    <input x-ref="renameInput" type="text" value="{{ $savedView->name }}" maxlength="60"
                                            x-on:keydown.escape="editing = false" x-on:blur="editing = false"
                                            class="w-full rounded border border-neutral-300 bg-white px-1.5 py-0.5 text-sm focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
                                 </form>
@@ -314,7 +320,7 @@
                             <button type="button" x-show="!editing"
                                     x-on:click.stop="editing = true; $nextTick(() => { $refs.renameInput.focus(); $refs.renameInput.select(); })"
                                     class="shrink-0 rounded p-1 text-neutral-300 opacity-100 transition hover:text-indigo-500 sm:opacity-0 sm:group-hover/view:opacity-100" title="{{ __('Renommer') }}"><x-phosphor-pencil-simple class="h-3.5 w-3.5"/></button>
-                            <button type="button" wire:click="deleteView({{ $view->id }})" x-show="!editing" class="mr-1 shrink-0 rounded p-1 text-neutral-300 opacity-100 transition hover:text-red-500 sm:opacity-0 sm:group-hover/view:opacity-100" title="{{ __('Supprimer') }}"><x-phosphor-x class="h-3.5 w-3.5"/></button>
+                            <button type="button" wire:click="deleteView({{ $savedView->id }})" x-show="!editing" class="mr-1 shrink-0 rounded p-1 text-neutral-300 opacity-100 transition hover:text-red-500 sm:opacity-0 sm:group-hover/view:opacity-100" title="{{ __('Supprimer') }}"><x-phosphor-x class="h-3.5 w-3.5"/></button>
                         </div>
                     @empty
                         <p class="px-2.5 py-2 text-xs text-neutral-400">{{ __('Aucune vue enregistrée.') }}</p>
@@ -360,7 +366,7 @@
         $boardBg = $board->backgroundStyle();
     @endphp
 
-    @if ($view !== 'calendar')
+    @if ($view === 'board')
     {{-- Lists (columns) --}}
     <div
         wire:sort="reorderLists"
@@ -736,8 +742,10 @@
 
         <button type="button" @click="selected = []; selectMode = false" class="rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200" title="{{ __('Désélectionner') }}"><x-phosphor-x class="h-4 w-4"/></button>
     </div>
-    @else
+    @elseif ($view === 'calendar')
         @include('livewire.boards.partials.calendar')
+    @else
+        @include('livewire.boards.partials.timeline')
     @endif
 
     {{-- Trash / archive panel --}}
