@@ -397,9 +397,8 @@
                 @if ($cardsReady)
                 <ul
                     x-ref="cards"
-                    wire:sort="moveCard"
-                    wire:sort:group="cards"
-                    wire:sort:group-id="{{ $list->id }}"
+                    x-init="window.initCardSortable($el, $wire)"
+                    data-list-id="{{ $list->id }}"
                     class="flex min-h-2 flex-col gap-2 overflow-y-auto px-2"
                 >
                     @foreach ($list->cards as $card)
@@ -411,7 +410,8 @@
                         @endphp
                         <li
                             wire:key="card-{{ $card->id }}"
-                            wire:sort:item="{{ $card->id }}"
+                            data-card
+                            data-card-id="{{ $card->id }}"
                             class="group relative shrink-0 cursor-grab overflow-hidden rounded-lg border bg-white text-sm shadow-sm dark:bg-neutral-800"
                             :class="selected.includes({{ $card->id }}) ? 'border-indigo-500 dark:border-indigo-500' : 'border-neutral-200 dark:border-neutral-700'"
                         >
@@ -428,14 +428,17 @@
                             <x-context-menu class="block">
                                 <x-slot:trigger>
                                     @if ($card->cover_path)
-                                        <img src="{{ Storage::disk('public')->url($card->cover_path) }}" alt=""
+                                        <img src="{{ Storage::disk('public')->url($card->cover_path) }}" alt="" draggable="false"
+                                             wire:click="$dispatch('open-card', { cardId: {{ $card->id }} })"
                                              class="h-24 w-full object-cover">
                                     @elseif ($card->cover_color)
                                         <div class="h-9 w-full"
+                                             wire:click="$dispatch('open-card', { cardId: {{ $card->id }} })"
                                              style="background-color: {{ $card->cover_color }}"></div>
                                     @endif
 
-                                    <div class="p-2.5">
+                                    {{-- Clicking anywhere on the card body opens it (drag suppresses the click). --}}
+                                    <div class="p-2.5" wire:click="$dispatch('open-card', { cardId: {{ $card->id }} })">
                                         @if ($card->labels->isNotEmpty())
                                             <div class="mb-1.5 flex flex-wrap gap-1">
                                                 @foreach ($card->labels as $label)
@@ -447,13 +450,9 @@
                                         @endif
 
                                         <div class="flex items-start justify-between gap-2">
-                                            <button type="button"
-                                                    wire:click="$dispatch('open-card', { cardId: {{ $card->id }} })"
-                                                    class="break-words text-left hover:text-indigo-600 dark:hover:text-indigo-400">
-                                                {{ $card->title }}
-                                            </button>
+                                            <span class="break-words text-left font-medium">{{ $card->title }}</span>
                                             <button type="button" wire:sort:ignore
-                                                    @click="openAt($event.clientX, $event.clientY)"
+                                                    @click.stop="openAt($event.clientX, $event.clientY)"
                                                     class="shrink-0 text-neutral-400 opacity-100 transition hover:text-neutral-700 group-hover:opacity-100 sm:opacity-0 dark:hover:text-neutral-200"
                                                     title="{{ __('Options de la carte (clic droit aussi)') }}">
                                                 <x-phosphor-dots-three class="h-4 w-4"/>

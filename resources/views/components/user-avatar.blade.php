@@ -16,7 +16,7 @@
 @endphp
 
 @if ($url)
-    <img src="{{ $url }}" alt="{{ $name }}" title="{{ $name }}"
+    <img src="{{ $url }}" alt="{{ $name }}" title="{{ $name }}" draggable="false"
          {{ $attributes->merge(['class' => $sizeClass.' shrink-0 rounded-full object-cover']) }}>
 @else
     <span title="{{ $name }}"

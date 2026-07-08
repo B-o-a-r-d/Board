@@ -10,6 +10,7 @@ import './echo';
 import './context-menu';
 import './markdown-editor';
 import './comment-editor';
+import './card-sortable';
 import './public-presence';
 import './dropzone';
 import './confirm';
