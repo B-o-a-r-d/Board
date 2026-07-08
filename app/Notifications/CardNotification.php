@@ -113,13 +113,16 @@ class CardNotification extends Notification implements ShouldQueue
 
     private function message(): string
     {
+        $actor = $this->actor->name;
+        $title = $this->card->title;
+
         return match ($this->type) {
-            'assigned' => "{$this->actor->name} vous a assigné à « {$this->card->title} »",
-            'comment' => "{$this->actor->name} a commenté « {$this->card->title} »",
-            'mention' => "{$this->actor->name} vous a mentionné dans « {$this->card->title} »",
-            'reaction' => "{$this->actor->name} a réagi à votre commentaire sur « {$this->card->title} »",
-            'due_soon' => "« {$this->card->title} » arrive à échéance",
-            default => "Activité sur « {$this->card->title} »",
+            'assigned' => __(':actor vous a assigné à « :title »', ['actor' => $actor, 'title' => $title]),
+            'comment' => __(':actor a commenté « :title »', ['actor' => $actor, 'title' => $title]),
+            'mention' => __(':actor vous a mentionné dans « :title »', ['actor' => $actor, 'title' => $title]),
+            'reaction' => __(':actor a réagi à votre commentaire sur « :title »', ['actor' => $actor, 'title' => $title]),
+            'due_soon' => __('« :title » arrive à échéance', ['title' => $title]),
+            default => __('Activité sur « :title »', ['title' => $title]),
         };
     }
 }

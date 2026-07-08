@@ -861,10 +861,10 @@ class Show extends Component
 
         if ($this->board->isShared()) {
             $this->board->disableSharing();
-            $this->dispatch('toast', message: 'Partage public désactivé', type: 'info');
+            $this->dispatch('toast', message: __('Partage public désactivé'), type: 'info');
         } else {
             $this->board->enableSharing();
-            $this->dispatch('toast', message: 'Lien de partage public activé', type: 'success');
+            $this->dispatch('toast', message: __('Lien de partage public activé'), type: 'success');
         }
     }
 
@@ -905,7 +905,7 @@ class Show extends Component
         $this->board->update(['background_image' => $path, 'background' => null]);
         $this->reset('backgroundUpload');
         $this->broadcastActivity('board.background');
-        $this->dispatch('toast', message: 'Fond du board mis à jour', type: 'success');
+        $this->dispatch('toast', message: __('Fond du board mis à jour'), type: 'success');
     }
 
     public function toggleTemplate(): void
@@ -913,7 +913,7 @@ class Show extends Component
         abort_unless(Auth::user()->isAdmin(), 403);
 
         $this->board->update(['is_template' => ! $this->board->is_template]);
-        $this->dispatch('toast', message: $this->board->is_template ? 'Board défini comme modèle global' : 'Modèle retiré', type: 'success');
+        $this->dispatch('toast', message: $this->board->is_template ? __('Board défini comme modèle global') : __('Modèle retiré'), type: 'success');
     }
 
     public function deleteBoard(): mixed
@@ -1091,7 +1091,7 @@ class Show extends Component
         }
 
         $this->broadcastActivity('list.duplicated');
-        $this->dispatch('toast', message: 'Liste dupliquée', type: 'success');
+        $this->dispatch('toast', message: __('Liste dupliquée'), type: 'success');
     }
 
     public function reorderLists(int $id, int $position): void
@@ -1178,7 +1178,7 @@ class Show extends Component
 
         $this->logActivity('card.created', $card->id, ['card_title' => $card->title, 'list' => $list->name, 'from_template' => true]);
         $this->broadcastActivity('card.created');
-        $this->dispatch('toast', message: 'Carte créée depuis le modèle', type: 'success');
+        $this->dispatch('toast', message: __('Carte créée depuis le modèle'), type: 'success');
     }
 
     public function archiveCard(int $cardId): void
@@ -1241,7 +1241,7 @@ class Show extends Component
 
         $this->logActivity('card.duplicated', $copy->id, ['from' => $card->id]);
         $this->broadcastActivity('card.duplicated');
-        $this->dispatch('toast', message: 'Carte dupliquée', type: 'success');
+        $this->dispatch('toast', message: __('Carte dupliquée'), type: 'success');
     }
 
     public function moveCard(int $id, int $position, int $listId): void

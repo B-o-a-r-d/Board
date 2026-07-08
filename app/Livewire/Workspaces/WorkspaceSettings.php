@@ -24,11 +24,18 @@ class WorkspaceSettings extends Component
 
     public string $inviteRole = 'member';
 
+    /** Comma-separated allow-lists edited in the "Contrôles d'accès" card. */
+    public string $allowedInviteDomains = '';
+
+    public string $allowedAttachmentExtensions = '';
+
     public function mount(Workspace $workspace): void
     {
         $this->authorize('view', $workspace);
 
         $this->workspace = $workspace;
+        $this->allowedInviteDomains = implode(', ', (array) $workspace->allowed_invite_domains);
+        $this->allowedAttachmentExtensions = implode(', ', (array) $workspace->allowed_attachment_extensions);
     }
 
     public function invite(): void
@@ -44,7 +51,13 @@ class WorkspaceSettings extends Component
         ], attributes: ['inviteEmail' => 'adresse e-mail']);
 
         if ($this->workspace->members()->where('email', $data['inviteEmail'])->exists()) {
-            $this->addError('inviteEmail', 'Cet utilisateur est déjà membre du workspace.');
+            $this->addError('inviteEmail', __('Cet utilisateur est déjà membre du workspace.'));
+
+            return;
+        }
+
+        if (! $this->workspace->invitationDomainAllowed($data['inviteEmail'])) {
+            $this->addError('inviteEmail', __('Ce domaine e-mail n\'est pas autorisé pour ce workspace.'));
 
             return;
         }
@@ -62,7 +75,7 @@ class WorkspaceSettings extends Component
 
         $this->reset('inviteEmail');
         $this->inviteRole = 'member';
-        session()->flash('workspace-status', "Invitation envoyée à {$invitation->email}.");
+        session()->flash('workspace-status', __('Invitation envoyée à :email.', ['email' => $invitation->email]));
     }
 
     public function revokeInvitation(int $invitationId): void
@@ -92,6 +105,63 @@ class WorkspaceSettings extends Component
         }
 
         $this->workspace->members()->detach($userId);
+    }
+
+    /**
+     * Deactivate a member: they keep their account but lose access to this
+     * workspace and its boards until reactivated. The owner cannot be deactivated.
+     */
+    public function deactivateMember(int $userId): void
+    {
+        $this->authorize('manageMembers', $this->workspace);
+
+        if ($userId === $this->workspace->owner_id) {
+            return;
+        }
+
+        $this->workspace->members()->updateExistingPivot($userId, ['deactivated_at' => now()]);
+        $this->dispatch('toast', message: __('Membre désactivé'), type: 'info');
+    }
+
+    public function reactivateMember(int $userId): void
+    {
+        $this->authorize('manageMembers', $this->workspace);
+
+        $this->workspace->members()->updateExistingPivot($userId, ['deactivated_at' => null]);
+        $this->dispatch('toast', message: __('Membre réactivé'), type: 'success');
+    }
+
+    /**
+     * Persist the invite-domain and attachment-type allow-lists.
+     */
+    public function saveAccessControls(): void
+    {
+        $this->authorize('manageMembers', $this->workspace);
+
+        $this->workspace->update([
+            'allowed_invite_domains' => $this->parseList($this->allowedInviteDomains, '@'),
+            'allowed_attachment_extensions' => $this->parseList($this->allowedAttachmentExtensions, '.'),
+        ]);
+
+        $this->dispatch('toast', message: __("Contrôles d'accès enregistrés"), type: 'success');
+    }
+
+    /**
+     * Split a comma/space/newline-separated string into a normalized, unique list
+     * (lower-cased, with the given leading character stripped). Empty = null.
+     *
+     * @return array<int, string>|null
+     */
+    private function parseList(string $raw, string $strip): ?array
+    {
+        $items = collect(preg_split('/[\s,;]+/', $raw, -1, PREG_SPLIT_NO_EMPTY))
+            ->map(fn (string $item): string => Str::lower(ltrim(trim($item), $strip)))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        return $items === [] ? null : $items;
     }
 
     public function deleteWorkspace(): mixed

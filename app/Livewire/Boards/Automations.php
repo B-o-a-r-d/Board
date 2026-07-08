@@ -98,10 +98,10 @@ class Automations extends Component
 
         if ($this->editingId !== null) {
             $this->board->automations()->whereKey($this->editingId)->firstOrFail()->update($attributes);
-            $this->dispatch('toast', message: 'Automation mise à jour', type: 'success');
+            $this->dispatch('toast', message: __('Automation mise à jour'), type: 'success');
         } else {
             $this->board->automations()->create($attributes + ['created_by' => Auth::id(), 'is_active' => true]);
-            $this->dispatch('toast', message: 'Automation créée', type: 'success');
+            $this->dispatch('toast', message: __('Automation créée'), type: 'success');
         }
 
         $this->building = false;
@@ -121,7 +121,7 @@ class Automations extends Component
         $this->authorize('update', $this->board);
 
         $this->board->automations()->whereKey($id)->delete();
-        $this->dispatch('toast', message: 'Automation supprimée', type: 'info');
+        $this->dispatch('toast', message: __('Automation supprimée'), type: 'info');
     }
 
     /**

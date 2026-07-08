@@ -20,26 +20,26 @@ enum Permission: string
     public function label(): string
     {
         return match ($this) {
-            self::BoardView => 'Voir le tableau',
-            self::CardManage => 'Gérer les cartes',
-            self::CommentPost => 'Commenter',
-            self::BoardSettings => 'Paramètres du tableau',
-            self::MemberManage => 'Gérer les membres et rôles',
-            self::PluginManage => 'Gérer les Power-Ups',
-            self::BoardDelete => 'Supprimer le tableau',
+            self::BoardView => __('Voir le tableau'),
+            self::CardManage => __('Gérer les cartes'),
+            self::CommentPost => __('Commenter'),
+            self::BoardSettings => __('Paramètres du tableau'),
+            self::MemberManage => __('Gérer les membres et rôles'),
+            self::PluginManage => __('Gérer les Power-Ups'),
+            self::BoardDelete => __('Supprimer le tableau'),
         };
     }
 
     public function description(): string
     {
         return match ($this) {
-            self::BoardView => 'Accéder au tableau et à son contenu en lecture.',
-            self::CardManage => 'Créer, modifier, déplacer, archiver des cartes, checklists, dates, labels et membres.',
-            self::CommentPost => 'Publier des commentaires et réagir.',
-            self::BoardSettings => 'Renommer, fond, listes, champs personnalisés, limites WIP.',
-            self::MemberManage => 'Inviter/retirer des membres et changer leurs rôles.',
-            self::PluginManage => 'Installer et configurer les Power-Ups.',
-            self::BoardDelete => 'Supprimer définitivement le tableau.',
+            self::BoardView => __('Accéder au tableau et à son contenu en lecture.'),
+            self::CardManage => __('Créer, modifier, déplacer, archiver des cartes, checklists, dates, labels et membres.'),
+            self::CommentPost => __('Publier des commentaires et réagir.'),
+            self::BoardSettings => __('Renommer, fond, listes, champs personnalisés, limites WIP.'),
+            self::MemberManage => __('Inviter/retirer des membres et changer leurs rôles.'),
+            self::PluginManage => __('Installer et configurer les Power-Ups.'),
+            self::BoardDelete => __('Supprimer définitivement le tableau.'),
         };
     }
 
@@ -49,8 +49,8 @@ enum Permission: string
     public function group(): string
     {
         return match ($this) {
-            self::BoardView, self::CardManage, self::CommentPost => 'Contenu',
-            default => 'Administration',
+            self::BoardView, self::CardManage, self::CommentPost => __('Contenu'),
+            default => __('Administration'),
         };
     }
 

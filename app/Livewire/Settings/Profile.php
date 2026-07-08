@@ -10,6 +10,10 @@ use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Fortify\Actions\ConfirmTwoFactorAuthentication;
+use Laravel\Fortify\Actions\DisableTwoFactorAuthentication;
+use Laravel\Fortify\Actions\EnableTwoFactorAuthentication;
+use Laravel\Fortify\Actions\GenerateNewRecoveryCodes;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -42,6 +46,18 @@ class Profile extends Component
 
     public bool $mcpEnabled = false;
 
+    /** Whether 2FA is fully enabled (secret confirmed) for the current user. */
+    public bool $twoFactorEnabled = false;
+
+    /** Setup in progress: the QR code / secret are being shown, awaiting confirmation. */
+    public bool $showingQrCode = false;
+
+    /** Whether the recovery codes block is currently revealed. */
+    public bool $showingRecoveryCodes = false;
+
+    /** The TOTP code typed to confirm 2FA activation. */
+    public string $twoFactorCode = '';
+
     public string $locale = '';
 
     /** @var array<string, bool> */
@@ -56,6 +72,7 @@ class Profile extends Component
         $this->email = $user->email;
         $this->locale = $user->locale ?: app()->getLocale();
         $this->mcpEnabled = Setting::mcpEnabled();
+        $this->twoFactorEnabled = ! is_null($user->two_factor_confirmed_at);
         $this->notificationPreferences = $user->notificationPreferences();
     }
 
@@ -150,7 +167,58 @@ class Profile extends Component
 
         $this->mcpEnabled = ! $this->mcpEnabled;
         Setting::set('mcp_enabled', $this->mcpEnabled);
-        $this->dispatch('toast', message: $this->mcpEnabled ? 'MCP activé pour l\'instance' : 'MCP désactivé', type: 'success');
+        $this->dispatch('toast', message: $this->mcpEnabled ? __('MCP activé pour l\'instance') : __('MCP désactivé'), type: 'success');
+    }
+
+    /**
+     * Begin 2FA setup: generate the secret + recovery codes and reveal the QR
+     * code. The user must confirm with a valid TOTP code before it takes effect.
+     */
+    public function enableTwoFactorAuthentication(EnableTwoFactorAuthentication $enable): void
+    {
+        $enable(Auth::user());
+
+        $this->showingQrCode = true;
+        $this->showingRecoveryCodes = false;
+        $this->twoFactorCode = '';
+    }
+
+    /**
+     * Confirm the freshly generated secret with a code from the authenticator app.
+     */
+    public function confirmTwoFactorAuthentication(ConfirmTwoFactorAuthentication $confirm): void
+    {
+        $confirm(Auth::user(), $this->twoFactorCode);
+
+        $this->twoFactorEnabled = true;
+        $this->showingQrCode = false;
+        $this->showingRecoveryCodes = true;
+        $this->twoFactorCode = '';
+        $this->dispatch('toast', message: __('Authentification à deux facteurs activée'), type: 'success');
+    }
+
+    public function showRecoveryCodes(): void
+    {
+        $this->showingRecoveryCodes = true;
+    }
+
+    public function regenerateRecoveryCodes(GenerateNewRecoveryCodes $generate): void
+    {
+        $generate(Auth::user());
+
+        $this->showingRecoveryCodes = true;
+        $this->dispatch('toast', message: __('Codes de récupération régénérés'), type: 'success');
+    }
+
+    public function disableTwoFactorAuthentication(DisableTwoFactorAuthentication $disable): void
+    {
+        $disable(Auth::user());
+
+        $this->twoFactorEnabled = false;
+        $this->showingQrCode = false;
+        $this->showingRecoveryCodes = false;
+        $this->twoFactorCode = '';
+        $this->dispatch('toast', message: __('Authentification à deux facteurs désactivée'), type: 'info');
     }
 
     public function createToken(): void
@@ -159,13 +227,13 @@ class Profile extends Component
 
         $this->newToken = Auth::user()->createToken($this->tokenName)->plainTextToken;
         $this->tokenName = '';
-        $this->dispatch('toast', message: 'Token API créé', type: 'success');
+        $this->dispatch('toast', message: __('Token API créé'), type: 'success');
     }
 
     public function revokeToken(int $tokenId): void
     {
         Auth::user()->tokens()->whereKey($tokenId)->delete();
-        $this->dispatch('toast', message: 'Token révoqué', type: 'info');
+        $this->dispatch('toast', message: __('Token révoqué'), type: 'info');
     }
 
     public function updateProfileInformation(UpdateUserProfileInformation $updater): void
@@ -176,7 +244,7 @@ class Profile extends Component
         ]);
 
         $this->dispatch('profile-updated');
-        session()->flash('profile-status', 'Profil mis à jour.');
+        session()->flash('profile-status', __('Profil mis à jour.'));
     }
 
     public function updatePassword(UpdateUserPassword $updater): void
@@ -188,14 +256,20 @@ class Profile extends Component
         ]);
 
         $this->reset('current_password', 'password', 'password_confirmation');
-        session()->flash('password-status', 'Mot de passe mis à jour.');
+        session()->flash('password-status', __('Mot de passe mis à jour.'));
     }
 
     public function render(): View
     {
+        $user = Auth::user();
+        $hasSecret = ! is_null($user->two_factor_secret);
+
         return view('livewire.settings.profile', [
-            'tokens' => Auth::user()->tokens()->latest()->get(),
+            'tokens' => $user->tokens()->latest()->get(),
             'mcpEndpoint' => url('/mcp/board'),
+            'twoFactorQrCode' => ($this->showingQrCode && $hasSecret) ? $user->twoFactorQrCodeSvg() : null,
+            'twoFactorSecretKey' => ($this->showingQrCode && $hasSecret) ? decrypt($user->two_factor_secret) : null,
+            'recoveryCodes' => ($this->showingRecoveryCodes && $hasSecret) ? $user->recoveryCodes() : [],
         ]);
     }
 }

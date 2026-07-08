@@ -21,7 +21,7 @@
         </div>
         <h1 class="text-lg font-semibold">{{ __('Rejoindre « :workspace »', ['workspace' => $invitation->workspace->name]) }}</h1>
         <p class="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-            Vous avez été invité en tant que <span class="font-medium">{{ \App\Enums\Role::from($invitation->role)->label() }}</span>.
+            {{ __('Vous avez été invité en tant que') }} <span class="font-medium">{{ \App\Enums\Role::from($invitation->role)->label() }}</span>.
         </p>
         <button type="button" wire:click="accept" class="mt-6 w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500">
             {{ __("Accepter l'invitation") }}

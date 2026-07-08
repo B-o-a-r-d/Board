@@ -511,6 +511,12 @@ class CardDetail extends Component
             'upload' => ['required', 'file', 'max:204800', 'mimes:jpg,jpeg,png,gif,webp,svg,mp4,webm,mov,ogg'],
         ]);
 
+        if (! $this->board->workspace->attachmentExtensionAllowed($this->upload->getClientOriginalExtension())) {
+            $this->addError('upload', __("Ce type de fichier n'est pas autorisé pour ce workspace."));
+
+            return;
+        }
+
         $path = $this->upload->store("attachments/{$this->board->id}", 'public');
 
         $card->attachments()->create([
@@ -525,7 +531,7 @@ class CardDetail extends Component
         $this->logActivity($card, 'attachment.added', ['value' => $this->upload->getClientOriginalName()]);
         $this->reset('upload');
         $this->touched('attachment.added');
-        $this->dispatch('toast', message: 'Pièce jointe ajoutée', type: 'success');
+        $this->dispatch('toast', message: __('Pièce jointe ajoutée'), type: 'success');
     }
 
     public function deleteAttachment(int $attachmentId): void
@@ -591,7 +597,7 @@ class CardDetail extends Component
         $card->update(['cover_path' => $path, 'cover_color' => null]);
         $this->reset('coverUpload');
         $this->touched('card.cover');
-        $this->dispatch('toast', message: 'Couverture mise à jour', type: 'success');
+        $this->dispatch('toast', message: __('Couverture mise à jour'), type: 'success');
     }
 
     public function saveAsTemplate(): void
@@ -612,7 +618,7 @@ class CardDetail extends Component
             ])->all(),
         ]);
 
-        $this->dispatch('toast', message: 'Carte enregistrée comme modèle global', type: 'success');
+        $this->dispatch('toast', message: __('Carte enregistrée comme modèle global'), type: 'success');
     }
 
     public function addComment(string $body = ''): void
@@ -857,7 +863,7 @@ class CardDetail extends Component
         app(AutomationEngine::class)->runManual($automation, $card);
 
         $this->touched('automation.run');
-        $this->dispatch('toast', message: 'Action « '.$automation->name.' » exécutée', type: 'success');
+        $this->dispatch('toast', message: __('Action « :name » exécutée', ['name' => $automation->name]), type: 'success');
     }
 
     /**

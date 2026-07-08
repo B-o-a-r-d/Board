@@ -51,7 +51,7 @@ class AcceptInvitation extends Component
 
         $this->invitation->update(['accepted_at' => now()]);
 
-        session()->flash('workspace-status', "Vous avez rejoint « {$workspace->name} ».");
+        session()->flash('workspace-status', __('Vous avez rejoint « :name ».', ['name' => $workspace->name]));
 
         return $this->redirectRoute('workspaces.settings', $workspace, navigate: true);
     }
@@ -59,23 +59,23 @@ class AcceptInvitation extends Component
     public function invalidReason(): ?string
     {
         if (! $this->invitation) {
-            return 'Cette invitation est introuvable ou a été révoquée.';
+            return __('Cette invitation est introuvable ou a été révoquée.');
         }
 
         if ($this->invitation->accepted_at) {
-            return 'Cette invitation a déjà été acceptée.';
+            return __('Cette invitation a déjà été acceptée.');
         }
 
         if ($this->invitation->isExpired()) {
-            return 'Cette invitation a expiré.';
+            return __('Cette invitation a expiré.');
         }
 
         if (! Auth::check()) {
-            return "Un compte existe déjà pour {$this->invitation->email}. Connectez-vous avec cette adresse pour rejoindre le workspace.";
+            return __('Un compte existe déjà pour :email. Connectez-vous avec cette adresse pour rejoindre le workspace.', ['email' => $this->invitation->email]);
         }
 
         if (strcasecmp($this->invitation->email, Auth::user()->email) !== 0) {
-            return "Cette invitation est destinée à {$this->invitation->email}. Connectez-vous avec cette adresse pour l'accepter.";
+            return __('Cette invitation est destinée à :email. Connectez-vous avec cette adresse pour l\'accepter.', ['email' => $this->invitation->email]);
         }
 
         return null;

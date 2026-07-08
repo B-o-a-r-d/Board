@@ -155,6 +155,78 @@
                     </div>
                 </form>
             </section>
+
+            {{-- Two-factor authentication --}}
+            <section class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h2 class="flex items-center gap-2 text-base font-semibold">
+                            <x-phosphor-shield-check class="h-5 w-5 text-indigo-500" />
+                            {{ __('Authentification à deux facteurs') }}
+                        </h2>
+                        <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{{ __("Ajoutez une couche de sécurité : un code à usage unique généré par une application d'authentification (Google Authenticator, 1Password, Authy…).") }}</p>
+                    </div>
+                    @if ($twoFactorEnabled)
+                        <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700 dark:bg-green-500/10 dark:text-green-400">
+                            <x-phosphor-check-circle class="h-3.5 w-3.5" /> {{ __('Activée') }}
+                        </span>
+                    @endif
+                </div>
+
+                {{-- Setup: QR code + confirmation --}}
+                @if ($showingQrCode && ! $twoFactorEnabled)
+                    <div class="mt-5 space-y-4">
+                        <p class="text-sm text-neutral-600 dark:text-neutral-300">{{ __("Scannez ce QR code avec votre application d'authentification, puis saisissez le code généré pour confirmer.") }}</p>
+                        <div class="inline-block rounded-xl border border-neutral-200 bg-white p-3 dark:border-neutral-700">
+                            {!! $twoFactorQrCode !!}
+                        </div>
+                        @if ($twoFactorSecretKey)
+                            <p class="text-xs text-neutral-500 dark:text-neutral-400">{{ __('Clé de configuration') }} : <code class="rounded bg-neutral-100 px-1.5 py-0.5 font-mono dark:bg-neutral-800">{{ $twoFactorSecretKey }}</code></p>
+                        @endif
+
+                        <form wire:submit="confirmTwoFactorAuthentication" class="max-w-xs space-y-2">
+                            <label for="two_factor_code" class="block text-sm font-medium">{{ __('Code de vérification') }}</label>
+                            <input id="two_factor_code" type="text" inputmode="numeric" autocomplete="one-time-code" wire:model="twoFactorCode"
+                                   class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-center text-lg tracking-[0.3em] shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                            @error('code') <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                            <div class="flex items-center gap-2 pt-1">
+                                <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">{{ __('Confirmer') }}</button>
+                                <button type="button" wire:click="disableTwoFactorAuthentication" class="rounded-lg px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800">{{ __('Annuler') }}</button>
+                            </div>
+                        </form>
+                    </div>
+                @endif
+
+                {{-- Recovery codes --}}
+                @if ($showingRecoveryCodes && count($recoveryCodes))
+                    <div class="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
+                        <p class="text-sm font-medium text-amber-800 dark:text-amber-300">{{ __('Codes de récupération') }}</p>
+                        <p class="mt-1 text-xs text-amber-700 dark:text-amber-400/80">{{ __("Conservez ces codes dans un endroit sûr. Ils permettent de vous connecter si vous perdez l'accès à votre application d'authentification.") }}</p>
+                        <div class="mt-3 grid grid-cols-2 gap-1.5 font-mono text-sm">
+                            @foreach ($recoveryCodes as $code)
+                                <div class="rounded bg-white/70 px-2 py-1 text-neutral-800 dark:bg-neutral-900/50 dark:text-neutral-200">{{ $code }}</div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Actions --}}
+                <div class="mt-5 flex flex-wrap items-center gap-2">
+                    @unless ($twoFactorEnabled)
+                        @unless ($showingQrCode)
+                            <button type="button" wire:click="enableTwoFactorAuthentication" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">{{ __('Activer') }}</button>
+                        @endunless
+                    @else
+                        @unless ($showingRecoveryCodes)
+                            <button type="button" wire:click="showRecoveryCodes" class="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">{{ __('Afficher les codes de récupération') }}</button>
+                        @endunless
+                        <button type="button" wire:click="regenerateRecoveryCodes" class="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">{{ __('Régénérer les codes') }}</button>
+                        <button type="button" wire:click="disableTwoFactorAuthentication"
+                                @click="$store.confirm.open({ title: '{{ __('Désactiver la 2FA') }}', message: '{{ __('Votre compte ne sera plus protégé par un second facteur. Continuer ?') }}', confirmLabel: '{{ __('Désactiver') }}', danger: true }).then(ok => ok || $event.stopImmediatePropagation())"
+                                class="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-500/40 dark:text-red-400 dark:hover:bg-red-500/10">{{ __('Désactiver') }}</button>
+                    @endunless
+                </div>
+            </section>
         </div>
 
         {{-- ================= Tab: Préférences (auto-save) ================= --}}
@@ -220,7 +292,7 @@
             {{-- API tokens (Sanctum) --}}
             <section class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
                 <h2 class="text-base font-semibold">{{ __("Jetons d'API") }}</h2>
-                <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Créez des jetons pour accéder à l'API REST (<code class="text-xs">/api/v1</code>) via l'en-tête <code class="text-xs">Authorization: Bearer &lt;token&gt;</code>.</p>
+                <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{!! __('Créez des jetons pour accéder à l\'API REST (<code class="text-xs">/api/v1</code>) via l\'en-tête <code class="text-xs">Authorization: Bearer &lt;token&gt;</code>.') !!}</p>
 
                 @if ($newToken)
                     <div class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-500/40 dark:bg-amber-500/10">
@@ -246,7 +318,7 @@
                         <div wire:key="token-{{ $token->id }}" class="flex items-center justify-between gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-sm dark:border-neutral-700">
                             <div class="min-w-0">
                                 <p class="truncate font-medium">{{ $token->name }}</p>
-                                <p class="text-xs text-neutral-400">Créé {{ $token->created_at->diffForHumans() }}@if ($token->last_used_at) · utilisé {{ $token->last_used_at->diffForHumans() }}@endif</p>
+                                <p class="text-xs text-neutral-400">{{ __('Créé') }} {{ $token->created_at->diffForHumans() }}@if ($token->last_used_at) · {{ __('utilisé') }} {{ $token->last_used_at->diffForHumans() }}@endif</p>
                             </div>
                             <button type="button" wire:click="revokeToken({{ $token->id }})" class="shrink-0 text-xs text-neutral-400 hover:text-red-500">{{ __('Révoquer') }}</button>
                         </div>
@@ -272,7 +344,7 @@
 
                 @unless ($mcpEnabled)
                     <p class="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
-                        Le MCP est actuellement <strong>désactivé</strong> pour l'instance. @can('admin') Activez-le avec l'interrupteur ci-dessus. @else Un administrateur doit l'activer. @endcan
+                        {!! __('Le MCP est actuellement <strong>désactivé</strong> pour l\'instance.') !!} @can('admin') {{ __('Activez-le avec l\'interrupteur ci-dessus.') }} @else {{ __("Un administrateur doit l'activer.") }} @endcan
                     </p>
                 @else
                     @php
@@ -310,7 +382,7 @@ args = ["-y", "mcp-remote", "'.$mcpEndpoint.'", "--header", "Authorization: Bear
                     @endphp
 
                     <div class="mt-4 space-y-3">
-                        <p class="text-sm text-neutral-600 dark:text-neutral-300">Endpoint : <code class="rounded bg-neutral-100 px-1.5 py-0.5 text-xs dark:bg-neutral-800">{{ $mcpEndpoint }}</code>@unless ($newToken) — créez d'abord un jeton d'API ci-dessus et remplacez <code class="text-xs">&lt;VOTRE_TOKEN&gt;</code>.@endunless</p>
+                        <p class="text-sm text-neutral-600 dark:text-neutral-300">{{ __('Endpoint :') }} <code class="rounded bg-neutral-100 px-1.5 py-0.5 text-xs dark:bg-neutral-800">{{ $mcpEndpoint }}</code>@unless ($newToken) {!! __('— créez d\'abord un jeton d\'API ci-dessus et remplacez <code class="text-xs">&lt;VOTRE_TOKEN&gt;</code>.') !!}@endunless</p>
 
                         @foreach ($configs as $label => $snippet)
                             <div x-data="{ copied: false }">

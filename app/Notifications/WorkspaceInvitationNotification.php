@@ -28,10 +28,10 @@ class WorkspaceInvitationNotification extends Notification implements ShouldQueu
         $url = route('invitations.accept', $this->invitation->token);
 
         return (new MailMessage)
-            ->subject("Invitation à rejoindre {$workspace->name}")
-            ->greeting('Bonjour,')
-            ->line("Vous avez été invité à rejoindre le workspace « {$workspace->name} » sur ".config('app.name').'.')
-            ->action("Rejoindre {$workspace->name}", $url)
-            ->line('Cette invitation expirera le '.$this->invitation->expires_at?->translatedFormat('d F Y').'.');
+            ->subject(__('Invitation à rejoindre :workspace', ['workspace' => $workspace->name]))
+            ->greeting(__('Bonjour,'))
+            ->line(__('Vous avez été invité à rejoindre le workspace « :workspace » sur :app.', ['workspace' => $workspace->name, 'app' => config('app.name')]))
+            ->action(__('Rejoindre :workspace', ['workspace' => $workspace->name]), $url)
+            ->line(__('Cette invitation expirera le :date.', ['date' => $this->invitation->expires_at?->translatedFormat('d F Y')]));
     }
 }

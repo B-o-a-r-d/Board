@@ -16,11 +16,11 @@ enum CustomFieldType: string
     public function label(): string
     {
         return match ($this) {
-            self::Text => 'Texte',
-            self::Number => 'Nombre',
-            self::Date => 'Date',
-            self::Select => 'Liste déroulante',
-            self::Checkbox => 'Case à cocher',
+            self::Text => __('Texte'),
+            self::Number => __('Nombre'),
+            self::Date => __('Date'),
+            self::Select => __('Liste déroulante'),
+            self::Checkbox => __('Case à cocher'),
         };
     }
 

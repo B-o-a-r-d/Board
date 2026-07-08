@@ -24,6 +24,10 @@ class BoardPolicy
      */
     public function view(User $user, Board $board): bool
     {
+        if ($board->workspace->memberIsDeactivated($user)) {
+            return false;
+        }
+
         if ($board->hasMember($user)) {
             return true;
         }

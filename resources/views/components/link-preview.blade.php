@@ -43,7 +43,7 @@
         type="button"
         wire:click="{{ $wireToggle }}"
         class="mt-1 inline-flex items-center gap-1 text-xs text-neutral-400 transition-colors hover:text-indigo-600 dark:hover:text-indigo-400"
-        title="Afficher l'aperçu de {{ $host }}"
+        title="{{ __("Afficher l'aperçu de :host", ['host' => $host]) }}"
     >
         <x-phosphor-image class="h-3.5 w-3.5" /> {{ __("Afficher l'aperçu") }}
     </button>

@@ -77,7 +77,7 @@
                                 :class="u.guest ? 'text-white' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300'"
                                 :style="u.guest ? `background-color: ${u.color}` : ''"
                                 :title="u.guest ? u.name + ' {{ __('(invité)') }}' : u.name"
-                                x-text="(u.guest ? u.name.replace('Visiteur ', '') : u.name).charAt(0).toUpperCase()"
+                                x-text="(u.guest ? u.name.replace(/^\S+\s/, '') : u.name).charAt(0).toUpperCase()"
                             ></span>
                         </template>
 
@@ -95,7 +95,7 @@
                                             <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
                                                   :class="user.guest ? 'text-white' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300'"
                                                   :style="user.guest ? `background-color: ${user.color}` : ''"
-                                                  x-text="(user.guest ? user.name.replace('Visiteur ', '') : user.name).charAt(0).toUpperCase()"></span>
+                                                  x-text="(user.guest ? user.name.replace(/^\S+\s/, '') : user.name).charAt(0).toUpperCase()"></span>
                                         </template>
                                         <div class="min-w-0 flex-1">
                                             <p class="truncate font-semibold text-neutral-900 dark:text-neutral-100" x-text="user.name"></p>
@@ -864,7 +864,7 @@
                             class="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500"
                         >
                             <x-phosphor-copy class="h-4 w-4"/>
-                            <span x-text="copied ? 'Copié !' : 'Copier'"></span>
+                            <span x-text="copied ? '{{ __('Copié !') }}' : '{{ __('Copier') }}'"></span>
                         </button>
                     </div>
                     <a href="{{ $shareUrl }}" target="_blank" rel="noopener"

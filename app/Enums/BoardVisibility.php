@@ -13,8 +13,8 @@ enum BoardVisibility: string
     public function label(): string
     {
         return match ($this) {
-            self::Private => 'Privé (membres du board)',
-            self::Workspace => 'Workspace (tous les membres du workspace)',
+            self::Private => __('Privé (membres du board)'),
+            self::Workspace => __('Workspace (tous les membres du workspace)'),
         };
     }
 }

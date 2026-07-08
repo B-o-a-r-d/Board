@@ -64,7 +64,7 @@ class PublicBoardPresenceController extends Controller
 
             $request->session()->put('public_viewer_identity', [
                 'id' => (string) Str::uuid(),
-                'name' => 'Visiteur '.$animals[array_rand($animals)],
+                'name' => __('Visiteur').' '.$animals[array_rand($animals)],
                 'color' => $colors[array_rand($colors)],
             ]);
         }

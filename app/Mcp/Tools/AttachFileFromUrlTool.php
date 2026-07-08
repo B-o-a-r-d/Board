@@ -65,6 +65,11 @@ class AttachFileFromUrlTool extends Tool
 
         $name = $request->get('name') ?: (basename(parse_url($url, PHP_URL_PATH) ?: '') ?: 'fichier');
         $extension = pathinfo($name, PATHINFO_EXTENSION) ?: Str::afterLast($mime, '/');
+
+        if (! $card->board->workspace->attachmentExtensionAllowed($extension)) {
+            return Response::error('Type de fichier non autorisé pour ce workspace ('.$extension.').');
+        }
+
         $path = 'attachments/'.$card->board_id.'/'.Str::random(40).'.'.$extension;
 
         Storage::disk('public')->put($path, $body);

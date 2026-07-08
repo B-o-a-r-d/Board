@@ -34,6 +34,9 @@ auto-discovered and independently versioned.
 - **Roles & permissions** — full RBAC: system roles (owner / admin / member /
   read-only **observer**) plus **custom roles** with granular permissions, managed
   per workspace and copyable between them, enforced across web, API and MCP.
+- **Security & admin controls** — **two-factor authentication** (TOTP + recovery
+  codes), domain-restricted invitations, member **deactivation**, and per-workspace
+  **attachment-type restrictions**.
 - **Real-time** — live presence, comments and updates on every open board via
   **Laravel Reverb**; per-user notification preferences.
 - **Activity** — a Trello-style activity slide-over with per-plugin tabs.

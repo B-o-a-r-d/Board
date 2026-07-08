@@ -2,8 +2,9 @@
     'model',
     'accept' => null,
     'action' => 'saveAttachment',
-    'hint' => 'Images, vidéos ou fichiers · 200 Mo max',
+    'hint' => null,
 ])
+@php($hint ??= __('Images, vidéos ou fichiers · 200 Mo max'))
 
 {{--
     Styled Livewire file dropzone.
@@ -23,7 +24,7 @@
     x-on:livewire-upload-start="uploading = true; progress = 0"
     x-on:livewire-upload-progress="progress = $event.detail.progress"
     x-on:livewire-upload-finish="uploading = false; clearPreview(); $wire.{{ $action }}()"
-    x-on:livewire-upload-error="uploading = false; error = 'Le téléversement a échoué.'"
+    x-on:livewire-upload-error="uploading = false; error = '{{ __('Le téléversement a échoué.') }}'"
 >
     <input type="file" x-ref="input" @change="onSelect()" @if ($accept) accept="{{ $accept }}" @endif wire:model="{{ $model }}" class="hidden">
 
@@ -63,7 +64,7 @@
                 <div class="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700" x-show="uploading">
                     <div class="h-full rounded-full bg-indigo-600 transition-all" :style="`width: ${progress}%`"></div>
                 </div>
-                <p class="text-xs text-neutral-400" x-show="uploading" x-text="`Téléversement… ${progress}%`"></p>
+                <p class="text-xs text-neutral-400" x-show="uploading" x-text="`{{ __('Téléversement…') }} ${progress}%`"></p>
             </div>
         </div>
     </template>

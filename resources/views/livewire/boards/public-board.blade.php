@@ -18,7 +18,7 @@
                     :class="viewer.guest ? 'text-white' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300'"
                     :style="viewer.guest ? `background-color: ${viewer.color}` : ''"
                     :title="viewer.guest ? viewer.name + ' {{ __('(invité)') }}' : viewer.name"
-                    x-text="(viewer.guest ? viewer.name.replace('Visiteur ', '') : viewer.name).charAt(0).toUpperCase()"
+                    x-text="(viewer.guest ? viewer.name.replace(/^\S+\s/, '') : viewer.name).charAt(0).toUpperCase()"
                 ></span>
             </template>
         </div>

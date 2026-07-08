@@ -15,10 +15,10 @@ enum Role: string
     public function label(): string
     {
         return match ($this) {
-            self::Owner => 'Propriétaire',
-            self::Admin => 'Administrateur',
-            self::Member => 'Membre',
-            self::Observer => 'Observateur',
+            self::Owner => __('Propriétaire'),
+            self::Admin => __('Administrateur'),
+            self::Member => __('Membre'),
+            self::Observer => __('Observateur'),
         };
     }
 

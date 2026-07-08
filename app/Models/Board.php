@@ -172,6 +172,12 @@ class Board extends Model
      */
     public function userCan(User $user, Permission $permission): bool
     {
+        // A deactivated workspace member loses access to every board it owns,
+        // regardless of any board-level role they may still hold.
+        if ($this->workspace->memberIsDeactivated($user)) {
+            return false;
+        }
+
         if ($this->workspace->memberRole($user)?->isAdministrator()) {
             return true;
         }

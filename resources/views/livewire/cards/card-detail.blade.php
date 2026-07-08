@@ -432,10 +432,10 @@
                                         <x-user-avatar :user="$comment->user" size="sm" class="mt-0.5" />
                                         <div class="min-w-0 flex-1">
                                             <div class="flex items-center gap-2">
-                                                <span class="text-sm font-medium">{{ $comment->user?->name ?? 'Utilisateur supprimé' }}</span>
+                                                <span class="text-sm font-medium">{{ $comment->user?->name ?? __('Utilisateur supprimé') }}</span>
                                                 <span class="text-xs text-neutral-400">{{ $comment->created_at->diffForHumans() }}@if ($comment->updated_at->gt($comment->created_at)) · {{ __('modifié') }}@endif</span>
                                                 <div class="ml-auto flex items-center gap-2" x-data="{ copied: false }">
-                                                    <button type="button" @click="navigator.clipboard?.writeText('{{ route('boards.show', ['board' => $board, 'card' => $card->public_id]) }}#comment-{{ $comment->id }}'); window.toast('{{ __('Lien copié') }}', { type: 'success' }); copied = true; setTimeout(() => copied = false, 1500)" class="text-xs text-neutral-300 opacity-100 transition hover:text-indigo-500 group-hover/comment:opacity-100 sm:opacity-0" title="{{ __('Copier le lien du commentaire') }}"><span x-text="copied ? 'Copié !' : 'Lien'"></span></button>
+                                                    <button type="button" @click="navigator.clipboard?.writeText('{{ route('boards.show', ['board' => $board, 'card' => $card->public_id]) }}#comment-{{ $comment->id }}'); window.toast('{{ __('Lien copié') }}', { type: 'success' }); copied = true; setTimeout(() => copied = false, 1500)" class="text-xs text-neutral-300 opacity-100 transition hover:text-indigo-500 group-hover/comment:opacity-100 sm:opacity-0" title="{{ __('Copier le lien du commentaire') }}"><span x-text="copied ? '{{ __('Copié !') }}' : '{{ __('Lien') }}'"></span></button>
                                                     @if ($comment->user_id === auth()->id())
                                                         <button type="button" wire:click="startEditComment({{ $comment->id }})" class="text-xs text-neutral-300 opacity-100 transition hover:text-indigo-500 group-hover/comment:opacity-100 sm:opacity-0">{{ __('Modifier') }}</button>
                                                     @endif

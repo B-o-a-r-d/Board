@@ -213,6 +213,27 @@ test('attach file from url stores an attachment', function () {
         ->and($card->attachments()->first()->name)->toBe('schema.png');
 });
 
+test('mcp attach respects the workspace attachment allow-list', function () {
+    Setting::set('mcp_enabled', true);
+    Storage::fake('public');
+    ['board' => $board, 'owner' => $owner, 'list' => $list] = makeMcpBoard();
+    $board->workspace->update(['allowed_attachment_extensions' => ['png']]);
+    $card = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id]);
+
+    // 1×1 transparent PNG — the binary is a valid image whatever the name says.
+    $png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+    BoardServer::actingAs($owner)->tool(AttachFileTool::class, [
+        'card_id' => $card->public_id, 'name' => 'ok.png', 'content' => $png,
+    ])->assertOk();
+
+    BoardServer::actingAs($owner)->tool(AttachFileTool::class, [
+        'card_id' => $card->public_id, 'name' => 'blocked.svg', 'content' => $png,
+    ])->assertHasErrors();
+
+    expect($card->attachments()->count())->toBe(1);
+});
+
 test('move card and add comment via mcp work and log activities', function () {
     Setting::set('mcp_enabled', true);
     ['board' => $board, 'owner' => $owner, 'list' => $list] = makeMcpBoard();

@@ -73,14 +73,22 @@
         <h2 class="text-base font-semibold">{{ __('Membres') }} ({{ $members->count() }})</h2>
         <ul class="mt-4 divide-y divide-neutral-100 dark:divide-neutral-800">
             @foreach ($members as $member)
-                @php $isOwner = $member->id === $workspace->owner_id; @endphp
-                <li wire:key="member-{{ $member->id }}" class="flex items-center justify-between gap-3 py-3">
+                @php
+                    $isOwner = $member->id === $workspace->owner_id;
+                    $isDeactivated = ! is_null($member->pivot->deactivated_at);
+                @endphp
+                <li wire:key="member-{{ $member->id }}" class="flex items-center justify-between gap-3 py-3 {{ $isDeactivated ? 'opacity-60' : '' }}">
                     <div class="flex min-w-0 items-center gap-3">
                         <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
                             {{ Str::of($member->name)->substr(0, 1)->upper() }}
                         </span>
                         <div class="min-w-0">
-                            <p class="truncate text-sm font-medium">{{ $member->name }}</p>
+                            <p class="truncate text-sm font-medium">
+                                {{ $member->name }}
+                                @if ($isDeactivated)
+                                    <span class="ml-1 rounded-full bg-neutral-200 px-2 py-0.5 text-[11px] font-medium text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300">{{ __('Désactivé') }}</span>
+                                @endif
+                            </p>
                             <p class="truncate text-xs text-neutral-500 dark:text-neutral-400">{{ $member->email }}</p>
                         </div>
                     </div>
@@ -89,11 +97,17 @@
                         @if ($isOwner)
                             <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">{{ __('Propriétaire') }}</span>
                         @elseif ($canManage)
-                            <select wire:change="updateRole({{ $member->id }}, $event.target.value)" class="rounded-lg border border-neutral-300 bg-white px-2 py-1 text-xs shadow-sm focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
-                                <option value="member" @selected($member->pivot->role === 'member')>{{ __('Membre') }}</option>
-                                <option value="admin" @selected($member->pivot->role === 'admin')>{{ __('Administrateur') }}</option>
-                            </select>
-                            <button type="button" wire:click="removeMember({{ $member->id }})" class="text-xs text-neutral-400 hover:text-red-500">{{ __('Retirer') }}</button>
+                            @if ($isDeactivated)
+                                <button type="button" wire:click="reactivateMember({{ $member->id }})" class="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">{{ __('Réactiver') }}</button>
+                                <button type="button" wire:click="removeMember({{ $member->id }})" class="text-xs text-neutral-400 hover:text-red-500">{{ __('Retirer') }}</button>
+                            @else
+                                <select wire:change="updateRole({{ $member->id }}, $event.target.value)" class="rounded-lg border border-neutral-300 bg-white px-2 py-1 text-xs shadow-sm focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                    <option value="member" @selected($member->pivot->role === 'member')>{{ __('Membre') }}</option>
+                                    <option value="admin" @selected($member->pivot->role === 'admin')>{{ __('Administrateur') }}</option>
+                                </select>
+                                <button type="button" wire:click="deactivateMember({{ $member->id }})" class="text-xs text-neutral-400 hover:text-amber-600" title="{{ __("Suspendre l'accès sans supprimer le compte") }}">{{ __('Désactiver') }}</button>
+                                <button type="button" wire:click="removeMember({{ $member->id }})" class="text-xs text-neutral-400 hover:text-red-500">{{ __('Retirer') }}</button>
+                            @endif
                         @else
                             <span class="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">{{ \App\Enums\Role::from($member->pivot->role)->label() }}</span>
                         @endif
@@ -102,6 +116,32 @@
             @endforeach
         </ul>
     </section>
+
+    {{-- Access controls --}}
+    @if ($canManage)
+        <section class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+            <h2 class="flex items-center gap-2 text-base font-semibold">
+                <x-phosphor-shield-check class="h-5 w-5 text-indigo-500" /> {{ __("Contrôles d'accès") }}
+            </h2>
+            <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{{ __('Restreignez qui peut être invité et quels fichiers peuvent être joints. Laissez vide pour tout autoriser.') }}</p>
+
+            <form wire:submit="saveAccessControls" class="mt-4 space-y-4">
+                <div>
+                    <label for="allowed_domains" class="mb-1 block text-sm font-medium">{{ __('Domaines e-mail autorisés pour les invitations') }}</label>
+                    <input id="allowed_domains" type="text" wire:model="allowedInviteDomains" placeholder="exemple.com, corp.io"
+                           class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                    <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{{ __('Séparés par des virgules. Seules les adresses de ces domaines pourront être invitées.') }}</p>
+                </div>
+                <div>
+                    <label for="allowed_extensions" class="mb-1 block text-sm font-medium">{{ __('Types de pièces jointes autorisés') }}</label>
+                    <input id="allowed_extensions" type="text" wire:model="allowedAttachmentExtensions" placeholder="pdf, png, jpg, docx"
+                           class="block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                    <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{{ __('Extensions séparées par des virgules. Les autres fichiers seront refusés à l\'envoi.') }}</p>
+                </div>
+                <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">{{ __('Enregistrer') }}</button>
+            </form>
+        </section>
+    @endif
 
     {{-- Danger zone --}}
     @can('delete', $workspace)

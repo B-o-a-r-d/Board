@@ -13,12 +13,24 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
-#[Fillable(['owner_id', 'name', 'slug', 'description', 'color'])]
+#[Fillable(['owner_id', 'name', 'slug', 'description', 'color', 'allowed_invite_domains', 'allowed_attachment_extensions'])]
 class Workspace extends Model
 {
     /** @use HasFactory<WorkspaceFactory> */
     use HasFactory, HasPublicId;
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'allowed_invite_domains' => 'array',
+            'allowed_attachment_extensions' => 'array',
+        ];
+    }
 
     public function owner(): BelongsTo
     {
@@ -28,7 +40,7 @@ class Workspace extends Model
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'workspace_user')
-            ->withPivot('role')
+            ->withPivot('role', 'deactivated_at')
             ->withTimestamps();
     }
 
@@ -66,7 +78,7 @@ class Workspace extends Model
      */
     public function roleFor(User $user): ?RoleModel
     {
-        $membership = $this->members()->whereKey($user->getKey())->first();
+        $membership = $this->members()->wherePivotNull('deactivated_at')->whereKey($user->getKey())->first();
 
         return $membership ? $this->roles()->where('key', $membership->pivot->role)->first() : null;
     }
@@ -74,6 +86,52 @@ class Workspace extends Model
     public function userCan(User $user, Permission $permission): bool
     {
         return (bool) $this->roleFor($user)?->hasPermission($permission);
+    }
+
+    /**
+     * Whether this user is a member but has been deactivated — access to the
+     * workspace and all its boards is suspended until they are reactivated.
+     */
+    public function memberIsDeactivated(User $user): bool
+    {
+        return $this->members()
+            ->whereKey($user->getKey())
+            ->wherePivotNotNull('deactivated_at')
+            ->exists();
+    }
+
+    /**
+     * Whether an email may be invited given the workspace's domain allow-list.
+     * An empty/absent list allows any domain.
+     */
+    public function invitationDomainAllowed(string $email): bool
+    {
+        $domains = array_filter((array) $this->allowed_invite_domains);
+
+        if ($domains === []) {
+            return true;
+        }
+
+        $domain = Str::lower(Str::afterLast($email, '@'));
+
+        return in_array($domain, array_map(fn (string $d): string => Str::lower(ltrim(trim($d), '@')), $domains), true);
+    }
+
+    /**
+     * Whether an attachment extension is permitted given the workspace's
+     * allow-list. An empty/absent list allows any type.
+     */
+    public function attachmentExtensionAllowed(string $extension): bool
+    {
+        $allowed = array_filter((array) $this->allowed_attachment_extensions);
+
+        if ($allowed === []) {
+            return true;
+        }
+
+        $extension = Str::lower(ltrim($extension, '.'));
+
+        return in_array($extension, array_map(fn (string $e): string => Str::lower(ltrim(trim($e), '.')), $allowed), true);
     }
 
     protected static function booted(): void
@@ -88,12 +146,12 @@ class Workspace extends Model
 
     public function hasMember(User $user): bool
     {
-        return $this->members()->whereKey($user->getKey())->exists();
+        return $this->members()->wherePivotNull('deactivated_at')->whereKey($user->getKey())->exists();
     }
 
     public function memberRole(User $user): ?Role
     {
-        $membership = $this->members()->whereKey($user->getKey())->first();
+        $membership = $this->members()->wherePivotNull('deactivated_at')->whereKey($user->getKey())->first();
 
         return $membership ? Role::tryFrom($membership->pivot->role) : null;
     }
