@@ -128,6 +128,11 @@
                             title="{{ __('Timeline') }}">
                         <x-phosphor-chart-bar-horizontal class="h-4 w-4"/><span class="hidden sm:inline">{{ __('Timeline') }}</span>
                     </button>
+                    <button type="button" wire:click="setView('table')"
+                            class="flex items-center gap-1 rounded-md px-2 py-1 text-sm transition {{ $view === 'table' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200' }}"
+                            title="{{ __('Table') }}">
+                        <x-phosphor-table class="h-4 w-4"/><span class="hidden sm:inline">{{ __('Table') }}</span>
+                    </button>
                 </div>
 
                 <button type="button" wire:click="toggleActivity"
@@ -744,8 +749,10 @@
     </div>
     @elseif ($view === 'calendar')
         @include('livewire.boards.partials.calendar')
-    @else
+    @elseif ($view === 'timeline')
         @include('livewire.boards.partials.timeline')
+    @else
+        @include('livewire.boards.partials.table')
     @endif
 
     {{-- Trash / archive panel --}}

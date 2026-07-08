@@ -62,6 +62,11 @@ class Show extends Component
     /** Timeline window start as 'Y-m-d' (Monday-aligned). */
     public string $timelineStart = '';
 
+    /** Table view sort column ('title'|'list'|'due'|'created') and direction. */
+    public string $tableSort = 'list';
+
+    public string $tableDir = 'asc';
+
     public bool $showTrash = false;
 
     public function toggleTrash(): void
@@ -393,7 +398,7 @@ class Show extends Component
             $this->calendarMonth = now()->format('Y-m');
         }
 
-        if (! in_array($this->view, ['board', 'calendar', 'timeline'], true)) {
+        if (! in_array($this->view, ['board', 'calendar', 'timeline', 'table'], true)) {
             $this->view = 'board';
         }
 
@@ -411,7 +416,7 @@ class Show extends Component
 
     public function setView(string $view): void
     {
-        $this->view = in_array($view, ['board', 'calendar', 'timeline'], true) ? $view : 'board';
+        $this->view = in_array($view, ['board', 'calendar', 'timeline', 'table'], true) ? $view : 'board';
     }
 
     public function calendarStep(int $months): void
@@ -469,6 +474,66 @@ class Show extends Component
         return $existing
             ? $parsed->setTime($existing->hour, $existing->minute)
             : $parsed->setTime(12, 0);
+    }
+
+    /**
+     * Toggle the table sort: same column flips direction, a new column sorts
+     * ascending.
+     */
+    public function sortTable(string $column): void
+    {
+        if (! in_array($column, ['title', 'list', 'due', 'created'], true)) {
+            return;
+        }
+
+        if ($this->tableSort === $column) {
+            $this->tableDir = $this->tableDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->tableSort = $column;
+            $this->tableDir = 'asc';
+        }
+    }
+
+    /**
+     * Inline-rename a card from the table view.
+     */
+    public function renameCard(int $cardId, string $title): void
+    {
+        $this->authorize('view', $this->board);
+
+        $title = trim($title);
+
+        if ($title === '') {
+            return;
+        }
+
+        $card = $this->cardForBoard($cardId);
+        $card->update(['title' => mb_substr($title, 0, 255)]);
+
+        $this->broadcastActivity('card.updated');
+    }
+
+    /**
+     * Set (or clear, with null) a card's due date from the table view, keeping
+     * the existing time-of-day and leaving the start date untouched.
+     */
+    public function setCardDue(int $cardId, ?string $date): void
+    {
+        $this->authorize('view', $this->board);
+
+        $card = $this->cardForBoard($cardId);
+        $hadDue = $card->due_at !== null;
+        $newDue = ($date !== null && $date !== '') ? $this->dateWithTime($card->due_at, $date) : null;
+
+        $card->update(['due_at' => $newDue]);
+
+        if ($newDue === null && $hadDue) {
+            $this->logActivity('card.due_removed', $card->id);
+        } elseif ($newDue !== null) {
+            $this->logActivity($hadDue ? 'card.due_changed' : 'card.due_set', $card->id, ['value' => $newDue->translatedFormat('d M Y')]);
+        }
+
+        $this->broadcastActivity('card.due_changed');
     }
 
     /**
@@ -1307,7 +1372,11 @@ class Show extends Component
                 ]))
                 ->orderBy('position')
                 ->get()
-            : collect();
+            // The table view needs the lists (name + move target) but not the
+            // heavy card eager-loads the board view uses.
+            : ($this->view === 'table'
+                ? $this->board->lists()->whereNull('archived_at')->orderBy('position')->get(['id', 'name', 'position'])
+                : collect());
 
         $boardMembers = $this->board->members()->orderBy('name')->get();
 
@@ -1327,6 +1396,7 @@ class Show extends Component
             'lists' => $lists,
             'calendar' => $this->view === 'calendar' ? $this->buildCalendar() : null,
             'timeline' => $this->view === 'timeline' ? $this->buildTimeline() : null,
+            'tableCards' => $this->view === 'table' ? $this->buildTable() : null,
             'labels' => $this->board->labels,
             'members' => $boardMembers,
             'boardMembers' => $boardMembers,
@@ -1465,6 +1535,31 @@ class Show extends Component
             'gridWidth' => $labelWidth + $days * $dayWidth,
             'gridHeight' => $laneTop,
         ];
+    }
+
+    /**
+     * Build the table (spreadsheet) view: the board's cards, filtered and sorted
+     * by the active column, with the relations the columns render.
+     *
+     * @return Collection<int, Card>
+     */
+    private function buildTable(): Collection
+    {
+        $query = $this->board->cards()
+            ->whereNull('archived_at')
+            ->with(['list', 'members', 'labels', 'customFieldValues']);
+
+        $this->applyCardFilters($query);
+
+        return (match ($this->tableSort) {
+            'title' => $query->orderBy('title', $this->tableDir),
+            'due' => $query->orderByRaw('due_at is null asc')->orderBy('due_at', $this->tableDir),
+            'created' => $query->orderBy('created_at', $this->tableDir),
+            default => $query->orderBy(
+                BoardList::select('position')->whereColumn('board_lists.id', 'cards.board_list_id'),
+                $this->tableDir
+            )->orderBy('position'),
+        })->get();
     }
 
     /**
