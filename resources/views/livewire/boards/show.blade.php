@@ -6,6 +6,8 @@
         else if ($event.key === 'b') { $wire.setView('board'); }
         else if ($event.key === 'c') { $wire.setView('calendar'); }
         else if ($event.key === 't') { $wire.setView('timeline'); }
+        else if ($event.key === 'e') { $wire.setView('table'); }
+        else if ($event.key === 'd') { $wire.setView('dashboard'); }
         else if ($event.key === '?') { helpOpen = true; }
      "
      @open-shortcuts.window="helpOpen = true"
@@ -111,30 +113,6 @@
             </div>
 
             <div class="flex gap-2">
-                {{-- View toggle: board / calendar --}}
-                <div class="flex items-center rounded-lg border border-neutral-300 p-0.5 dark:border-neutral-700">
-                    <button type="button" wire:click="setView('board')"
-                            class="flex items-center gap-1 rounded-md px-2 py-1 text-sm transition {{ $view === 'board' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200' }}"
-                            title="{{ __('Tableau') }}">
-                        <x-phosphor-squares-four class="h-4 w-4"/><span class="hidden sm:inline">{{ __('Tableau') }}</span>
-                    </button>
-                    <button type="button" wire:click="setView('calendar')"
-                            class="flex items-center gap-1 rounded-md px-2 py-1 text-sm transition {{ $view === 'calendar' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200' }}"
-                            title="{{ __('Calendrier') }}">
-                        <x-phosphor-calendar-blank class="h-4 w-4"/><span class="hidden sm:inline">{{ __('Calendrier') }}</span>
-                    </button>
-                    <button type="button" wire:click="setView('timeline')"
-                            class="flex items-center gap-1 rounded-md px-2 py-1 text-sm transition {{ $view === 'timeline' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200' }}"
-                            title="{{ __('Timeline') }}">
-                        <x-phosphor-chart-bar-horizontal class="h-4 w-4"/><span class="hidden sm:inline">{{ __('Timeline') }}</span>
-                    </button>
-                    <button type="button" wire:click="setView('table')"
-                            class="flex items-center gap-1 rounded-md px-2 py-1 text-sm transition {{ $view === 'table' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200' }}"
-                            title="{{ __('Table') }}">
-                        <x-phosphor-table class="h-4 w-4"/><span class="hidden sm:inline">{{ __('Table') }}</span>
-                    </button>
-                </div>
-
                 <button type="button" wire:click="toggleActivity"
                         class="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
                         title="{{ __('Activité') }}">
@@ -221,6 +199,37 @@
                     </x-context-menu>
                 @endcan
             </div>
+        </div>
+    </div>
+
+    {{-- View switcher: its own right-aligned row to keep the header uncluttered --}}
+    <div class="mb-3 flex justify-end sm:mb-4">
+        <div class="flex items-center rounded-lg border border-neutral-300 p-0.5 dark:border-neutral-700">
+            <button type="button" wire:click="setView('board')"
+                    class="flex items-center gap-1 rounded-md px-2 py-1 text-sm transition {{ $view === 'board' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200' }}"
+                    title="{{ __('Tableau') }}">
+                <x-phosphor-squares-four class="h-4 w-4"/><span class="hidden sm:inline">{{ __('Tableau') }}</span>
+            </button>
+            <button type="button" wire:click="setView('calendar')"
+                    class="flex items-center gap-1 rounded-md px-2 py-1 text-sm transition {{ $view === 'calendar' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200' }}"
+                    title="{{ __('Calendrier') }}">
+                <x-phosphor-calendar-blank class="h-4 w-4"/><span class="hidden sm:inline">{{ __('Calendrier') }}</span>
+            </button>
+            <button type="button" wire:click="setView('timeline')"
+                    class="flex items-center gap-1 rounded-md px-2 py-1 text-sm transition {{ $view === 'timeline' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200' }}"
+                    title="{{ __('Timeline') }}">
+                <x-phosphor-chart-bar-horizontal class="h-4 w-4"/><span class="hidden sm:inline">{{ __('Timeline') }}</span>
+            </button>
+            <button type="button" wire:click="setView('table')"
+                    class="flex items-center gap-1 rounded-md px-2 py-1 text-sm transition {{ $view === 'table' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200' }}"
+                    title="{{ __('Table') }}">
+                <x-phosphor-table class="h-4 w-4"/><span class="hidden sm:inline">{{ __('Table') }}</span>
+            </button>
+            <button type="button" wire:click="setView('dashboard')"
+                    class="flex items-center gap-1 rounded-md px-2 py-1 text-sm transition {{ $view === 'dashboard' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200' }}"
+                    title="{{ __('Dashboard') }}">
+                <x-phosphor-chart-pie-slice class="h-4 w-4"/><span class="hidden sm:inline">{{ __('Dashboard') }}</span>
+            </button>
         </div>
     </div>
 
@@ -751,8 +760,10 @@
         @include('livewire.boards.partials.calendar')
     @elseif ($view === 'timeline')
         @include('livewire.boards.partials.timeline')
-    @else
+    @elseif ($view === 'table')
         @include('livewire.boards.partials.table')
+    @else
+        @include('livewire.boards.partials.dashboard')
     @endif
 
     {{-- Trash / archive panel --}}

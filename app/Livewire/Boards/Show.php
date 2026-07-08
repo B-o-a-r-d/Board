@@ -400,7 +400,7 @@ class Show extends Component
             $this->calendarMonth = now()->format('Y-m');
         }
 
-        if (! in_array($this->view, ['board', 'calendar', 'timeline', 'table'], true)) {
+        if (! in_array($this->view, ['board', 'calendar', 'timeline', 'table', 'dashboard'], true)) {
             $this->view = 'board';
         }
 
@@ -418,7 +418,7 @@ class Show extends Component
 
     public function setView(string $view): void
     {
-        $this->view = in_array($view, ['board', 'calendar', 'timeline', 'table'], true) ? $view : 'board';
+        $this->view = in_array($view, ['board', 'calendar', 'timeline', 'table', 'dashboard'], true) ? $view : 'board';
     }
 
     public function calendarStep(int $months): void
@@ -1465,6 +1465,7 @@ class Show extends Component
             'calendar' => $this->view === 'calendar' ? $this->buildCalendar() : null,
             'timeline' => $this->view === 'timeline' ? $this->buildTimeline() : null,
             'tableCards' => $this->view === 'table' ? $this->buildTable() : null,
+            'dashboard' => $this->view === 'dashboard' ? $this->buildDashboard() : null,
             'labels' => $this->board->labels,
             'members' => $boardMembers,
             'boardMembers' => $boardMembers,
@@ -1602,6 +1603,64 @@ class Show extends Component
             'edges' => $edges,
             'gridWidth' => $labelWidth + $days * $dayWidth,
             'gridHeight' => $laneTop,
+        ];
+    }
+
+    /**
+     * Build the dashboard (reporting) view: headline totals plus per-list,
+     * per-member and per-label breakdowns. Respects the active card filters.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildDashboard(): array
+    {
+        $query = $this->board->cards()->whereNull('archived_at')->with(['members', 'labels']);
+        $this->applyCardFilters($query);
+        $cards = $query->get();
+
+        $soonThreshold = now()->addDays(7);
+        $total = $cards->count();
+        $completed = $cards->whereNotNull('completed_at')->count();
+
+        $byList = $this->board->lists()->whereNull('archived_at')->orderBy('position')->get()
+            ->map(fn (BoardList $list): array => [
+                'name' => $list->name,
+                'color' => $list->cover_color,
+                'count' => $cards->where('board_list_id', $list->id)->count(),
+            ])->values()->all();
+
+        $byMember = $this->board->members()->orderBy('name')->get()
+            ->map(fn (User $member): array => [
+                'name' => $member->name,
+                'user' => $member,
+                'count' => $cards->filter(fn (Card $card): bool => $card->members->contains('id', $member->id))->count(),
+            ])
+            ->sortByDesc('count')->values()->all();
+
+        $unassigned = $cards->filter(fn (Card $card): bool => $card->members->isEmpty())->count();
+
+        if ($unassigned > 0) {
+            $byMember[] = ['name' => __('Sans membre'), 'user' => null, 'count' => $unassigned];
+        }
+
+        $byLabel = $this->board->labels
+            ->map(fn ($label): array => [
+                'name' => $label->name ?: __('Sans nom'),
+                'color' => $label->color,
+                'count' => $cards->filter(fn (Card $card): bool => $card->labels->contains('id', $label->id))->count(),
+            ])
+            ->sortByDesc('count')->values()->all();
+
+        return [
+            'total' => $total,
+            'completed' => $completed,
+            'completionRate' => $total > 0 ? (int) round($completed / $total * 100) : 0,
+            'overdue' => $cards->filter(fn (Card $card): bool => $card->due_at && ! $card->completed_at && $card->due_at->isPast())->count(),
+            'dueSoon' => $cards->filter(fn (Card $card): bool => $card->due_at && ! $card->completed_at && ! $card->due_at->isPast() && $card->due_at->lte($soonThreshold))->count(),
+            'noDate' => $cards->filter(fn (Card $card): bool => ! $card->due_at && ! $card->start_at)->count(),
+            'byList' => $byList,
+            'byMember' => $byMember,
+            'byLabel' => $byLabel,
         ];
     }
 
