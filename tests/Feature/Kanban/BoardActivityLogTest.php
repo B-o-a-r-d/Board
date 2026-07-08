@@ -55,7 +55,7 @@ test('moving a card between lists logs from and to lists', function () {
 
     expect($activity->properties['from_list'])->toBe('En cours')
         ->and($activity->properties['to_list'])->toBe('Terminé')
-        ->and($activity->describe())->toBe('a déplacé Tâche depuis En cours vers Terminé 🎉');
+        ->and($activity->describe())->toBe('a déplacé Tâche depuis En cours vers Terminé');
 });
 
 test('permanently deleting a card logs a detached deletion activity', function () {
@@ -98,7 +98,7 @@ test('setting and clearing a due date logs the change', function () {
 
     $component = Livewire::actingAs($owner)->test(CardDetail::class, ['board' => $board])
         ->call('openCard', $card->id)
-        ->set('dueAt', '2026-08-01T10:00')
+        ->set('dueDate', '2026-08-01')->set('dueTime', '10:00')
         ->call('saveDates');
 
     expect(Activity::where('type', 'card.due_set')->exists())->toBeTrue();

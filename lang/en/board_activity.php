@@ -3,7 +3,7 @@
 return [
     'default' => 'updated :card',
     'card.created' => 'added :card to :list',
-    'card.moved' => 'moved :card from :from to :to 🎉',
+    'card.moved' => 'moved :card from :from to :to',
     'card.moved_simple' => 'moved :card to :to',
     'card.completed' => 'marked :card as complete',
     'card.uncompleted' => 'marked :card as incomplete',

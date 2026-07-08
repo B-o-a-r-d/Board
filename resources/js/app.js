@@ -11,6 +11,7 @@ import './context-menu';
 import './markdown-editor';
 import './comment-editor';
 import './card-sortable';
+import './hover-card';
 import './public-presence';
 import './dropzone';
 import './confirm';

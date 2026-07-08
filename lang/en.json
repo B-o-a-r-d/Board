@@ -57,7 +57,6 @@
     "Retirer ce plugin de l’instance ?": "Remove this plugin from the instance?",
     "Catalogue vide ou indisponible.": "Catalog empty or unavailable.",
     "Marketplace de plugins": "Plugin marketplace",
-    "Autorise l'installation de Power-Ups à chaud depuis le catalogue, sans redéploiement. ⚠️ Exécute du code tiers dans le process — n'activez que des plugins de confiance.": "Allows installing Power-Ups on the fly from the catalog, no redeploy. ⚠️ Runs third-party code in-process — only enable trusted plugins.",
     "Activer la marketplace": "Enable the marketplace",
     "Ouvrir la marketplace": "Open the marketplace",
     "Plugin installé": "Plugin installed",

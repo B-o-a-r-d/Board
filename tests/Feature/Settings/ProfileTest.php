@@ -54,6 +54,54 @@ test('email is required and must be valid', function () {
         ->assertHasErrors('email');
 });
 
+test('name and biography auto-save as the user types', function () {
+    $user = User::factory()->create(['name' => 'Ancien']);
+
+    Livewire::actingAs($user)
+        ->test(Profile::class)
+        ->set('name', 'Nouveau Nom')
+        ->set('biography', 'Développeur Laravel.')
+        ->assertHasNoErrors();
+
+    $user->refresh();
+
+    expect($user->name)->toBe('Nouveau Nom')
+        ->and($user->biography)->toBe('Développeur Laravel.');
+});
+
+test('an empty biography is stored as null', function () {
+    $user = User::factory()->create(['biography' => 'Quelque chose']);
+
+    Livewire::actingAs($user)
+        ->test(Profile::class)
+        ->set('biography', '')
+        ->assertHasNoErrors();
+
+    expect($user->fresh()->biography)->toBeNull();
+});
+
+test('the biography is capped at 500 characters', function () {
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test(Profile::class)
+        ->set('biography', str_repeat('a', 501))
+        ->assertHasErrors('biography');
+
+    expect($user->fresh()->biography)->toBeNull();
+});
+
+test('auto-save rejects an empty name', function () {
+    $user = User::factory()->create(['name' => 'Garde']);
+
+    Livewire::actingAs($user)
+        ->test(Profile::class)
+        ->set('name', '')
+        ->assertHasErrors('name');
+
+    expect($user->fresh()->name)->toBe('Garde');
+});
+
 test('password can be updated', function () {
     $user = User::factory()->create();
 

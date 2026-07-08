@@ -36,15 +36,26 @@ test('details (markdown description, due date) are saved', function () {
         ->call('openCard', $card->id)
         ->set('title', 'Titre mis à jour')
         ->set('description', "# Titre\n\n- point **gras**")
-        ->set('dueAt', '2026-08-01T10:00')
         ->call('saveDetails')
         ->assertHasNoErrors();
 
     $card->refresh();
 
     expect($card->title)->toBe('Titre mis à jour')
-        ->and($card->description)->toContain('**gras**')
-        ->and($card->due_at->format('Y-m-d H:i'))->toBe('2026-08-01 10:00');
+        ->and($card->description)->toContain('**gras**');
+});
+
+test('a due date saves with no time (defaults to noon)', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+
+    Livewire::actingAs($owner)
+        ->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->set('dueDate', '2026-09-15')
+        ->call('saveDates')
+        ->assertHasNoErrors();
+
+    expect($card->fresh()->due_at->format('Y-m-d H:i'))->toBe('2026-09-15 12:00');
 });
 
 test('a card can be marked complete and incomplete', function () {
@@ -112,11 +123,13 @@ test('a date range (start + due) can be saved and cleared from the sidebar', fun
         ->test(CardDetail::class, ['board' => $board])
         ->call('openCard', $card->id);
 
-    $component->set('startAt', '2026-08-01T09:00')->set('dueAt', '2026-08-01T09:30')->call('saveDates')->assertHasNoErrors();
+    $component->set('startDate', '2026-08-01')->set('startTime', '09:00')
+        ->set('dueDate', '2026-08-01')->set('dueTime', '09:30')
+        ->call('saveDates')->assertHasNoErrors();
     expect($card->fresh()->start_at->format('Y-m-d H:i'))->toBe('2026-08-01 09:00')
         ->and($card->fresh()->due_at->format('Y-m-d H:i'))->toBe('2026-08-01 09:30');
 
-    $component->call('clearDates')->assertSet('dueAt', null)->assertSet('startAt', null);
+    $component->call('clearDates')->assertSet('dueDate', null)->assertSet('startDate', null);
     expect($card->fresh()->due_at)->toBeNull()->and($card->fresh()->start_at)->toBeNull();
 });
 
@@ -126,10 +139,10 @@ test('a due date before the start date is rejected', function () {
     Livewire::actingAs($owner)
         ->test(CardDetail::class, ['board' => $board])
         ->call('openCard', $card->id)
-        ->set('startAt', '2026-08-10T10:00')
-        ->set('dueAt', '2026-08-01T10:00')
+        ->set('startDate', '2026-08-10')->set('startTime', '10:00')
+        ->set('dueDate', '2026-08-01')->set('dueTime', '10:00')
         ->call('saveDates')
-        ->assertHasErrors('dueAt');
+        ->assertHasErrors('dueDate');
 
     expect($card->fresh()->due_at)->toBeNull();
 });

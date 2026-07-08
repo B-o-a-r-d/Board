@@ -3,7 +3,7 @@
 return [
     'default' => 'a mis à jour :card',
     'card.created' => 'a ajouté :card à :list',
-    'card.moved' => 'a déplacé :card depuis :from vers :to 🎉',
+    'card.moved' => 'a déplacé :card depuis :from vers :to',
     'card.moved_simple' => 'a déplacé :card vers :to',
     'card.completed' => 'a marqué :card comme étant terminée',
     'card.uncompleted' => 'a marqué :card comme étant inachevée',

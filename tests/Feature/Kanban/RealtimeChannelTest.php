@@ -54,3 +54,18 @@ test('the presence channel authorizes members by integer id and rejects outsider
     expect($authorize($owner, (string) $board->id))->toBeArray()
         ->and($authorize(User::factory()->create(), (string) $board->id))->toBeFalse();
 });
+
+test('the presence channel payload carries the user avatar url and biography', function () {
+    ['board' => $board, 'owner' => $owner] = realtimeBoard();
+    $owner->update(['avatar_path' => 'avatars/me.png', 'biography' => 'Chef de projet.']);
+    $authorize = channelCallback('board-presence.{boardId}');
+
+    $payload = $authorize($owner, (string) $board->id);
+
+    expect($payload)->toMatchArray([
+        'id' => $owner->id,
+        'name' => $owner->name,
+        'biography' => 'Chef de projet.',
+        'guest' => false,
+    ])->and($payload['avatar_url'])->toContain('avatars/me.png');
+});

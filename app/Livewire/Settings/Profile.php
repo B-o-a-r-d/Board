@@ -26,6 +26,8 @@ class Profile extends Component
 
     public string $name = '';
 
+    public string $biography = '';
+
     public string $email = '';
 
     public string $current_password = '';
@@ -50,10 +52,38 @@ class Profile extends Component
         $user = Auth::user();
 
         $this->name = $user->name;
+        $this->biography = (string) $user->biography;
         $this->email = $user->email;
         $this->locale = $user->locale ?: app()->getLocale();
         $this->mcpEnabled = Setting::mcpEnabled();
         $this->notificationPreferences = $user->notificationPreferences();
+    }
+
+    /**
+     * Debounced auto-save for the "Profil" tab: name + biography persist as the
+     * user types (no "Enregistrer" button), confirmed by a toast. Email and
+     * password keep their explicit buttons (handled separately).
+     */
+    public function updated(string $property): void
+    {
+        if (in_array($property, ['name', 'biography'], true)) {
+            $this->autosaveProfile();
+        }
+    }
+
+    public function autosaveProfile(): void
+    {
+        $data = $this->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'biography' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        Auth::user()->update([
+            'name' => $data['name'],
+            'biography' => $data['biography'] !== '' ? $data['biography'] : null,
+        ]);
+
+        $this->dispatch('toast', message: __('Profil enregistré'), type: 'success');
     }
 
     /**

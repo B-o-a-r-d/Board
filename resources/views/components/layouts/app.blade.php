@@ -51,7 +51,7 @@
                             @click="open = ! open"
                             class="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 text-sm font-medium hover:bg-neutral-100 dark:hover:bg-neutral-800"
                         >
-                            <x-user-avatar :user="auth()->user()" />
+                            <x-user-avatar :user="auth()->user()" :hover-card="false" />
                             <span class="hidden sm:inline">{{ auth()->user()->name }}</span>
                             <x-phosphor-caret-down class="h-4 w-4 text-neutral-400 transition-transform" ::class="open && 'rotate-180'" />
                         </button>

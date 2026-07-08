@@ -27,5 +27,11 @@ Broadcast::channel('board-presence.{boardId}', function (User $user, string $boa
         return false;
     }
 
-    return ['id' => $user->id, 'name' => $user->name, 'guest' => false];
+    return [
+        'id' => $user->id,
+        'name' => $user->name,
+        'avatar_url' => $user->avatarUrl(),
+        'biography' => $user->biography,
+        'guest' => false,
+    ];
 });

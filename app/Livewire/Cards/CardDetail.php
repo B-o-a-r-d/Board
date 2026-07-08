@@ -42,9 +42,13 @@ class CardDetail extends Component
 
     public string $description = '';
 
-    public ?string $startAt = null;
+    public ?string $startDate = null;
 
-    public ?string $dueAt = null;
+    public ?string $startTime = null;
+
+    public ?string $dueDate = null;
+
+    public ?string $dueTime = null;
 
     public string $newChecklistTitle = '';
 
@@ -102,8 +106,10 @@ class CardDetail extends Component
         $this->cardId = $card->id;
         $this->title = $card->title;
         $this->description = (string) $card->description;
-        $this->startAt = $card->start_at?->format('Y-m-d\TH:i');
-        $this->dueAt = $card->due_at?->format('Y-m-d\TH:i');
+        $this->startDate = $card->start_at?->format('Y-m-d');
+        $this->startTime = $card->start_at?->format('H:i');
+        $this->dueDate = $card->due_at?->format('Y-m-d');
+        $this->dueTime = $card->due_at?->format('H:i');
         $this->resetValidation();
         $this->showModal = true;
 
@@ -118,7 +124,7 @@ class CardDetail extends Component
     {
         $this->showModal = false;
         $this->cardId = null;
-        $this->reset('title', 'description', 'startAt', 'dueAt', 'newChecklistTitle', 'newChecklistItem', 'upload', 'editingCommentId', 'editingCommentBody');
+        $this->reset('title', 'description', 'startDate', 'startTime', 'dueDate', 'dueTime', 'newChecklistTitle', 'newChecklistItem', 'upload', 'editingCommentId', 'editingCommentBody');
     }
 
     public function saveDetails(): void
@@ -128,13 +134,11 @@ class CardDetail extends Component
         $data = $this->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'dueAt' => ['nullable', 'date'],
         ]);
 
         $card->update([
             'title' => $data['title'],
             'description' => $data['description'] ?: null,
-            'due_at' => $data['dueAt'] ? Carbon::parse($data['dueAt']) : null,
         ]);
 
         $this->touched('card.updated');
@@ -144,19 +148,24 @@ class CardDetail extends Component
     {
         $card = $this->guardedCard();
 
-        $rules = ['startAt' => ['nullable', 'date'], 'dueAt' => ['nullable', 'date']];
+        $this->validate([
+            'startDate' => ['nullable', 'date'],
+            'dueDate' => ['nullable', 'date'],
+        ]);
 
-        if (! empty($this->startAt)) {
-            $rules['dueAt'][] = 'after_or_equal:startAt';
+        $start = $this->combineDateTime($this->startDate, $this->startTime);
+        $newDue = $this->combineDateTime($this->dueDate, $this->dueTime);
+
+        if ($start !== null && $newDue !== null && $newDue->lt($start)) {
+            $this->addError('dueDate', __('L’échéance doit être postérieure au début.'));
+
+            return;
         }
 
-        $data = $this->validate($rules);
-
         $hadDue = $card->due_at !== null;
-        $newDue = $data['dueAt'] ? Carbon::parse($data['dueAt']) : null;
 
         $card->update([
-            'start_at' => $data['startAt'] ? Carbon::parse($data['startAt']) : null,
+            'start_at' => $start,
             'due_at' => $newDue,
         ]);
 
@@ -169,6 +178,20 @@ class CardDetail extends Component
         $this->touched('card.updated');
     }
 
+    /**
+     * Combine a date (required) with an optional time into a Carbon instant.
+     * The time is optional — a due date with no time defaults to noon so the
+     * schedule saves from the date alone.
+     */
+    private function combineDateTime(?string $date, ?string $time): ?Carbon
+    {
+        if (empty($date)) {
+            return null;
+        }
+
+        return Carbon::parse($date.' '.(empty($time) ? '12:00' : $time));
+    }
+
     public function clearDates(): void
     {
         $card = $this->guardedCard();
@@ -176,8 +199,10 @@ class CardDetail extends Component
         $hadDue = $card->due_at !== null;
 
         $card->update(['start_at' => null, 'due_at' => null]);
-        $this->startAt = null;
-        $this->dueAt = null;
+        $this->startDate = null;
+        $this->startTime = null;
+        $this->dueDate = null;
+        $this->dueTime = null;
 
         if ($hadDue) {
             $this->logActivity($card, 'card.due_removed');

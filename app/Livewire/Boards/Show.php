@@ -40,9 +40,14 @@ class Show extends Component
 
     public string $search = '';
 
-    public ?int $filterLabel = null;
+    /** @var array<int, int> Selected label ids (a card matching ANY is kept). */
+    public array $filterLabels = [];
 
-    public ?int $filterMember = null;
+    /** @var array<int, int> Selected member ids (a card assigned to ANY is kept). */
+    public array $filterMembers = [];
+
+    /** "Sans membre": keep only cards with no assignee. */
+    public bool $filterUnassigned = false;
 
     public string $filterDue = '';
 
@@ -411,37 +416,134 @@ class Show extends Component
         $this->calendarMonth = now()->format('Y-m');
     }
 
+    /**
+     * Move a card to another day from the calendar (drag & drop). Keeps the
+     * time-of-day and shifts whichever date anchors the card on the grid — its
+     * due date, falling back to its start date.
+     */
+    public function rescheduleCard(int $cardId, string $date): void
+    {
+        $this->authorize('view', $this->board);
+
+        $card = $this->cardForBoard($cardId);
+        $target = Carbon::parse($date);
+        $hadDue = $card->due_at !== null;
+
+        if ($card->due_at) {
+            $card->due_at = $card->due_at->copy()->setDate($target->year, $target->month, $target->day);
+        } elseif ($card->start_at) {
+            $card->start_at = $card->start_at->copy()->setDate($target->year, $target->month, $target->day);
+        } else {
+            $card->due_at = $target->copy()->setTime(12, 0);
+        }
+
+        $card->save();
+
+        $anchor = $card->due_at ?? $card->start_at;
+        $this->logActivity($hadDue ? 'card.due_changed' : 'card.due_set', $card->id, ['value' => $anchor->translatedFormat('d M Y')]);
+        $this->broadcastActivity('card.due_changed');
+    }
+
+    /**
+     * Create a dated card straight from an empty calendar day. Lands in the
+     * board's first list (calendar is not list-scoped) with the day as due date.
+     */
+    public function createCardOnDate(string $date, string $title): void
+    {
+        $this->authorize('view', $this->board);
+
+        $title = trim($title);
+
+        if ($title === '') {
+            return;
+        }
+
+        $list = $this->board->lists()->whereNull('archived_at')->orderBy('position')->first();
+
+        if (! $list) {
+            $this->dispatch('toast', message: __('Créez d’abord une liste.'), type: 'error');
+
+            return;
+        }
+
+        $card = $list->cards()->create([
+            'board_id' => $this->board->id,
+            'created_by' => Auth::id(),
+            'title' => $title,
+            'due_at' => Carbon::parse($date)->setTime(12, 0),
+            'position' => (int) $list->cards()->max('position') + 1,
+        ]);
+
+        $this->logActivity('card.created', $card->id, ['card_title' => $card->title, 'list' => $list->name]);
+
+        app(AutomationEngine::class)->fire('card.created', $card, ['list_id' => $list->id]);
+
+        $this->broadcastActivity('card.created');
+
+        $this->dispatch('toast', message: __('Carte créée'), type: 'success');
+    }
+
     public function resetFilters(): void
     {
-        $this->reset('search', 'filterLabel', 'filterMember', 'filterDue');
+        $this->reset('search', 'filterLabels', 'filterMembers', 'filterUnassigned', 'filterDue');
     }
 
     public function hasActiveFilters(): bool
     {
-        return $this->search !== '' || $this->filterLabel !== null || $this->filterMember !== null || $this->filterDue !== '';
+        return $this->search !== ''
+            || $this->filterLabels !== []
+            || $this->filterMembers !== []
+            || $this->filterUnassigned
+            || $this->filterDue !== '';
     }
 
     /**
-     * Number of active dropdown filters (label / member / due) — drives the
+     * Number of active dropdown filters (labels / members / due) — drives the
      * mobile "Filtres" toggle badge. Text search is shown separately.
      */
     public function activeFilterCount(): int
     {
-        return (int) ($this->filterLabel !== null)
-            + (int) ($this->filterMember !== null)
+        return (int) ($this->filterLabels !== [])
+            + (int) ($this->filterMembers !== [] || $this->filterUnassigned)
             + (int) ($this->filterDue !== '');
     }
 
     /**
-     * Set a filter property from a styled dropdown (values arrive as strings).
+     * Set the (single-select) due filter from a styled dropdown.
      */
     public function applyFilter(string $field, string $value): void
     {
-        match ($field) {
-            'filterLabel', 'filterMember' => $this->{$field} = $value === '' ? null : (int) $value,
-            'filterDue' => $this->filterDue = $value,
-            default => null,
-        };
+        if ($field === 'filterDue') {
+            $this->filterDue = $value;
+        }
+    }
+
+    public function toggleLabel(int $labelId): void
+    {
+        $this->filterLabels = in_array($labelId, $this->filterLabels, true)
+            ? array_values(array_diff($this->filterLabels, [$labelId]))
+            : [...$this->filterLabels, $labelId];
+    }
+
+    public function toggleMember(int $memberId): void
+    {
+        $this->filterMembers = in_array($memberId, $this->filterMembers, true)
+            ? array_values(array_diff($this->filterMembers, [$memberId]))
+            : [...$this->filterMembers, $memberId];
+
+        // Picking a specific member and "no member" are mutually exclusive.
+        if ($this->filterMembers !== []) {
+            $this->filterUnassigned = false;
+        }
+    }
+
+    public function toggleUnassigned(): void
+    {
+        $this->filterUnassigned = ! $this->filterUnassigned;
+
+        if ($this->filterUnassigned) {
+            $this->filterMembers = [];
+        }
     }
 
     public string $newViewName = '';
@@ -456,9 +558,11 @@ class Show extends Component
             'user_id' => Auth::id(),
             'name' => $data['newViewName'],
             'filters' => [
+                'view' => $this->view,
                 'search' => $this->search,
-                'label' => $this->filterLabel,
-                'member' => $this->filterMember,
+                'labels' => $this->filterLabels,
+                'members' => $this->filterMembers,
+                'unassigned' => $this->filterUnassigned,
                 'due' => $this->filterDue,
             ],
         ]);
@@ -473,10 +577,33 @@ class Show extends Component
 
         $view = $this->board->views()->where('user_id', Auth::id())->findOrFail($viewId);
 
+        $this->view = ($view->filters['view'] ?? 'board') === 'calendar' ? 'calendar' : 'board';
         $this->search = $view->filters['search'] ?? '';
-        $this->filterLabel = $view->filters['label'] ?? null;
-        $this->filterMember = $view->filters['member'] ?? null;
+        // Multi-select, with a fallback for views saved under the old single keys.
+        $this->filterLabels = $view->filters['labels']
+            ?? (! empty($view->filters['label']) ? [(int) $view->filters['label']] : []);
+        $this->filterMembers = $view->filters['members']
+            ?? (! empty($view->filters['member']) ? [(int) $view->filters['member']] : []);
+        $this->filterUnassigned = (bool) ($view->filters['unassigned'] ?? false);
         $this->filterDue = $view->filters['due'] ?? '';
+
+        if ($this->view === 'calendar' && $this->calendarMonth === '') {
+            $this->calendarMonth = now()->format('Y-m');
+        }
+    }
+
+    public function renameView(int $viewId, string $name): void
+    {
+        $this->authorize('view', $this->board);
+
+        $name = trim($name);
+
+        if ($name === '') {
+            return;
+        }
+
+        $this->board->views()->where('user_id', Auth::id())->whereKey($viewId)
+            ->update(['name' => mb_substr($name, 0, 60)]);
     }
 
     public function deleteView(int $viewId): void
@@ -1231,12 +1358,14 @@ class Show extends Component
             });
         }
 
-        if ($this->filterLabel !== null) {
-            $query->whereHas('labels', fn ($labels) => $labels->whereKey($this->filterLabel));
+        if ($this->filterLabels !== []) {
+            $query->whereHas('labels', fn ($labels) => $labels->whereIn('labels.id', $this->filterLabels));
         }
 
-        if ($this->filterMember !== null) {
-            $query->whereHas('members', fn ($members) => $members->whereKey($this->filterMember));
+        if ($this->filterUnassigned) {
+            $query->whereDoesntHave('members');
+        } elseif ($this->filterMembers !== []) {
+            $query->whereHas('members', fn ($members) => $members->whereIn('users.id', $this->filterMembers));
         }
 
         match ($this->filterDue) {

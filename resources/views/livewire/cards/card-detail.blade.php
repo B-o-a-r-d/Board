@@ -500,12 +500,19 @@
                             <div x-show="enabled" x-cloak class="space-y-2">
                                 <div>
                                     <label class="mb-0.5 block text-xs text-neutral-500">{{ __('Début') }}</label>
-                                    <input type="datetime-local" wire:model="startAt" wire:change="saveDates" class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                    <div class="flex gap-2">
+                                        <input type="date" wire:model="startDate" wire:change="saveDates" class="min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                        <input type="time" wire:model="startTime" wire:change="saveDates" aria-label="{{ __('Heure de début') }}" class="w-28 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                    </div>
                                 </div>
                                 <div>
                                     <label class="mb-0.5 block text-xs text-neutral-500">{{ __('Échéance') }}</label>
-                                    <input type="datetime-local" wire:model="dueAt" wire:change="saveDates" class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
-                                    @error('dueAt') <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                                    <div class="flex gap-2">
+                                        <input type="date" wire:model="dueDate" wire:change="saveDates" class="min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                        <input type="time" wire:model="dueTime" wire:change="saveDates" aria-label="{{ __('Heure d’échéance') }}" class="w-28 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                    </div>
+                                    @error('dueDate') <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                                    <p class="mt-1 text-[11px] text-neutral-400">{{ __('Heure optionnelle (12:00 par défaut).') }}</p>
                                 </div>
                                 @if ($card->due_at)
                                     <div class="flex items-center justify-between text-xs">

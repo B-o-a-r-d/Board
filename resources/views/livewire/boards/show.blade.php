@@ -53,13 +53,59 @@
                 }'
             >
                 <template x-for="u in users" :key="u.id">
-                    <span
-                        class="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ring-2 ring-white dark:ring-neutral-950"
-                        :class="u.guest ? 'text-white' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300'"
-                        :style="u.guest ? `background-color: ${u.color}` : ''"
-                        :title="u.guest ? u.name + ' {{ __('(invité)') }}' : u.name"
-                        x-text="(u.guest ? u.name.replace('Visiteur ', '') : u.name).charAt(0).toUpperCase()"
-                    ></span>
+                    <div x-data="hoverCard(u)" @mouseenter="enter()" @mouseleave="leave()" class="relative inline-flex leading-none">
+                        <template x-if="u.avatar_url">
+                            <img
+                                :src="u.avatar_url"
+                                :alt="u.name"
+                                :title="u.name"
+                                draggable="false"
+                                class="h-8 w-8 rounded-full object-cover ring-2 ring-white dark:ring-neutral-950"
+                            >
+                        </template>
+                        <template x-if="! u.avatar_url">
+                            <span
+                                class="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ring-2 ring-white dark:ring-neutral-950"
+                                :class="u.guest ? 'text-white' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300'"
+                                :style="u.guest ? `background-color: ${u.color}` : ''"
+                                :title="u.guest ? u.name + ' {{ __('(invité)') }}' : u.name"
+                                x-text="(u.guest ? u.name.replace('Visiteur ', '') : u.name).charAt(0).toUpperCase()"
+                            ></span>
+                        </template>
+
+                        {{-- Hover card (teleported to body, lazy) --}}
+                        <template x-teleport="body">
+                            <template x-if="open">
+                                <div x-transition @mouseenter="enter()" @mouseleave="leave()"
+                                     :style="`top: ${coords.top}px; left: ${coords.left}px;`"
+                                     class="fixed z-50 w-64 cursor-default rounded-xl border border-neutral-200/70 bg-white p-4 text-left shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+                                    <div class="flex items-start gap-3">
+                                        <template x-if="user.avatar_url">
+                                            <img :src="user.avatar_url" :alt="user.name" class="h-10 w-10 shrink-0 rounded-full object-cover">
+                                        </template>
+                                        <template x-if="! user.avatar_url">
+                                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
+                                                  :class="user.guest ? 'text-white' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300'"
+                                                  :style="user.guest ? `background-color: ${user.color}` : ''"
+                                                  x-text="(user.guest ? user.name.replace('Visiteur ', '') : user.name).charAt(0).toUpperCase()"></span>
+                                        </template>
+                                        <div class="min-w-0 flex-1">
+                                            <p class="truncate font-semibold text-neutral-900 dark:text-neutral-100" x-text="user.name"></p>
+                                            <template x-if="user.guest">
+                                                <p class="mt-0.5 text-sm italic text-neutral-400">{{ __('Invité') }}</p>
+                                            </template>
+                                            <template x-if="! user.guest && user.biography">
+                                                <p class="mt-0.5 text-sm text-neutral-600 dark:text-neutral-300" x-text="user.biography"></p>
+                                            </template>
+                                            <template x-if="! user.guest && ! user.biography">
+                                                <p class="mt-0.5 text-sm italic text-neutral-400">{{ __('Pas de biographie.') }}</p>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </template>
+                    </div>
                 </template>
             </div>
 
@@ -200,8 +246,16 @@
 
             {{-- Desktop: filter dropdowns inline --}}
             <div class="hidden items-center gap-2 sm:flex">
-                <x-filter-dropdown field="filterLabel" icon="tag" :options="$optLabels" :current="$filterLabel" :placeholder="__('Tous les labels')" />
-                <x-filter-dropdown field="filterMember" icon="user" :options="$optMembers" :current="$filterMember" :placeholder="__('Tous les membres')" />
+                <x-filter-dropdown icon="tag" :options="$optLabels" :selected="$filterLabels" :multiple="true" action="toggleLabel" :placeholder="__('Labels')" />
+                <x-filter-dropdown icon="user" :options="$optMembers" :selected="$filterMembers" :multiple="true" action="toggleMember" :placeholder="__('Membres')" />
+                <button type="button" wire:click="toggleMember({{ auth()->id() }})"
+                        class="rounded-lg border px-3 py-1.5 text-sm shadow-sm transition {{ in_array(auth()->id(), $filterMembers, true) ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300' : 'border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300' }}">
+                    {{ __('Moi') }}
+                </button>
+                <button type="button" wire:click="toggleUnassigned"
+                        class="rounded-lg border px-3 py-1.5 text-sm shadow-sm transition {{ $filterUnassigned ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300' : 'border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300' }}">
+                    {{ __('Sans membre') }}
+                </button>
                 <x-filter-dropdown field="filterDue" icon="clock" :options="$optDue" :current="$filterDue" :placeholder="__('Échéance : toutes')" />
                 @if ($this->hasActiveFilters())
                     <button type="button" wire:click="resetFilters"
@@ -236,9 +290,31 @@
                 <div x-show="open" x-cloak x-transition
                      class="absolute right-0 z-40 mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-neutral-200 bg-white p-1 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
                     @forelse ($views as $view)
-                        <div wire:key="view-{{ $view->id }}" class="group/view flex items-center gap-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800">
-                            <button type="button" wire:click="applyView({{ $view->id }})" @click="open = false" class="min-w-0 flex-1 truncate px-2.5 py-1.5 text-left text-sm text-neutral-700 dark:text-neutral-300">{{ $view->name }}</button>
-                            <button type="button" wire:click="deleteView({{ $view->id }})" class="mr-1 shrink-0 rounded p-1 text-neutral-300 opacity-100 transition hover:text-red-500 sm:opacity-0 sm:group-hover/view:opacity-100" title="{{ __('Supprimer') }}"><x-phosphor-x class="h-3.5 w-3.5"/></button>
+                        @php $isCalendarView = ($view->filters['view'] ?? 'board') === 'calendar'; @endphp
+                        <div wire:key="view-{{ $view->id }}" x-data="{ editing: false }" class="group/view flex items-center gap-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800">
+                            <template x-if="!editing">
+                                <button type="button" wire:click="applyView({{ $view->id }})" @click="open = false"
+                                        class="flex min-w-0 flex-1 items-center gap-1.5 px-2.5 py-1.5 text-left text-sm text-neutral-700 dark:text-neutral-300">
+                                    @if ($isCalendarView)
+                                        <x-phosphor-calendar-blank class="h-3.5 w-3.5 shrink-0 opacity-60"/>
+                                    @else
+                                        <x-phosphor-squares-four class="h-3.5 w-3.5 shrink-0 opacity-60"/>
+                                    @endif
+                                    <span class="truncate">{{ $view->name }}</span>
+                                </button>
+                            </template>
+                            <template x-if="editing">
+                                <form class="flex min-w-0 flex-1 items-center px-1.5 py-1" @click.stop
+                                      x-on:submit.prevent="$wire.renameView({{ $view->id }}, $refs.renameInput.value); editing = false">
+                                    <input x-ref="renameInput" type="text" value="{{ $view->name }}" maxlength="60"
+                                           x-on:keydown.escape="editing = false" x-on:blur="editing = false"
+                                           class="w-full rounded border border-neutral-300 bg-white px-1.5 py-0.5 text-sm focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                </form>
+                            </template>
+                            <button type="button" x-show="!editing"
+                                    x-on:click.stop="editing = true; $nextTick(() => { $refs.renameInput.focus(); $refs.renameInput.select(); })"
+                                    class="shrink-0 rounded p-1 text-neutral-300 opacity-100 transition hover:text-indigo-500 sm:opacity-0 sm:group-hover/view:opacity-100" title="{{ __('Renommer') }}"><x-phosphor-pencil-simple class="h-3.5 w-3.5"/></button>
+                            <button type="button" wire:click="deleteView({{ $view->id }})" x-show="!editing" class="mr-1 shrink-0 rounded p-1 text-neutral-300 opacity-100 transition hover:text-red-500 sm:opacity-0 sm:group-hover/view:opacity-100" title="{{ __('Supprimer') }}"><x-phosphor-x class="h-3.5 w-3.5"/></button>
                         </div>
                     @empty
                         <p class="px-2.5 py-2 text-xs text-neutral-400">{{ __('Aucune vue enregistrée.') }}</p>
@@ -257,8 +333,18 @@
 
         {{-- Mobile: collapsible filter controls (stacked full-width) --}}
         <div x-show="showFilters" x-cloak x-transition class="grid grid-cols-1 gap-2 sm:!hidden">
-            <x-filter-dropdown field="filterLabel" icon="tag" :options="$optLabels" :current="$filterLabel" :placeholder="__('Tous les labels')" />
-            <x-filter-dropdown field="filterMember" icon="user" :options="$optMembers" :current="$filterMember" :placeholder="__('Tous les membres')" />
+            <x-filter-dropdown icon="tag" :options="$optLabels" :selected="$filterLabels" :multiple="true" action="toggleLabel" :placeholder="__('Labels')" />
+            <x-filter-dropdown icon="user" :options="$optMembers" :selected="$filterMembers" :multiple="true" action="toggleMember" :placeholder="__('Membres')" />
+            <div class="grid grid-cols-2 gap-2">
+                <button type="button" wire:click="toggleMember({{ auth()->id() }})"
+                        class="rounded-lg border px-3 py-1.5 text-center text-sm shadow-sm transition {{ in_array(auth()->id(), $filterMembers, true) ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300' : 'border-neutral-300 bg-white text-neutral-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300' }}">
+                    {{ __('Moi') }}
+                </button>
+                <button type="button" wire:click="toggleUnassigned"
+                        class="rounded-lg border px-3 py-1.5 text-center text-sm shadow-sm transition {{ $filterUnassigned ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300' : 'border-neutral-300 bg-white text-neutral-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300' }}">
+                    {{ __('Sans membre') }}
+                </button>
+            </div>
             <x-filter-dropdown field="filterDue" icon="clock" :options="$optDue" :current="$filterDue" :placeholder="__('Échéance : toutes')" />
             @if ($this->hasActiveFilters())
                 <button type="button" wire:click="resetFilters"
@@ -279,7 +365,7 @@
     <div
         wire:sort="reorderLists"
         wire:loading.class.delay="opacity-40"
-        wire:target="search, filterLabel, filterMember, filterDue, resetFilters, applyFilter, applyView"
+        wire:target="search, filterLabels, filterMembers, toggleLabel, toggleMember, toggleUnassigned, filterDue, resetFilters, applyFilter, applyView"
         @if ($boardBg) style="background: {{ $boardBg }};" @endif
         class="flex flex-1 snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-p-1 py-4 transition-opacity sm:snap-none sm:gap-4 {{ $boardBg ? 'rounded-xl px-3' : '' }}"
     >
