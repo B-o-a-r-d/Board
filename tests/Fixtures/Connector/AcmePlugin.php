@@ -68,9 +68,13 @@ class AcmePlugin implements DefinesActivities, Plugin, ProvidesListSource, Provi
 
     // --- ProvidesOAuth --------------------------------------------------------
 
-    public function authorizeUrl(): string
+    public function authorizeUrl(array $config = []): string
     {
-        return self::AUTHORIZE_URL;
+        // Honour a per-board instance URL when present (self-host pattern),
+        // otherwise the default host.
+        return isset($config['instance_url'])
+            ? $config['instance_url'].'/oauth/authorize'
+            : self::AUTHORIZE_URL;
     }
 
     public function tokenUrl(): string

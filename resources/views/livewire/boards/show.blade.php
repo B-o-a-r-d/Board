@@ -1067,13 +1067,10 @@
                                             <div>
                                                 <label class="mb-1 block text-xs font-medium text-neutral-500">{{ $field['label'] }}</label>
                                                 @if (($field['type'] ?? 'text') === 'select')
-                                                    <select wire:model="newPluginListConfig.{{ $field['key'] }}"
-                                                            class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
-                                                        <option value="">{{ __('Choisir…') }}</option>
-                                                        @foreach ($field['options'] ?? [] as $opt)
-                                                            <option value="{{ $opt['value'] }}">{{ $opt['label'] }}</option>
-                                                        @endforeach
-                                                    </select>
+                                                    <x-searchable-select
+                                                        :model="'newPluginListConfig.'.$field['key']"
+                                                        :options="$field['options'] ?? []"
+                                                        :placeholder="__('Choisir…')"/>
                                                 @else
                                                     <input type="text" wire:model="newPluginListConfig.{{ $field['key'] }}" placeholder="{{ $field['placeholder'] ?? '' }}"
                                                            class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
@@ -1083,14 +1080,22 @@
                                         @endforeach
 
                                         <div class="flex items-center gap-2">
-                                            <button type="submit" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700">{{ __('Créer la liste') }}</button>
+                                            <button type="submit" wire:target="createPluginList" wire:loading.attr="disabled"
+                                                    class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60">
+                                                <x-phosphor-spinner-gap wire:loading wire:target="createPluginList" class="h-3.5 w-3.5 animate-spin"/>
+                                                {{ __('Créer la liste') }}
+                                            </button>
                                             <button type="button" wire:click="$set('configuringPluginId', null)" class="rounded-lg px-3 py-1.5 text-sm text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800">{{ __('Annuler') }}</button>
                                         </div>
                                     </form>
                                 @else
                                     <button type="button" wire:click="startPluginList({{ $instance->id }})"
-                                            class="mt-3 inline-flex items-center gap-1 rounded-lg border border-dashed border-neutral-300 px-2.5 py-1 text-xs text-neutral-600 hover:border-indigo-400 hover:text-indigo-600 dark:border-neutral-700 dark:text-neutral-300">
-                                        <x-phosphor-plus class="h-3.5 w-3.5"/> {{ __('Créer une liste') }}
+                                            wire:target="startPluginList({{ $instance->id }})" wire:loading.attr="disabled"
+                                            class="mt-3 inline-flex items-center gap-1 rounded-lg border border-dashed border-neutral-300 px-2.5 py-1 text-xs text-neutral-600 hover:border-indigo-400 hover:text-indigo-600 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300">
+                                        <x-phosphor-plus wire:loading.remove wire:target="startPluginList({{ $instance->id }})" class="h-3.5 w-3.5"/>
+                                        <x-phosphor-spinner-gap wire:loading wire:target="startPluginList({{ $instance->id }})" class="h-3.5 w-3.5 animate-spin"/>
+                                        <span wire:loading.remove wire:target="startPluginList({{ $instance->id }})">{{ __('Créer une liste') }}</span>
+                                        <span wire:loading wire:target="startPluginList({{ $instance->id }})">{{ __('Chargement…') }}</span>
                                     </button>
                                 @endif
                             @elseif ($needsOAuth && ! $connected)

@@ -57,7 +57,7 @@ class PluginOAuthController extends Controller
             'state' => $state,
         ]));
 
-        return redirect()->away($plugin->authorizeUrl().'?'.$query);
+        return redirect()->away($plugin->authorizeUrl($boardPlugin->config ?? []).'?'.$query);
     }
 
     /**
@@ -96,7 +96,8 @@ class PluginOAuthController extends Controller
                 ->with('status', __('Connexion annulée.'));
         }
 
-        $token = Http::acceptJson()->asForm()->post($plugin->tokenUrl(), [
+        $token = Http::acceptJson()->asForm()->post($plugin->tokenUrl($boardPlugin->config ?? []), [
+            'grant_type' => 'authorization_code',
             'client_id' => $boardPlugin->config['client_id'] ?? config("services.{$provider}.client_id"),
             'client_secret' => $boardPlugin->config['client_secret'] ?? config("services.{$provider}.client_secret"),
             'code' => $code,
@@ -110,7 +111,7 @@ class PluginOAuthController extends Controller
 
         $config = $boardPlugin->config ?? [];
         $config['token'] = $token;
-        $config['account'] = $plugin->resolveAccount($token);
+        $config['account'] = $plugin->resolveAccount($token, $boardPlugin->config ?? []);
 
         $boardPlugin->update(['config' => $config]);
 

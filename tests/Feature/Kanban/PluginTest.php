@@ -409,6 +409,20 @@ test('connecting is blocked until oauth credentials are configured', function ()
     expect(session('plugin_oauth'))->toBeNull();
 });
 
+test('the oauth redirect targets the per-board instance url from config', function () {
+    ['board' => $board, 'owner' => $owner] = makePluginBoard();
+    // An admin has configured a custom (self-hosted) instance URL on the instance.
+    $instance = $board->plugins()->create([
+        'plugin_key' => 'acme', 'name' => 'Acme',
+        'config' => ['client_id' => 'cid', 'instance_url' => 'https://acme.custom.test'],
+        'is_active' => true,
+    ]);
+
+    $response = $this->actingAs($owner)->get(route('plugins.oauth.redirect', $instance));
+
+    expect($response->headers->get('Location'))->toStartWith('https://acme.custom.test/oauth/authorize');
+});
+
 test('the oauth redirect degrades gracefully when the plugin does not drive oauth', function () {
     ['board' => $board, 'owner' => $owner] = makePluginBoard();
     // A plugin_key with no ProvidesOAuth plugin in the registry (e.g. an outdated
