@@ -3,6 +3,7 @@
 use App\Livewire\Boards\Show;
 use App\Models\BoardList;
 use App\Models\Card;
+use App\Models\CardLink;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 
@@ -113,4 +114,41 @@ test('setCardSchedule can set only the due date (noon default) on an undated car
 
     expect($card->start_at)->toBeNull()
         ->and($card->due_at->format('Y-m-d H:i'))->toBe('2026-09-15 12:00');
+});
+
+test('the timeline draws a dependency arrow between two blocking cards in the window', function () {
+    ['board' => $board, 'owner' => $owner] = makeCardContext();
+    $list = BoardList::factory()->create(['board_id' => $board->id]);
+    $a = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id, 'due_at' => now()->addDays(2)->setTime(12, 0)]);
+    $b = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id, 'due_at' => now()->addDays(6)->setTime(12, 0)]);
+    CardLink::create(['card_id' => $a->id, 'related_card_id' => $b->id, 'type' => 'blocks']);
+
+    Livewire::actingAs($owner)
+        ->test(Show::class, ['board' => $board])
+        ->call('setView', 'timeline')
+        ->assertSee('tl-arrow');
+});
+
+test('the timeline shows no arrows when there are no dependencies', function () {
+    ['board' => $board, 'owner' => $owner] = makeCardContext();
+    $list = BoardList::factory()->create(['board_id' => $board->id]);
+    Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id, 'due_at' => now()->addDays(2)->setTime(12, 0)]);
+
+    Livewire::actingAs($owner)
+        ->test(Show::class, ['board' => $board])
+        ->call('setView', 'timeline')
+        ->assertDontSee('tl-arrow');
+});
+
+test('a dependency to a card outside the window draws no arrow', function () {
+    ['board' => $board, 'owner' => $owner] = makeCardContext();
+    $list = BoardList::factory()->create(['board_id' => $board->id]);
+    $a = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id, 'due_at' => now()->addDays(2)->setTime(12, 0)]);
+    $far = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id, 'due_at' => now()->addDays(200)->setTime(12, 0)]);
+    CardLink::create(['card_id' => $a->id, 'related_card_id' => $far->id, 'type' => 'blocks']);
+
+    Livewire::actingAs($owner)
+        ->test(Show::class, ['board' => $board])
+        ->call('setView', 'timeline')
+        ->assertDontSee('tl-arrow');
 });

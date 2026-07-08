@@ -25,11 +25,11 @@
     @else
         <div class="min-h-0 flex-1 overflow-auto rounded-xl border border-neutral-300 dark:border-neutral-700">
             <div class="relative" style="width: {{ 176 + $timeline['days'] * 40 }}px;">
-                {{-- Day header (sticky) --}}
-                <div class="sticky top-0 z-20 flex border-b border-neutral-300 bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900">
+                {{-- Day header (sticky, fixed 44px height — must match buildTimeline). --}}
+                <div class="sticky top-0 z-20 flex h-11 border-b border-neutral-300 bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900">
                     <div class="sticky left-0 z-10 w-44 shrink-0 border-r border-neutral-300 bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900"></div>
                     @foreach ($timeline['dayList'] as $d)
-                        <div class="w-10 shrink-0 border-r border-neutral-200 py-1 text-center dark:border-neutral-800 {{ $d['isWeekend'] ? 'bg-neutral-200/50 dark:bg-neutral-800/40' : '' }}">
+                        <div class="flex w-10 shrink-0 flex-col justify-center border-r border-neutral-200 text-center dark:border-neutral-800 {{ $d['isWeekend'] ? 'bg-neutral-200/50 dark:bg-neutral-800/40' : '' }}">
                             @if ($d['isMonthStart'])
                                 <div class="truncate text-[10px] font-medium uppercase text-indigo-500 dark:text-indigo-400">{{ $d['month'] }}</div>
                             @else
@@ -92,6 +92,22 @@
                         </div>
                     </div>
                 @endforeach
+
+                {{-- Dependency arrows (blocks links). Overlay under the bars (z-5),
+                     non-interactive; coordinates come from buildTimeline. --}}
+                @if (! empty($timeline['edges']))
+                    <svg class="pointer-events-none absolute left-0 top-0 z-[5]" width="{{ $timeline['gridWidth'] }}" height="{{ $timeline['gridHeight'] }}">
+                        <defs>
+                            <marker id="tl-arrow" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                <path d="M0 0 L8 4 L0 8 z" class="fill-indigo-400" />
+                            </marker>
+                        </defs>
+                        @foreach ($timeline['edges'] as $e)
+                            <path d="M {{ $e['fx'] }} {{ $e['fy'] }} C {{ $e['fx'] + 26 }} {{ $e['fy'] }}, {{ $e['tx'] - 26 }} {{ $e['ty'] }}, {{ $e['tx'] }} {{ $e['ty'] }}"
+                                  fill="none" stroke-width="1.5" class="stroke-indigo-400/70" marker-end="url(#tl-arrow)" />
+                        @endforeach
+                    </svg>
+                @endif
             </div>
         </div>
     @endif

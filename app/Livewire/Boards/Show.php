@@ -10,6 +10,7 @@ use App\Models\Activity;
 use App\Models\Board;
 use App\Models\BoardList;
 use App\Models\Card;
+use App\Models\CardLink;
 use App\Models\CardTemplate;
 use Board\PluginSdk\Contracts\DefinesActivities;
 use Board\PluginSdk\Contracts\ProvidesListSource;
@@ -1354,7 +1355,7 @@ class Show extends Component
      * date yields a one-day bar). Positions/spans are in day units; the blade
      * multiplies by a fixed day width. Respects the active card filters.
      *
-     * @return array{start: Carbon, days: int, dayList: array<int, array{date: Carbon, day: int, weekday: string, month: string, isToday: bool, isWeekend: bool, isMonthStart: bool}>, todayOffset: int|null, lanes: array<int, array{list: BoardList, bars: array<int, array{card: Card, offset: int, span: int, overdue: bool}>}>}
+     * @return array{start: Carbon, days: int, dayList: array<int, array{date: Carbon, day: int, weekday: string, month: string, isToday: bool, isWeekend: bool, isMonthStart: bool}>, todayOffset: int|null, lanes: array<int, array{list: BoardList, bars: array<int, array{card: Card, offset: int, span: int, overdue: bool}>}>, edges: array<int, array{fx: int, fy: int, tx: int, ty: int}>, gridWidth: int, gridHeight: int}
      */
     private function buildTimeline(): array
     {
@@ -1385,9 +1386,19 @@ class Show extends Component
 
         $cards = $query->get()->groupBy('board_list_id');
 
+        // Layout constants — MUST match timeline.blade (day width, label column,
+        // header height, per-bar stride) so the SVG dependency arrows line up.
+        $labelWidth = 176;
+        $dayWidth = 40;
+        $rowStride = 36;
+
         $lanes = [];
+        $coords = []; // card id => ['left', 'right', 'y'] in grid pixels
+        $laneTop = 45; // header (h-11 = 44px) + its 1px bottom border
+
         foreach ($this->board->lists()->whereNull('archived_at')->orderBy('position')->get() as $list) {
             $bars = [];
+            $index = 0;
 
             foreach ($cards->get($list->id, collect()) as $card) {
                 $cardStart = ($card->start_at ?? $card->due_at)->copy()->startOfDay();
@@ -1400,20 +1411,49 @@ class Show extends Component
                 $spanStart = $cardStart->lt($start) ? $start->copy() : $cardStart;
                 $spanEnd = $cardEnd->gt($end) ? $end->copy()->startOfDay() : $cardEnd;
 
+                $offset = (int) $start->diffInDays($spanStart);
+                $span = (int) $spanStart->diffInDays($spanEnd) + 1;
+
                 $bars[] = [
                     'card' => $card,
-                    'offset' => (int) $start->diffInDays($spanStart),
-                    'span' => (int) $spanStart->diffInDays($spanEnd) + 1,
+                    'offset' => $offset,
+                    'span' => $span,
                     'overdue' => $card->due_at && ! $card->completed_at && $card->due_at->isPast(),
                 ];
+
+                $left = $labelWidth + $offset * $dayWidth;
+                $coords[$card->id] = [
+                    'left' => $left,
+                    'right' => $left + max($span * $dayWidth - 4, 24),
+                    'y' => $laneTop + $index * $rowStride + 20,
+                ];
+                $index++;
             }
 
             if ($bars !== []) {
                 $lanes[] = ['list' => $list, 'bars' => $bars];
+                $laneTop += count($bars) * $rowStride + 8 + 1; // track height + border-b
             }
         }
 
         $today = now()->startOfDay();
+
+        // Dependency arrows: 'blocks' links where BOTH cards are visible in the window.
+        $edges = [];
+        $visibleIds = array_keys($coords);
+
+        if (count($visibleIds) > 1) {
+            $links = CardLink::where('type', 'blocks')
+                ->whereIn('card_id', $visibleIds)
+                ->whereIn('related_card_id', $visibleIds)
+                ->get(['card_id', 'related_card_id']);
+
+            foreach ($links as $link) {
+                $from = $coords[$link->card_id];
+                $to = $coords[$link->related_card_id];
+                $edges[] = ['fx' => $from['right'], 'fy' => $from['y'], 'tx' => $to['left'], 'ty' => $to['y']];
+            }
+        }
 
         return [
             'start' => $start,
@@ -1421,6 +1461,9 @@ class Show extends Component
             'dayList' => $dayList,
             'todayOffset' => ($today->gte($start) && $today->lte($end)) ? (int) $start->diffInDays($today) : null,
             'lanes' => $lanes,
+            'edges' => $edges,
+            'gridWidth' => $labelWidth + $days * $dayWidth,
+            'gridHeight' => $laneTop,
         ];
     }
 
