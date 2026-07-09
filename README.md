@@ -52,6 +52,8 @@ auto-discovered and independently versioned.
 - **API** — token auth via Laravel Sanctum, ULID public IDs everywhere.
 - **Exports** — CSV / XLSX / JSON. **Public sharing** links with live presence and
   **social previews** (Open Graph / Twitter cards).
+- **Calendar feeds (iCal)** — subscribe from Google / Apple / Outlook to a board's or
+  your own (all-boards) dated cards via a private, revocable `webcal://` link.
 - **i18n** — French, English, Spanish. **Dark mode**.
 
 ## Quick start (local)

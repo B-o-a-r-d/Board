@@ -592,5 +592,17 @@
     "Choisissez une liste.": "Elige una lista.",
     "La carte est déjà dans cette liste.": "La tarjeta ya está en esta lista.",
     "Partagé en lecture seule · :lists listes · :cards cartes": "Compartido en solo lectura · :lists listas · :cards tarjetas",
-    "Marquer non terminée": "Marcar como no completada"
+    "Marquer non terminée": "Marcar como no completada",
+    "Flux calendrier désactivé": "Feed de calendario desactivado",
+    "Flux calendrier activé": "Feed de calendario activado",
+    "Lien du flux calendrier régénéré": "Enlace del feed de calendario regenerado",
+    "Flux calendrier (iCal)": "Feed de calendario (iCal)",
+    "Abonnez-vous depuis Google Agenda, Apple Calendar ou Outlook pour voir les cartes datées de ce tableau.": "Suscríbete desde Google Calendar, Apple Calendar u Outlook para ver las tarjetas con fecha de este tablero.",
+    "Activer le flux calendrier": "Activar el feed de calendario",
+    "S'abonner": "Suscribirse",
+    "Régénérer le lien invalidera immédiatement les abonnements existants. Continuer ?": "Regenerar el enlace invalidará de inmediato las suscripciones existentes. ¿Continuar?",
+    "Régénérer le lien": "Regenerar el enlace",
+    "Activez le flux pour générer un lien iCal en lecture seule.": "Activa el feed para generar un enlace iCal de solo lectura.",
+    "Un lien privé regroupant les cartes datées de tous vos tableaux. Abonnez-vous depuis Google Agenda, Apple Calendar ou Outlook pour les voir dans votre agenda.": "Un enlace privado que reúne las tarjetas con fecha de todos tus tableros. Suscríbete desde Google Calendar, Apple Calendar u Outlook para verlas en tu calendario.",
+    "Activez le flux pour générer votre lien iCal privé.": "Activa el feed para generar tu enlace iCal privado."
 }

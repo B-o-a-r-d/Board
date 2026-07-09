@@ -890,6 +890,29 @@ class Show extends Component
         }
     }
 
+    public function toggleIcalFeed(): void
+    {
+        $this->authorize('update', $this->board);
+        abort_unless((bool) config('board.ical_feeds'), 404);
+
+        if ($this->board->hasIcalFeed()) {
+            $this->board->disableIcalFeed();
+            $this->dispatch('toast', message: __('Flux calendrier désactivé'), type: 'info');
+        } else {
+            $this->board->enableIcalFeed();
+            $this->dispatch('toast', message: __('Flux calendrier activé'), type: 'success');
+        }
+    }
+
+    public function regenerateIcalFeed(): void
+    {
+        $this->authorize('update', $this->board);
+        abort_unless((bool) config('board.ical_feeds'), 404);
+
+        $this->board->regenerateIcalFeed();
+        $this->dispatch('toast', message: __('Lien du flux calendrier régénéré'), type: 'success');
+    }
+
     public bool $showBackground = false;
 
     public mixed $backgroundUpload = null;

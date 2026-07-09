@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\BoardExportController;
+use App\Http\Controllers\BoardIcalController;
 use App\Http\Controllers\PluginOAuthController;
 use App\Http\Controllers\PublicBoardPresenceController;
+use App\Http\Controllers\UserIcalController;
 use App\Livewire\Boards\PublicBoard;
 use App\Livewire\Boards\Show as BoardShow;
 use App\Livewire\Dashboard;
@@ -34,6 +36,10 @@ Route::get('/invitations/{token}', AcceptInvitation::class)->name('invitations.a
 // Public, read-only board share link (guest-accessible, resolved by token).
 Route::get('/share/{token}', PublicBoard::class)->name('boards.public');
 Route::post('/share/{token}/presence-auth', PublicBoardPresenceController::class)->name('boards.public.presence');
+
+// Public, read-only iCal feeds (calendar apps subscribe without auth; signed token).
+Route::get('/calendar/board/{token}.ics', BoardIcalController::class)->where('token', '[A-Za-z0-9]+')->name('boards.ical');
+Route::get('/calendar/user/{token}.ics', UserIcalController::class)->where('token', '[A-Za-z0-9]+')->name('calendar.ical');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', Profile::class)->name('profile.edit');

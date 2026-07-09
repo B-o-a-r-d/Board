@@ -30,6 +30,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | iCal feeds
+    |--------------------------------------------------------------------------
+    |
+    | Read-only calendar feeds (per board and per user) exposed at a signed,
+    | revocable token URL so cards' dates can be subscribed to from an external
+    | calendar. Set to false to remove the feature entirely for the instance.
+    |
+    */
+
+    'ical_feeds' => env('ICAL_FEEDS', true),
+
+    /*
+    |--------------------------------------------------------------------------
     | Board backgrounds
     |--------------------------------------------------------------------------
     |

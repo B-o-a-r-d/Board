@@ -592,5 +592,17 @@
     "Choisissez une liste.": "Choose a list.",
     "La carte est déjà dans cette liste.": "The card is already in this list.",
     "Partagé en lecture seule · :lists listes · :cards cartes": "Shared read-only · :lists lists · :cards cards",
-    "Marquer non terminée": "Mark as not done"
+    "Marquer non terminée": "Mark as not done",
+    "Flux calendrier désactivé": "Calendar feed disabled",
+    "Flux calendrier activé": "Calendar feed enabled",
+    "Lien du flux calendrier régénéré": "Calendar feed link regenerated",
+    "Flux calendrier (iCal)": "Calendar feed (iCal)",
+    "Abonnez-vous depuis Google Agenda, Apple Calendar ou Outlook pour voir les cartes datées de ce tableau.": "Subscribe from Google Calendar, Apple Calendar or Outlook to see this board's dated cards.",
+    "Activer le flux calendrier": "Enable calendar feed",
+    "S'abonner": "Subscribe",
+    "Régénérer le lien invalidera immédiatement les abonnements existants. Continuer ?": "Regenerating the link will immediately break existing subscriptions. Continue?",
+    "Régénérer le lien": "Regenerate link",
+    "Activez le flux pour générer un lien iCal en lecture seule.": "Enable the feed to generate a read-only iCal link.",
+    "Un lien privé regroupant les cartes datées de tous vos tableaux. Abonnez-vous depuis Google Agenda, Apple Calendar ou Outlook pour les voir dans votre agenda.": "A private link bundling the dated cards from all your boards. Subscribe from Google Calendar, Apple Calendar or Outlook to see them in your calendar.",
+    "Activez le flux pour générer votre lien iCal privé.": "Enable the feed to generate your private iCal link."
 }

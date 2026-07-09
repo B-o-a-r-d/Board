@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-#[Fillable(['workspace_id', 'created_by', 'name', 'slug', 'description', 'background', 'background_image', 'visibility', 'is_template', 'share_token', 'position', 'archived_at'])]
+#[Fillable(['workspace_id', 'created_by', 'name', 'slug', 'description', 'background', 'background_image', 'visibility', 'is_template', 'share_token', 'ical_token', 'position', 'archived_at'])]
 class Board extends Model
 {
     /** @use HasFactory<BoardFactory> */
@@ -59,6 +59,33 @@ class Board extends Model
     public function disableSharing(): void
     {
         $this->update(['share_token' => null]);
+    }
+
+    public function hasIcalFeed(): bool
+    {
+        return $this->ical_token !== null;
+    }
+
+    public function enableIcalFeed(): void
+    {
+        if ($this->ical_token === null) {
+            $this->update(['ical_token' => Str::random(40)]);
+        }
+    }
+
+    public function regenerateIcalFeed(): void
+    {
+        $this->update(['ical_token' => Str::random(40)]);
+    }
+
+    public function disableIcalFeed(): void
+    {
+        $this->update(['ical_token' => null]);
+    }
+
+    public function icalUrl(): ?string
+    {
+        return $this->ical_token ? route('boards.ical', ['token' => $this->ical_token]) : null;
     }
 
     /**

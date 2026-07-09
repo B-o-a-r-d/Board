@@ -236,6 +236,29 @@ class Profile extends Component
         $this->dispatch('toast', message: __('Token révoqué'), type: 'info');
     }
 
+    public function toggleIcalFeed(): void
+    {
+        abort_unless((bool) config('board.ical_feeds'), 404);
+
+        $user = Auth::user();
+
+        if ($user->hasIcalFeed()) {
+            $user->disableIcalFeed();
+            $this->dispatch('toast', message: __('Flux calendrier désactivé'), type: 'info');
+        } else {
+            $user->enableIcalFeed();
+            $this->dispatch('toast', message: __('Flux calendrier activé'), type: 'success');
+        }
+    }
+
+    public function regenerateIcalFeed(): void
+    {
+        abort_unless((bool) config('board.ical_feeds'), 404);
+
+        Auth::user()->regenerateIcalFeed();
+        $this->dispatch('toast', message: __('Lien du flux calendrier régénéré'), type: 'success');
+    }
+
     public function updateProfileInformation(UpdateUserProfileInformation $updater): void
     {
         $updater->update(Auth::user(), [
@@ -266,6 +289,7 @@ class Profile extends Component
 
         return view('livewire.settings.profile', [
             'tokens' => $user->tokens()->latest()->get(),
+            'icalUrl' => $user->icalUrl(),
             'mcpEndpoint' => url('/mcp/board'),
             'twoFactorQrCode' => ($this->showingQrCode && $hasSecret) ? $user->twoFactorQrCodeSvg() : null,
             'twoFactorSecretKey' => ($this->showingQrCode && $hasSecret) ? decrypt($user->two_factor_secret) : null,

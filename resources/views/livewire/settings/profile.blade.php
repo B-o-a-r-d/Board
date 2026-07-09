@@ -328,6 +328,38 @@
                 </div>
             </section>
 
+            @if (config('board.ical_feeds'))
+                {{-- Calendar feed (iCal) — dated cards across every accessible board --}}
+                <section class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <h2 class="flex items-center gap-2 text-base font-semibold"><x-phosphor-calendar-dots class="h-5 w-5" /> {{ __('Flux calendrier (iCal)') }}</h2>
+                            <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{{ __("Un lien privé regroupant les cartes datées de tous vos tableaux. Abonnez-vous depuis Google Agenda, Apple Calendar ou Outlook pour les voir dans votre agenda.") }}</p>
+                        </div>
+                        <button type="button" role="switch" aria-label="{{ __('Activer le flux calendrier') }}" :aria-checked="@js((bool) $icalUrl)" wire:click="toggleIcalFeed" class="relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition {{ $icalUrl ? 'bg-indigo-600' : 'bg-neutral-300 dark:bg-neutral-700' }}">
+                            <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition {{ $icalUrl ? 'translate-x-5' : 'translate-x-0.5' }}"></span>
+                        </button>
+                    </div>
+
+                    @if ($icalUrl)
+                        <div class="mt-4 flex items-center gap-2" x-data="{ copied: false }">
+                            <input type="text" readonly value="{{ $icalUrl }}" @focus="$el.select()" class="flex-1 rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-1.5 font-mono text-xs dark:border-neutral-700 dark:bg-neutral-800">
+                            <button type="button" @click="navigator.clipboard?.writeText('{{ $icalUrl }}'); window.toast('{{ __('Lien copié') }}', { type: 'success' }); copied = true; setTimeout(() => copied = false, 1500)" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500"><span x-text="copied ? '{{ __('Copié !') }}' : '{{ __('Copier') }}'"></span></button>
+                        </div>
+                        <div class="mt-3 flex items-center gap-4">
+                            <a href="{{ preg_replace('#^https?://#', 'webcal://', $icalUrl) }}" class="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">
+                                <x-phosphor-calendar-plus class="h-3.5 w-3.5" /> {{ __("S'abonner") }}
+                            </a>
+                            <button type="button" wire:click="regenerateIcalFeed" wire:confirm="{{ __('Régénérer le lien invalidera immédiatement les abonnements existants. Continuer ?') }}" class="inline-flex items-center gap-1 text-xs font-medium text-neutral-500 hover:text-neutral-700 hover:underline dark:text-neutral-400 dark:hover:text-neutral-200">
+                                <x-phosphor-arrows-clockwise class="h-3.5 w-3.5" /> {{ __('Régénérer le lien') }}
+                            </button>
+                        </div>
+                    @else
+                        <p class="mt-4 rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-500 dark:bg-neutral-800/50 dark:text-neutral-400">{{ __('Activez le flux pour générer votre lien iCal privé.') }}</p>
+                    @endif
+                </section>
+            @endif
+
             {{-- MCP (Model Context Protocol) --}}
             <section class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
                 <div class="flex items-start justify-between gap-4">

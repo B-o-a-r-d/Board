@@ -13,11 +13,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'locale', 'is_admin', 'notification_preferences', 'avatar_path', 'biography'])]
-#[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
+#[Fillable(['name', 'email', 'password', 'locale', 'is_admin', 'notification_preferences', 'avatar_path', 'biography', 'ical_token'])]
+#[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes', 'ical_token'])]
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
@@ -65,6 +66,33 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isAdmin(): bool
     {
         return (bool) $this->is_admin;
+    }
+
+    public function hasIcalFeed(): bool
+    {
+        return $this->ical_token !== null;
+    }
+
+    public function enableIcalFeed(): void
+    {
+        if ($this->ical_token === null) {
+            $this->update(['ical_token' => Str::random(40)]);
+        }
+    }
+
+    public function regenerateIcalFeed(): void
+    {
+        $this->update(['ical_token' => Str::random(40)]);
+    }
+
+    public function disableIcalFeed(): void
+    {
+        $this->update(['ical_token' => null]);
+    }
+
+    public function icalUrl(): ?string
+    {
+        return $this->ical_token ? route('calendar.ical', ['token' => $this->ical_token]) : null;
     }
 
     /**
