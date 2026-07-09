@@ -82,6 +82,14 @@ test('an invitee must register with the invited address', function () {
     expect(User::where('email', 'wrong@example.com')->exists())->toBeFalse();
 });
 
+test('the login page hides the create-account link when invite-only is on', function () {
+    config(['board.registration_invite_only' => true]);
+    $this->get(route('login'))->assertOk()->assertDontSee(route('register'));
+
+    config(['board.registration_invite_only' => false]);
+    $this->get(route('login'))->assertOk()->assertSee(route('register'));
+});
+
 test('public registration still works when invite-only is off', function () {
     config(['board.registration_invite_only' => false]);
 

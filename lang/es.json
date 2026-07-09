@@ -575,5 +575,10 @@
     "Échec de la connexion.": "Error de conexión.",
     "—": "—",
     "— créez d'abord un jeton d'API ci-dessus et remplacez <code class=\"text-xs\">&lt;VOTRE_TOKEN&gt;</code>.": "— crea primero un token de API arriba y sustituye <code class=\"text-xs\">&lt;TU_TOKEN&gt;</code>.",
-    "Nombre": "Número"
+    "Nombre": "Número",
+    "Vues du workspace": "Vistas del espacio de trabajo",
+    "Calendrier et table de toutes les cartes du workspace.": "Calendario y tabla de todas las tarjetas del espacio de trabajo.",
+    "Aucun tableau accessible dans ce workspace.": "No hay ningún tablero accesible en este espacio de trabajo.",
+    "Tableaux": "Tableros",
+    "Aucun tableau.": "Sin tableros."
 }

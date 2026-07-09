@@ -575,5 +575,10 @@
     "À venir (7 j)": "Upcoming (7 d)",
     "Échec de la connexion.": "Connection failed.",
     "—": "—",
-    "— créez d'abord un jeton d'API ci-dessus et remplacez <code class=\"text-xs\">&lt;VOTRE_TOKEN&gt;</code>.": "— first create an API token above and replace <code class=\"text-xs\">&lt;YOUR_TOKEN&gt;</code>."
+    "— créez d'abord un jeton d'API ci-dessus et remplacez <code class=\"text-xs\">&lt;VOTRE_TOKEN&gt;</code>.": "— first create an API token above and replace <code class=\"text-xs\">&lt;YOUR_TOKEN&gt;</code>.",
+    "Vues du workspace": "Workspace views",
+    "Calendrier et table de toutes les cartes du workspace.": "Calendar and table of every card in the workspace.",
+    "Aucun tableau accessible dans ce workspace.": "No accessible board in this workspace.",
+    "Tableaux": "Boards",
+    "Aucun tableau.": "No board."
 }

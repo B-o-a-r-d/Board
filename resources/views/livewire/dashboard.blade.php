@@ -43,6 +43,9 @@
 
                     <div class="ml-auto flex items-center gap-3">
                         @can('view', $workspace)
+                            <a href="{{ route('workspaces.calendar', $workspace) }}" wire:navigate class="flex items-center gap-1 text-xs text-neutral-500 hover:text-indigo-600 dark:text-neutral-400 dark:hover:text-indigo-400" title="{{ __('Vues du workspace') }}">
+                                <x-phosphor-calendar-blank class="h-4 w-4" /> {{ __('Vues') }}
+                            </a>
                             <a href="{{ route('workspaces.settings', $workspace) }}" wire:navigate class="flex items-center gap-1 text-xs text-neutral-500 hover:text-indigo-600 dark:text-neutral-400 dark:hover:text-indigo-400" title="{{ __('Paramètres du workspace') }}">
                                 <x-phosphor-gear class="h-4 w-4" /> {{ __('Membres') }}
                             </a>

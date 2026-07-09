@@ -13,15 +13,12 @@ use App\Models\Comment;
 use App\Models\Label;
 use App\Models\User;
 use App\Models\Workspace;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     public function run(): void
     {
         $owner = User::factory()->create([

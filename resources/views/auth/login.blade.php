@@ -65,8 +65,10 @@
         </button>
     </form>
 
-    <p class="mt-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
-        {{ __('Pas encore de compte ?') }}
-        <a href="{{ route('register') }}" class="font-medium text-indigo-600 hover:underline dark:text-indigo-400">{{ __('Créer un compte') }}</a>
-    </p>
+    @unless (config('board.registration_invite_only'))
+        <p class="mt-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
+            {{ __('Pas encore de compte ?') }}
+            <a href="{{ route('register') }}" class="font-medium text-indigo-600 hover:underline dark:text-indigo-400">{{ __('Créer un compte') }}</a>
+        </p>
+    @endunless
 </x-layouts.guest>
