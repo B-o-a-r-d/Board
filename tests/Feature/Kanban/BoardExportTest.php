@@ -1,6 +1,16 @@
 <?php
 
+use App\Livewire\Boards\Show;
 use App\Models\User;
+use Livewire\Livewire;
+
+test('the board export links resolve the public id, not the integer id', function () {
+    ['board' => $board, 'owner' => $owner] = makeCardContext();
+
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+        ->assertSee(route('boards.export', ['board' => $board, 'format' => 'json']), escape: false)
+        ->assertDontSee('/boards/'.$board->id.'/export/');
+});
 
 test('the CSV export contains all card data including checklist items', function () {
     ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();

@@ -187,11 +187,11 @@
                             @endcan
                             <x-context-menu.separator/>
                             <x-context-menu.item icon="file-csv"
-                                                 @click="window.location.href = '{{ route('boards.export', ['board' => $board->id, 'format' => 'csv']) }}'">{{ __('Exporter en CSV') }}</x-context-menu.item>
+                                                 @click="window.location.href = '{{ route('boards.export', ['board' => $board, 'format' => 'csv']) }}'">{{ __('Exporter en CSV') }}</x-context-menu.item>
                             <x-context-menu.item icon="file-xls"
-                                                 @click="window.location.href = '{{ route('boards.export', ['board' => $board->id, 'format' => 'xlsx']) }}'">{{ __('Exporter en XLSX') }}</x-context-menu.item>
+                                                 @click="window.location.href = '{{ route('boards.export', ['board' => $board, 'format' => 'xlsx']) }}'">{{ __('Exporter en XLSX') }}</x-context-menu.item>
                             <x-context-menu.item icon="download-simple"
-                                                 @click="window.location.href = '{{ route('boards.export', ['board' => $board->id, 'format' => 'json']) }}'">{{ __('Exporter en JSON') }}</x-context-menu.item>
+                                                 @click="window.location.href = '{{ route('boards.export', ['board' => $board, 'format' => 'json']) }}'">{{ __('Exporter en JSON') }}</x-context-menu.item>
                             <x-context-menu.separator/>
                             <x-context-menu.item icon="trash"
                                                  wire:click="toggleTrash">
@@ -527,13 +527,14 @@
                             data-card-id="{{ $card->id }}"
                             class="group relative shrink-0 cursor-grab overflow-hidden rounded-lg border bg-white text-sm shadow-sm dark:bg-neutral-800"
                             :class="selected.includes({{ $card->id }}) ? 'border-indigo-500 dark:border-indigo-500' : 'border-neutral-200 dark:border-neutral-700'"
+                            x-on:click.capture="selectMode && (toggleCard({{ $card->id }}), $event.stopPropagation(), $event.preventDefault())"
                         >
-                            {{-- Selection overlay (only in select mode): clicking anywhere toggles selection --}}
-                            <div x-show="selectMode" x-cloak wire:sort:ignore @click.stop="toggleCard({{ $card->id }})"
-                                 class="absolute inset-0 z-20 cursor-pointer transition"
-                                 :class="selected.includes({{ $card->id }}) ? 'bg-indigo-500/10' : 'hover:bg-neutral-500/5'">
-                                <span class="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-md border-2 bg-white shadow dark:bg-neutral-900"
-                                      :class="selected.includes({{ $card->id }}) ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-neutral-400 dark:border-neutral-500'">
+                            {{-- Selection overlay (visual only; the whole card is clickable in select mode). --}}
+                            <div x-show="selectMode" x-cloak wire:sort:ignore
+                                 class="pointer-events-none absolute inset-0 z-20 transition"
+                                 :class="selected.includes({{ $card->id }}) ? 'bg-indigo-500/10' : ''">
+                                <span class="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-md border-2 shadow"
+                                      :class="selected.includes({{ $card->id }}) ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-neutral-400 bg-white dark:border-neutral-500 dark:bg-neutral-900'">
                                     <svg x-show="selected.includes({{ $card->id }})" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-8 8a1 1 0 01-1.4 0l-4-4a1 1 0 011.4-1.4L8 12.6l7.3-7.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
                                 </span>
                             </div>
