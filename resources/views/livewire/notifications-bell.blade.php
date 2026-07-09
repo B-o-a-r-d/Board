@@ -4,7 +4,7 @@
         @click="expanded = ! expanded"
         class="relative flex h-9 w-9 items-center justify-center rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800"
         title="{{ __('Notifications') }}"
-        aria-label="Notifications{{ $unreadCount > 0 ? ' ('.$unreadCount.' non lues)' : '' }}"
+        aria-label="{{ $unreadCount > 0 ? __('Notifications (:count non lues)', ['count' => $unreadCount]) : __('Notifications') }}"
         :aria-expanded="expanded"
     >
         <x-phosphor-bell class="h-5 w-5 text-neutral-600 dark:text-neutral-300" />
