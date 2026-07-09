@@ -8,8 +8,10 @@ use App\Enums\Permission;
 use App\Events\BoardActivity;
 use App\Models\Activity;
 use App\Models\Board;
+use App\Models\BoardList;
 use App\Models\Card;
 use App\Models\CardLink;
+use App\Models\CardMirror;
 use App\Models\CardTemplate;
 use App\Models\ChecklistItem;
 use App\Models\LinkPreview;
@@ -38,6 +40,11 @@ class CardDetail extends Component
     public ?int $cardId = null;
 
     public bool $showModal = false;
+
+    /** Mirror picker: the target list this card should be mirrored into. */
+    public bool $showMirrorPicker = false;
+
+    public string $mirrorListId = '';
 
     public string $title = '';
 
@@ -774,6 +781,56 @@ class CardDetail extends Component
     /**
      * Escape a comment body, highlight @mentions of board members, and linkify URLs.
      */
+    /**
+     * Mirror this card into another list/board — the same underlying card shown in
+     * several places, not a copy. Requires contribute on the target board.
+     */
+    public function mirrorCard(): void
+    {
+        $card = $this->board->cards()->findOrFail($this->cardId);
+
+        $targetList = BoardList::with('board')
+            ->whereNull('archived_at')
+            ->whereNull('source_plugin_id')
+            ->find((int) $this->mirrorListId);
+
+        if (! $targetList) {
+            $this->addError('mirrorListId', __('Choisissez une liste.'));
+
+            return;
+        }
+
+        abort_unless(Auth::user()->can('contribute', $targetList->board), 403);
+
+        if ($targetList->id === $card->board_list_id) {
+            $this->addError('mirrorListId', __('La carte est déjà dans cette liste.'));
+
+            return;
+        }
+
+        $card->mirrors()->firstOrCreate(
+            ['board_list_id' => $targetList->id],
+            [
+                'board_id' => $targetList->board_id,
+                'created_by' => Auth::id(),
+                'position' => (int) $targetList->mirrors()->max('position') + 1,
+            ],
+        );
+
+        $this->reset('mirrorListId', 'showMirrorPicker');
+        $this->dispatch('toast', message: __('Carte reflétée'), type: 'success');
+    }
+
+    public function removeMirror(int $mirrorId): void
+    {
+        $mirror = CardMirror::where('card_id', $this->cardId)->with('board')->findOrFail($mirrorId);
+
+        abort_unless(Auth::user()->can('contribute', $mirror->board), 403);
+
+        $mirror->delete();
+        $this->dispatch('toast', message: __('Miroir retiré'), type: 'info');
+    }
+
     public function renderCommentBody(string $body): string
     {
         $members = $this->board->members;
@@ -942,6 +999,13 @@ class CardDetail extends Component
             'customFields' => $this->board->customFields,
             'canContribute' => Auth::user()->can('contribute', $this->board),
             'canComment' => Auth::user()->can('comment', $this->board),
+            'mirrorTargets' => $card ? $this->board->workspace->boards()
+                ->whereNull('archived_at')
+                ->with(['lists' => fn ($q) => $q->whereNull('archived_at')->whereNull('source_plugin_id')->orderBy('position')])
+                ->orderBy('name')->get()
+                ->filter(fn ($b) => Auth::user()->can('contribute', $b))
+                ->values() : collect(),
+            'cardMirrors' => $card ? $card->mirrors()->with(['list', 'board'])->get() : collect(),
         ]);
     }
 }

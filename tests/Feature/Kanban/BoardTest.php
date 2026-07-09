@@ -446,3 +446,27 @@ test('bulk add label attaches a label to the selected cards', function () {
     expect($a->labels()->whereKey($label->id)->exists())->toBeTrue()
         ->and($b->labels()->whereKey($label->id)->exists())->toBeTrue();
 });
+
+test('a contributor can toggle a card complete from the board hover shortcut', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+
+    $component = Livewire::actingAs($owner)->test(Show::class, ['board' => $board]);
+
+    $component->call('toggleCardComplete', $card->id);
+    expect($card->fresh()->completed_at)->not->toBeNull();
+
+    $component->call('toggleCardComplete', $card->id);
+    expect($card->fresh()->completed_at)->toBeNull();
+});
+
+test('an observer cannot toggle a card complete', function () {
+    ['board' => $board, 'card' => $card] = makeCardContext();
+    $observer = User::factory()->create();
+    $board->members()->attach($observer, ['role' => Role::Observer->value]);
+
+    Livewire::actingAs($observer)->test(Show::class, ['board' => $board])
+        ->call('toggleCardComplete', $card->id)
+        ->assertForbidden();
+
+    expect($card->fresh()->completed_at)->toBeNull();
+});

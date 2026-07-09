@@ -580,5 +580,17 @@
     "Calendrier et table de toutes les cartes du workspace.": "Calendario y tabla de todas las tarjetas del espacio de trabajo.",
     "Aucun tableau accessible dans ce workspace.": "No hay ningún tablero accesible en este espacio de trabajo.",
     "Tableaux": "Tableros",
-    "Aucun tableau.": "Sin tableros."
+    "Aucun tableau.": "Sin tableros.",
+    "Miroir": "Espejo",
+    "Miroirs": "Espejos",
+    "Refléter": "Reflejar",
+    "Refléter sur…": "Reflejar en…",
+    "Carte reflétée": "Tarjeta reflejada",
+    "Miroir retiré": "Espejo eliminado",
+    "Retirer le miroir": "Quitar el espejo",
+    "Retirer ce miroir ? La carte d'origine n'est pas supprimée.": "¿Quitar este espejo? La tarjeta original no se elimina.",
+    "Choisissez une liste.": "Elige una lista.",
+    "La carte est déjà dans cette liste.": "La tarjeta ya está en esta lista.",
+    "Partagé en lecture seule · :lists listes · :cards cartes": "Compartido en solo lectura · :lists listas · :cards tarjetas",
+    "Marquer non terminée": "Marcar como no completada"
 }

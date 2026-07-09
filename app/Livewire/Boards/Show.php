@@ -433,6 +433,28 @@ class Show extends Component
         $this->authorize('contribute', $this->board);
     }
 
+    /** Remove a mirror placement from this board (the source card is untouched). */
+    public function removeMirror(int $mirrorId): void
+    {
+        $this->authorizeContribution();
+
+        $this->board->mirrors()->whereKey($mirrorId)->delete();
+        $this->dispatch('toast', message: __('Miroir retiré'), type: 'info');
+    }
+
+    /** One-click complete/uncomplete from the card's hover toolbar on the board. */
+    public function toggleCardComplete(int $cardId): void
+    {
+        $this->authorizeContribution();
+
+        $card = $this->board->cards()->findOrFail($cardId);
+        $card->update(['completed_at' => $card->completed_at ? null : now()]);
+
+        $type = $card->completed_at ? 'card.completed' : 'card.uncompleted';
+        $this->logActivity($type, $card->id, ['card_title' => $card->title]);
+        $this->broadcastActivity($type);
+    }
+
     public function setView(string $view): void
     {
         $this->view = in_array($view, ['board', 'calendar', 'timeline', 'table', 'dashboard'], true) ? $view : 'board';
@@ -1454,6 +1476,13 @@ class Show extends Component
                     'cards.labels',
                     'cards.checklists.items',
                     'cards.customFieldValues',
+                    // Cards mirrored INTO this board's lists (same underlying cards).
+                    'mirrors' => fn ($q) => $q->orderBy('position'),
+                    'mirrors.card' => fn ($q) => $q->whereNull('archived_at')->withCount('attachments'),
+                    'mirrors.card.members',
+                    'mirrors.card.labels',
+                    'mirrors.card.checklists.items',
+                    'mirrors.card.board:id,name,public_id',
                 ]))
                 ->orderBy('position')
                 ->get()

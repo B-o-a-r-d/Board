@@ -552,7 +552,7 @@
                                     @endif
 
                                     {{-- Clicking anywhere on the card body opens it (drag suppresses the click). --}}
-                                    <div class="p-2.5" wire:click="$dispatch('open-card', { cardId: {{ $card->id }} })">
+                                    <div class="relative p-2.5" wire:click="$dispatch('open-card', { cardId: {{ $card->id }} })">
                                         @if ($card->labels->isNotEmpty())
                                             <div class="mb-1.5 flex flex-wrap gap-1">
                                                 @foreach ($card->labels as $label)
@@ -563,24 +563,31 @@
                                             </div>
                                         @endif
 
-                                        <div class="flex items-start justify-between gap-2">
-                                            <span class="break-words text-left font-medium">{{ $card->title }}</span>
+                                        {{-- Hover toolbar (top-right): one-click "mark done" + options --}}
+                                        <div class="absolute right-1.5 top-1.5 z-10 flex items-center gap-1">
                                             <button type="button" wire:sort:ignore
                                                     @click.stop="openAt($event.clientX, $event.clientY)"
-                                                    class="shrink-0 text-neutral-400 opacity-100 transition hover:text-neutral-700 group-hover:opacity-100 sm:opacity-0 dark:hover:text-neutral-200"
+                                                    class="flex h-5 w-5 items-center justify-center rounded text-neutral-400 opacity-0 transition hover:bg-neutral-200 hover:text-neutral-700 group-hover:opacity-100 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
                                                     title="{{ __('Options de la carte (clic droit aussi)') }}">
                                                 <x-phosphor-dots-three class="h-4 w-4"/>
                                             </button>
+                                            @if ($canContribute)
+                                                <button type="button" wire:sort:ignore
+                                                        wire:click.stop="toggleCardComplete({{ $card->id }})"
+                                                        title="{{ $card->completed_at ? __('Marquer non terminée') : __('Marquer terminée') }}"
+                                                        aria-label="{{ $card->completed_at ? __('Marquer non terminée') : __('Marquer terminée') }}"
+                                                        class="flex h-5 w-5 items-center justify-center rounded-full border shadow-sm transition {{ $card->completed_at ? 'border-green-500 bg-green-500 text-white' : 'border-neutral-300 bg-white text-neutral-300 opacity-0 hover:border-green-500 hover:text-green-500 group-hover:opacity-100 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-500' }}">
+                                                    <x-phosphor-check class="h-3 w-3"/>
+                                                </button>
+                                            @endif
                                         </div>
 
+                                        <span class="block break-words text-left font-medium {{ $card->completed_at ? 'pr-8 text-neutral-500 line-through decoration-neutral-400' : '' }}">{{ $card->title }}</span>
+
                                         {{-- Badges --}}
-                                        @if ($card->due_at || $itemsTotal > 0 || $card->attachments_count > 0 || $card->completed_at)
+                                        @if ($card->due_at || $itemsTotal > 0 || $card->attachments_count > 0)
                                             <div
                                                 class="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
-                                                @if ($card->completed_at)
-                                                    <span
-                                                        class="rounded bg-green-100 px-1.5 py-0.5 text-green-700 dark:bg-green-500/15 dark:text-green-400">{{ __('Terminée') }}</span>
-                                                @endif
                                                 @if ($card->due_at)
                                                     <span
                                                         class="rounded px-1.5 py-0.5 {{ $overdue ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400' : 'bg-neutral-100 dark:bg-neutral-700/50' }}">
@@ -680,6 +687,15 @@
                             </li>
                         @endforeach
                     </ul>
+                @endif
+
+                {{-- Mirrored cards: the same underlying cards shown in this list --}}
+                @if ($cardsReady && $list->mirrors->isNotEmpty())
+                    <div class="space-y-2 px-2 pt-1">
+                        @foreach ($list->mirrors as $mirror)
+                            @include('livewire.boards.partials.mirror-card')
+                        @endforeach
+                    </div>
                 @endif
 
                 {{-- Add card --}}

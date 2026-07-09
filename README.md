@@ -28,9 +28,11 @@ auto-discovered and independently versioned.
 
 - **Boards, lists & cards** — drag & drop (`wire:sort`), labels, checklists,
   attachments (images / video / files), comments with **@mentions** and emoji
-  reactions, start/due dates, cover images and **custom fields**.
+  reactions, start/due dates, cover images, **custom fields** and **card mirroring**
+  (the same card shown, and kept in sync, across lists and boards).
 - **Views** — board, **calendar**, **timeline (Gantt)**, **table** and **dashboard**,
-  saved filters/views, WIP limits, collapse, bulk actions and keyboard shortcuts.
+  plus workspace-wide **calendar/table** aggregating every board; saved filters/views,
+  WIP limits, collapse, bulk actions and keyboard shortcuts.
 - **Roles & permissions** — full RBAC: system roles (owner / admin / member /
   read-only **observer**) plus **custom roles** with granular permissions, managed
   per workspace and copyable between them, enforced across web, API and MCP.
@@ -48,7 +50,8 @@ auto-discovered and independently versioned.
 - **MCP server** — drive boards from AI agents (Model Context Protocol); plugins
   can contribute tools.
 - **API** — token auth via Laravel Sanctum, ULID public IDs everywhere.
-- **Exports** — CSV / XLSX / JSON. **Public sharing** links with live presence.
+- **Exports** — CSV / XLSX / JSON. **Public sharing** links with live presence and
+  **social previews** (Open Graph / Twitter cards).
 - **i18n** — French, English, Spanish. **Dark mode**.
 
 ## Quick start (local)

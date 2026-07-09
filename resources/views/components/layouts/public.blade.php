@@ -1,4 +1,10 @@
-@props(['title' => null])
+@props([
+    'title' => null,
+    'ogTitle' => null,
+    'ogDescription' => null,
+    'ogImage' => null,
+    'ogUrl' => null,
+])
 
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
@@ -9,6 +15,21 @@
     <meta name="robots" content="noindex">
 
     <title>{{ $title ? $title . ' — ' . config('app.name') : config('app.name') }}</title>
+
+    {{-- Social preview (Open Graph / Twitter card) for shared boards --}}
+    @isset($ogTitle)
+        <meta name="description" content="{{ $ogDescription }}">
+        <meta property="og:type" content="website">
+        <meta property="og:site_name" content="{{ config('app.name') }}">
+        <meta property="og:title" content="{{ $ogTitle }}">
+        <meta property="og:description" content="{{ $ogDescription }}">
+        <meta property="og:url" content="{{ $ogUrl }}">
+        <meta property="og:image" content="{{ $ogImage }}">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="{{ $ogTitle }}">
+        <meta name="twitter:description" content="{{ $ogDescription }}">
+        <meta name="twitter:image" content="{{ $ogImage }}">
+    @endisset
 
     <x-favicons />
 

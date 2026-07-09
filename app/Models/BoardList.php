@@ -38,6 +38,12 @@ class BoardList extends Model
         return $this->hasMany(Card::class)->orderBy('position');
     }
 
+    /** Cards mirrored INTO this list from elsewhere (the same underlying cards). */
+    public function mirrors(): HasMany
+    {
+        return $this->hasMany(CardMirror::class)->orderBy('position');
+    }
+
     public function sourcePlugin(): BelongsTo
     {
         return $this->belongsTo(BoardPlugin::class, 'source_plugin_id');

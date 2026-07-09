@@ -66,6 +66,12 @@ class Card extends Model
         return $this->hasMany(Checklist::class)->orderBy('position');
     }
 
+    /** Placements of this card mirrored into other lists/boards. */
+    public function mirrors(): HasMany
+    {
+        return $this->hasMany(CardMirror::class);
+    }
+
     public function comments(): HasMany
     {
         return $this->hasMany(Comment::class)->latest();

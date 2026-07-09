@@ -105,6 +105,12 @@ class Board extends Model
         return $this->hasMany(Card::class);
     }
 
+    /** Cards mirrored onto this board from anywhere (the same underlying cards). */
+    public function mirrors(): HasMany
+    {
+        return $this->hasMany(CardMirror::class);
+    }
+
     public function labels(): HasMany
     {
         return $this->hasMany(Label::class);

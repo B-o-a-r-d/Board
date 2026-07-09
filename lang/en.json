@@ -580,5 +580,17 @@
     "Calendrier et table de toutes les cartes du workspace.": "Calendar and table of every card in the workspace.",
     "Aucun tableau accessible dans ce workspace.": "No accessible board in this workspace.",
     "Tableaux": "Boards",
-    "Aucun tableau.": "No board."
+    "Aucun tableau.": "No board.",
+    "Miroir": "Mirror",
+    "Miroirs": "Mirrors",
+    "Refléter": "Mirror",
+    "Refléter sur…": "Mirror to…",
+    "Carte reflétée": "Card mirrored",
+    "Miroir retiré": "Mirror removed",
+    "Retirer le miroir": "Remove mirror",
+    "Retirer ce miroir ? La carte d'origine n'est pas supprimée.": "Remove this mirror? The original card is not deleted.",
+    "Choisissez une liste.": "Choose a list.",
+    "La carte est déjà dans cette liste.": "The card is already in this list.",
+    "Partagé en lecture seule · :lists listes · :cards cartes": "Shared read-only · :lists lists · :cards cards",
+    "Marquer non terminée": "Mark as not done"
 }

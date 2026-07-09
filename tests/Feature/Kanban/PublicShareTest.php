@@ -67,6 +67,20 @@ test('the public share page renders the board read-only for guests', function ()
         ->assertDontSee('Ajouter une carte');
 });
 
+test('the public share page exposes Open Graph social meta tags', function () {
+    ['board' => $board] = makeShareBoard();
+    $board->update(['name' => 'Roadmap Q3', 'description' => 'Notre feuille de route trimestrielle.']);
+    $board->enableSharing();
+
+    $this->get(route('boards.public', ['token' => $board->share_token]))
+        ->assertOk()
+        ->assertSee('property="og:title" content="Roadmap Q3"', escape: false)
+        ->assertSee('property="og:url" content="'.route('boards.public', $board->share_token).'"', escape: false)
+        ->assertSee('property="og:image"', escape: false)
+        ->assertSee('name="twitter:card" content="summary_large_image"', escape: false)
+        ->assertSee('Notre feuille de route trimestrielle.', escape: false);
+});
+
 test('an unknown or disabled token returns 404', function () {
     ['board' => $board] = makeShareBoard();
 
