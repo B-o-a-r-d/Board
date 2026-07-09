@@ -25,6 +25,10 @@ class IcalFeedService
             'METHOD:PUBLISH',
             'X-WR-CALNAME:'.$this->escape($calendarName),
             'NAME:'.$this->escape($calendarName),
+            // Hint subscribers to re-poll hourly instead of their (often daily) default.
+            // Honoured by Apple Calendar / Thunderbird; Outlook uses X-PUBLISHED-TTL.
+            'REFRESH-INTERVAL;VALUE=DURATION:PT1H',
+            'X-PUBLISHED-TTL:PT1H',
         ];
 
         $stamp = $this->utc(Carbon::now());
