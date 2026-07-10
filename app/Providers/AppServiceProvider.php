@@ -68,11 +68,32 @@ class AppServiceProvider extends ServiceProvider
             }
 
             foreach ([
-                Actions\MarkCompleteAction::class,
-                Actions\ArchiveCardAction::class,
-                Actions\AssignLabelAction::class,
-                Actions\AssignMemberAction::class,
+                // Move / organisation
                 Actions\MoveToListAction::class,
+                Actions\MoveInListAction::class,
+                Actions\SortListAction::class,
+                Actions\ArchiveCardAction::class,
+                Actions\ArchiveListCardsAction::class,
+                // Add / remove
+                Actions\AssignLabelAction::class,
+                Actions\RemoveLabelAction::class,
+                Actions\AssignMemberAction::class,
+                Actions\UnassignMemberAction::class,
+                Actions\AddChecklistAction::class,
+                Actions\CreateCardAction::class,
+                Actions\CopyCardAction::class,
+                Actions\CreateFollowUpCardAction::class,
+                // Dates
+                Actions\SetDueDateAction::class,
+                Actions\ClearDueDateAction::class,
+                Actions\MarkCompleteAction::class,
+                Actions\MarkIncompleteAction::class,
+                // Content / fields
+                Actions\PostCommentAction::class,
+                Actions\SetCustomFieldAction::class,
+                // Output
+                Actions\NotifyMembersAction::class,
+                Actions\SendWebhookAction::class,
             ] as $action) {
                 $registry->registerAction(new $action);
             }

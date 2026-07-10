@@ -6,39 +6,33 @@ use App\Automations\Contracts\AutomationAction;
 use App\Models\Card;
 use Illuminate\Support\Facades\Auth;
 
-class AssignMemberAction implements AutomationAction
+class UnassignMemberAction implements AutomationAction
 {
     public static function key(): string
     {
-        return 'assign_member';
+        return 'unassign_member';
     }
 
     public function label(): string
     {
-        return 'Assigner un membre';
+        return 'Retirer un membre';
     }
 
     public function configFields(): array
     {
         return [
-            ['key' => 'user_id', 'label' => 'Membre', 'type' => 'member'],
+            ['key' => 'user_id', 'label' => "Membre ('me' = l'utilisateur qui déclenche)", 'type' => 'member'],
         ];
     }
 
     public function run(Card $card, array $config): void
     {
-        // 'me' resolves to the acting user (the person who fired the event).
         $userId = ($config['user_id'] ?? null) === 'me'
             ? (int) Auth::id()
             : (int) ($config['user_id'] ?? 0);
 
-        if ($userId === 0) {
-            return;
-        }
-
-        // Only board members can be assigned.
-        if ($card->board->members()->whereKey($userId)->exists()) {
-            $card->members()->syncWithoutDetaching([$userId]);
+        if ($userId > 0) {
+            $card->members()->detach($userId);
         }
     }
 }

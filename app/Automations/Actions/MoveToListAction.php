@@ -21,6 +21,7 @@ class MoveToListAction implements AutomationAction
     {
         return [
             ['key' => 'list_id', 'label' => 'Liste de destination', 'type' => 'list'],
+            ['key' => 'position', 'label' => 'Position (top | bottom)', 'type' => 'text'],
         ];
     }
 
@@ -35,6 +36,14 @@ class MoveToListAction implements AutomationAction
         $list = $card->board->lists()->whereKey($listId)->first();
 
         if ($list === null) {
+            return;
+        }
+
+        if (($config['position'] ?? 'bottom') === 'top') {
+            // Positions are unsigned: shift the whole list down, land at 0.
+            $list->cards()->increment('position');
+            $card->update(['board_list_id' => $list->id, 'position' => 0]);
+
             return;
         }
 
