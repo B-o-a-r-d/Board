@@ -3,8 +3,8 @@
      wire:loading.class.delay="opacity-40"
      wire:target="search, filterLabels, filterMembers, toggleLabel, toggleMember, toggleUnassigned, filterDue, resetFilters, applyFilter, applyView, calendarStep, calendarToday, rescheduleCard, createCardOnDate">
 
-    {{-- Month navigation — glass bar over a board background so it stays readable --}}
-    <div class="mb-3 flex items-center justify-between gap-2 {{ $boardBg ? 'rounded-lg border border-white/20 bg-white/70 px-3 py-2 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-neutral-900/70' : '' }}">
+    {{-- Month navigation — dark glass bar over a board background, theme-agnostic --}}
+    <div class="mb-3 flex items-center justify-between gap-2 {{ $boardBg ? 'dark rounded-lg border border-white/15 bg-neutral-900/45 px-3 py-2 text-neutral-100 shadow-lg backdrop-blur-xl' : '' }}">
         <h2 class="text-base font-semibold capitalize sm:text-lg">{{ $calendar['label'] }}</h2>
         <div class="flex items-center gap-1">
             <button type="button" wire:click="calendarToday"
@@ -17,7 +17,7 @@
     </div>
 
     {{-- Desktop: month grid --}}
-    <div class="hidden min-h-0 flex-1 flex-col overflow-auto rounded-xl border sm:flex {{ $boardBg ? 'border-white/20 bg-white/90 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-neutral-900/85' : 'border-neutral-300 dark:border-neutral-700' }}">
+    <div class="hidden min-h-0 flex-1 flex-col overflow-auto rounded-xl border sm:flex {{ $boardBg ? 'dark border-white/15 bg-neutral-900/45 text-neutral-100 shadow-lg backdrop-blur-xl' : 'border-neutral-300 dark:border-neutral-700' }}">
         <div class="grid grid-cols-7 border-b border-neutral-300 bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900/60">
             @foreach ($calendar['weekDays'] as $weekDay)
                 <div class="px-2 py-1.5 text-center text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">{{ $weekDay }}</div>
@@ -73,7 +73,7 @@
     </div>
 
     {{-- Mobile: agenda (only days in-month with cards) --}}
-    <div class="min-h-0 flex-1 space-y-4 overflow-auto pb-4 sm:hidden {{ $boardBg ? 'rounded-xl border border-white/20 bg-white/90 p-3 backdrop-blur-md dark:border-white/10 dark:bg-neutral-900/85' : '' }}">
+    <div class="min-h-0 flex-1 space-y-4 overflow-auto pb-4 sm:hidden {{ $boardBg ? 'dark rounded-xl border border-white/15 bg-neutral-900/45 p-3 text-neutral-100 backdrop-blur-xl' : '' }}">
         @php $agendaHasCards = false; @endphp
         @foreach ($calendar['weeks'] as $week)
             @foreach ($week as $day)

@@ -9,11 +9,12 @@
     {{-- Board topbar: slim full-bleed bar glued under the navbar (public layout uses py-6) --}}
     <div @class([
         'relative z-30 -mx-4 -mt-6 mb-3 flex min-h-12 flex-wrap items-center gap-x-2 gap-y-1.5 border-b px-4 py-1.5 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8',
-        'border-white/20 dark:border-white/10' => $boardBg,
+        'dark border-white/15 text-neutral-100' => $boardBg,
         'border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900' => ! $boardBg,
     ])>
         @if ($boardBg)
-            <div class="absolute inset-0 -z-10 bg-white/40 backdrop-blur-md dark:bg-neutral-900/50" aria-hidden="true"></div>
+            {{-- Dark glass veil, theme-agnostic (the `dark` class above forces light text) --}}
+            <div class="absolute inset-0 -z-10 bg-neutral-900/45 backdrop-blur-xl" aria-hidden="true"></div>
         @endif
         <div class="flex min-w-0 flex-1 items-center gap-2">
             <h1 class="truncate text-base font-semibold tracking-tight sm:text-lg" title="{{ __('Tableau partagé en lecture seule') }}">{{ $board->name }}</h1>
@@ -43,7 +44,7 @@
         @forelse ($lists as $list)
             <div
                 wire:key="public-list-{{ $list->id }}"
-                class="flex max-h-full w-full shrink-0 snap-start flex-col overflow-hidden rounded-xl sm:w-72 {{ $boardBg ? 'border border-white/20 bg-white/50 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-neutral-900/60' : 'bg-neutral-200/70 dark:bg-neutral-900' }}"
+                class="flex max-h-full w-full shrink-0 snap-start flex-col overflow-hidden rounded-xl sm:w-72 {{ $boardBg ? 'dark border border-white/15 bg-neutral-900/50 text-neutral-100 shadow-lg backdrop-blur-md' : 'bg-neutral-200/70 dark:bg-neutral-900' }}"
             >
                 @if ($list->cover_color)
                     <div class="h-2 w-full" style="background-color: {{ $list->cover_color }}"></div>

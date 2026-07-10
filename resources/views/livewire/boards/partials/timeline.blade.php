@@ -9,7 +9,7 @@
 
     {{-- Range navigation — glass bar over a board background so it stays readable.
          translatedFormat uses PHP date chars: 'M' (short month), not ISO 'MMM'. --}}
-    <div class="mb-3 flex items-center justify-between gap-2 {{ $boardBg ? 'rounded-lg border border-white/20 bg-white/70 px-3 py-2 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-neutral-900/70' : '' }}">
+    <div class="mb-3 flex items-center justify-between gap-2 {{ $boardBg ? 'dark rounded-lg border border-white/15 bg-neutral-900/45 px-3 py-2 text-neutral-100 shadow-lg backdrop-blur-xl' : '' }}">
         <h2 class="text-base font-semibold capitalize sm:text-lg">{{ $timeline['start']->translatedFormat('d M') }} – {{ $end->translatedFormat('d M Y') }}</h2>
         <div class="flex items-center gap-1">
             <button type="button" wire:click="timelineToday"
@@ -22,14 +22,15 @@
     </div>
 
     @if (empty($timeline['lanes']))
-        <p class="py-10 text-center text-sm text-neutral-400 {{ $boardBg ? 'rounded-xl bg-white/70 backdrop-blur-md dark:bg-neutral-900/70' : '' }}">{{ __('Aucune carte datée sur cette période.') }}</p>
+        <p class="py-10 text-center text-sm text-neutral-400 {{ $boardBg ? 'dark rounded-xl border border-white/15 bg-neutral-900/45 backdrop-blur-xl' : '' }}">{{ __('Aucune carte datée sur cette période.') }}</p>
     @else
-        {{-- Opaque/glass surface: the board background must never bleed through the lanes --}}
-        <div class="min-h-0 flex-1 overflow-auto rounded-xl border {{ $boardBg ? 'border-white/20 bg-white/95 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-neutral-900/90' : 'border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-950' }}">
+        {{-- Glassmorphism over a board background: dark translucent veil + blur, and the
+             `dark` class forces light-theme-agnostic readable (light) text inside. --}}
+        <div class="min-h-0 flex-1 overflow-auto rounded-xl border {{ $boardBg ? 'dark border-white/15 bg-neutral-900/45 text-neutral-100 shadow-lg backdrop-blur-xl' : 'border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-950' }}">
             <div class="relative" style="width: {{ 176 + $timeline['days'] * 40 }}px;">
                 {{-- Day header (sticky, fixed 44px height — must match buildTimeline). --}}
-                <div class="sticky top-0 z-20 flex h-11 border-b border-neutral-300 bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900">
-                    <div class="sticky left-0 z-10 w-44 shrink-0 border-r border-neutral-300 bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900"></div>
+                <div class="sticky top-0 z-20 flex h-11 border-b border-neutral-300 bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900/90 dark:backdrop-blur-md">
+                    <div class="sticky left-0 z-10 w-44 shrink-0 border-r border-neutral-300 bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900/90"></div>
                     @foreach ($timeline['dayList'] as $d)
                         <div class="flex w-10 shrink-0 flex-col justify-center border-r border-neutral-200 text-center dark:border-neutral-800 {{ $d['isWeekend'] ? 'bg-neutral-200/50 dark:bg-neutral-800/40' : '' }}">
                             @if ($d['isMonthStart'])
@@ -45,7 +46,7 @@
                 {{-- Lanes (one per list) --}}
                 @foreach ($timeline['lanes'] as $lane)
                     <div wire:key="tl-lane-{{ $lane['list']->id }}" class="flex border-b border-neutral-200 dark:border-neutral-800">
-                        <div class="sticky left-0 z-10 flex w-44 shrink-0 items-center gap-1.5 border-r border-neutral-300 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900">
+                        <div class="sticky left-0 z-10 flex w-44 shrink-0 items-center gap-1.5 border-r border-neutral-300 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900/90 dark:backdrop-blur-md">
                             @if ($lane['list']->cover_color)
                                 <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background-color: {{ $lane['list']->cover_color }}"></span>
                             @endif
