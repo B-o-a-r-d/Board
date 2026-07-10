@@ -22,7 +22,7 @@ function fakeGithubRelease(string $tag = 'v1.0.0', array $composerOverride = [])
         'name' => 'acme/demo-plugin',
         'require' => ['board/plugin-sdk' => '^0.2'],
         'autoload' => ['psr-4' => ['Acme\\DemoPlugin\\' => 'src/']],
-        'extra' => ['laravel' => ['providers' => ['Acme\\DemoPlugin\\DemoServiceProvider']]],
+        'extra' => ['board' => ['sdk_contract' => 1], 'laravel' => ['providers' => ['Acme\\DemoPlugin\\DemoServiceProvider']]],
     ], $composerOverride);
 
     Http::fake([
@@ -46,6 +46,7 @@ function fakeGithubReleaseWithZip(string $zipball, string $tag = 'v1.0.0'): void
         'api.github.com/repos/acme/demo/releases/latest' => Http::response(['tag_name' => $tag]),
         'raw.githubusercontent.com/acme/demo/*/composer.json' => Http::response([
             'name' => 'acme/demo', 'require' => ['board/plugin-sdk' => '^0.2'],
+            'extra' => ['board' => ['sdk_contract' => 1]],
         ]),
         'api.github.com/repos/acme/demo/zipball/*' => Http::response($zipball),
     ]);
@@ -88,6 +89,37 @@ test('it rejects a release tag that carries path traversal', function () {
 
     expect(fn () => app(PluginInstaller::class)->install(demoEntry()))
         ->toThrow(PluginInstallException::class);
+});
+
+test('it refuses to install a plugin that declares no / an unsupported SDK contract', function () {
+    Http::fake([
+        'api.github.com/repos/acme/demo/releases/latest' => Http::response(['tag_name' => 'v1.0.0']),
+        'raw.githubusercontent.com/acme/demo/*/composer.json' => Http::response([
+            'name' => 'acme/demo', 'require' => ['board/plugin-sdk' => '^0.2'], // no extra.board.sdk_contract
+        ]),
+    ]);
+
+    expect(fn () => app(PluginInstaller::class)->install(demoEntry()))
+        ->toThrow(PluginInstallException::class);
+
+    expect(PluginPackage::count())->toBe(0);
+});
+
+test('the loader quarantines an incompatible package instead of crashing the boot', function () {
+    // A legacy/incompatible install (no recorded contract — exactly the prod
+    // incident). The gate must skip it WITHOUT loading its class, so no files are
+    // needed and boot() must not throw.
+    PluginPackage::create([
+        'key' => 'stale', 'name' => 'Stale', 'repo' => 'acme/stale',
+        'version' => '1.0.0', 'sdk_constraint' => '^0.2', 'contract_version' => null,
+        'path' => 'plugins/stale', 'enabled' => true, 'available_version' => '1.0.0',
+    ]);
+
+    (new PluginLoader($this->app))->boot(); // must not crash
+
+    $package = PluginPackage::where('key', 'stale')->firstOrFail();
+    expect($package->isCompatible())->toBeFalse()
+        ->and($package->load_error)->not->toBeNull();
 });
 
 test('it installs a plugin package from a github release and the loader boots it', function () {
@@ -146,7 +178,7 @@ test('a breaking (major) update is blocked without confirmation, allowed with it
         'name' => 'acme/demo-plugin',
         'require' => ['board/plugin-sdk' => '^0.2'],
         'autoload' => ['psr-4' => ['Acme\\DemoPlugin\\' => 'src/']],
-        'extra' => ['laravel' => ['providers' => ['Acme\\DemoPlugin\\DemoServiceProvider']]],
+        'extra' => ['board' => ['sdk_contract' => 1], 'laravel' => ['providers' => ['Acme\\DemoPlugin\\DemoServiceProvider']]],
     ];
     Http::fake([
         'api.github.com/repos/acme/demo/releases/latest' => function () use (&$tag) {

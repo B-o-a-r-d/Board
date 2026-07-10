@@ -60,7 +60,7 @@ function fakeMarketplace(bool $withRelease = false): void
             'name' => 'acme/demo-plugin',
             'require' => ['board/plugin-sdk' => '^0.2'],
             'autoload' => ['psr-4' => ['Acme\\DemoPlugin\\' => 'src/']],
-            'extra' => ['laravel' => ['providers' => ['Acme\\DemoPlugin\\DemoServiceProvider']]],
+            'extra' => ['board' => ['sdk_contract' => 1], 'laravel' => ['providers' => ['Acme\\DemoPlugin\\DemoServiceProvider']]],
         ]);
         $stubs['api.github.com/repos/acme/demo/zipball/*'] = Http::response(demoZipball());
     }
