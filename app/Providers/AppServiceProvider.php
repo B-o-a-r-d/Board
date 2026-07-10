@@ -28,10 +28,29 @@ class AppServiceProvider extends ServiceProvider
             $registry = new AutomationRegistry;
 
             foreach ([
+                // Card Move
                 Triggers\CardCreatedTrigger::class,
                 Triggers\CardMovedToListTrigger::class,
+                Triggers\CardMovedFromListTrigger::class,
+                Triggers\CardArchivedTrigger::class,
+                Triggers\ListHasNCardsTrigger::class,
+                // Card Changes
                 Triggers\CardCompletedTrigger::class,
+                Triggers\CardLabelAddedTrigger::class,
+                Triggers\CardLabelRemovedTrigger::class,
+                Triggers\CardMemberAssignedTrigger::class,
+                // Dates
                 Triggers\CardDueSoonTrigger::class,
+                Triggers\CardDueDateSetTrigger::class,
+                // Checklists
+                Triggers\ChecklistAddedTrigger::class,
+                Triggers\ChecklistItemCheckedTrigger::class,
+                Triggers\ChecklistCompletedTrigger::class,
+                // Content & Fields
+                Triggers\CardCommentAddedTrigger::class,
+                Triggers\CardTitleContainsTrigger::class,
+                Triggers\CustomFieldChangedTrigger::class,
+                // Manual (card buttons)
                 Triggers\ManualTrigger::class,
             ] as $trigger) {
                 $registry->registerTrigger(new $trigger);

@@ -565,6 +565,7 @@ class Show extends Component
 
         if ($due !== null) {
             $this->logActivity($hadDue ? 'card.due_changed' : 'card.due_set', $card->id, ['value' => $due->translatedFormat('d M Y')]);
+            app(AutomationEngine::class)->fire('card.due_set', $card);
         }
 
         $this->broadcastActivity('card.due_changed');
@@ -611,7 +612,13 @@ class Show extends Component
         }
 
         $card = $this->cardForBoard($cardId);
-        $card->update(['title' => mb_substr($title, 0, 255)]);
+        $newTitle = mb_substr($title, 0, 255);
+        $renamed = $card->title !== $newTitle;
+        $card->update(['title' => $newTitle]);
+
+        if ($renamed) {
+            app(AutomationEngine::class)->fire('card.renamed', $card);
+        }
 
         $this->broadcastActivity('card.updated');
     }
@@ -634,6 +641,7 @@ class Show extends Component
             $this->logActivity('card.due_removed', $card->id);
         } elseif ($newDue !== null) {
             $this->logActivity($hadDue ? 'card.due_changed' : 'card.due_set', $card->id, ['value' => $newDue->translatedFormat('d M Y')]);
+            app(AutomationEngine::class)->fire('card.due_set', $card);
         }
 
         $this->broadcastActivity('card.due_changed');
@@ -655,6 +663,10 @@ class Show extends Component
 
         $result = $card->members()->toggle($userId);
 
+        if (in_array($userId, $result['attached'], true)) {
+            app(AutomationEngine::class)->fire('card.member_assigned', $card, ['user_id' => $userId]);
+        }
+
         if (in_array($userId, $result['attached'], true) && $userId !== Auth::id()) {
             $assignee = User::find($userId);
             $this->logActivity('member.assigned', $card->id, ['user_id' => $userId, 'user_name' => $assignee?->name]);
@@ -671,7 +683,13 @@ class Show extends Component
         $card = $this->cardForBoard($cardId);
         $label = $this->board->labels()->findOrFail($labelId);
 
-        $card->labels()->toggle($label->id);
+        $result = $card->labels()->toggle($label->id);
+
+        app(AutomationEngine::class)->fire(
+            in_array($label->id, $result['attached'], true) ? 'card.label_added' : 'card.label_removed',
+            $card,
+            ['label_id' => $label->id],
+        );
 
         $this->broadcastActivity('card.labels');
     }
@@ -702,6 +720,11 @@ class Show extends Component
             );
         }
 
+        app(AutomationEngine::class)->fire('custom_field.changed', $card, [
+            'field_id' => $field->id,
+            'value' => $stored,
+        ]);
+
         $this->broadcastActivity('card.updated');
     }
 
@@ -730,6 +753,11 @@ class Show extends Component
 
         $anchor = $card->due_at ?? $card->start_at;
         $this->logActivity($hadDue ? 'card.due_changed' : 'card.due_set', $card->id, ['value' => $anchor->translatedFormat('d M Y')]);
+
+        if ($card->due_at !== null) {
+            app(AutomationEngine::class)->fire('card.due_set', $card);
+        }
+
         $this->broadcastActivity('card.due_changed');
     }
 
@@ -1295,6 +1323,7 @@ class Show extends Component
         }
 
         $this->logActivity('card.created', $card->id, ['card_title' => $card->title, 'list' => $list->name, 'from_template' => true]);
+        app(AutomationEngine::class)->fire('card.created', $card, ['list_id' => $list->id]);
         $this->broadcastActivity('card.created');
         $this->dispatch('toast', message: __('Carte créée depuis le modèle'), type: 'success');
     }
@@ -1306,6 +1335,7 @@ class Show extends Component
         $card = $this->cardForBoard($cardId);
         $card->update(['archived_at' => now()]);
         $this->logActivity('card.archived', $cardId, ['card_title' => $card->title, 'list' => $card->list?->name]);
+        app(AutomationEngine::class)->fire('card.archived', $card);
         $this->broadcastActivity('card.archived');
     }
 
@@ -1358,6 +1388,8 @@ class Show extends Component
         $copy->members()->attach($card->members->pluck('id'));
 
         $this->logActivity('card.duplicated', $copy->id, ['from' => $card->id]);
+        // "Added to board/list" also means copied (Butler semantics).
+        app(AutomationEngine::class)->fire('card.created', $copy, ['list_id' => $copy->board_list_id]);
         $this->broadcastActivity('card.duplicated');
         $this->dispatch('toast', message: __('Carte dupliquée'), type: 'success');
     }
@@ -1447,6 +1479,7 @@ class Show extends Component
 
         foreach ($cards as $card) {
             $card->update(['archived_at' => now()]);
+            app(AutomationEngine::class)->fire('card.archived', $card);
         }
 
         $cards->pluck('board_list_id')->unique()->each(fn ($listId) => $this->resequence($listId));
@@ -1471,7 +1504,15 @@ class Show extends Component
         $position = (int) $target->cards()->max('position');
 
         foreach ($cards as $card) {
+            $fromListId = $card->board_list_id;
             $card->update(['board_list_id' => $target->id, 'position' => ++$position]);
+
+            if ($fromListId !== $target->id) {
+                app(AutomationEngine::class)->fire('card.moved', $card, [
+                    'to_list_id' => $target->id,
+                    'from_list_id' => $fromListId,
+                ]);
+            }
         }
 
         $sourceListIds->reject(fn ($id) => $id === $target->id)->each(fn ($id) => $this->resequence($id));
@@ -1496,7 +1537,13 @@ class Show extends Component
         }
 
         $this->board->cards()->whereIn('id', $cardIds)->whereNull('archived_at')->get()
-            ->each(fn (Card $card) => $card->labels()->syncWithoutDetaching([$labelId]));
+            ->each(function (Card $card) use ($labelId) {
+                $changes = $card->labels()->syncWithoutDetaching([$labelId]);
+
+                if ($changes['attached'] !== []) {
+                    app(AutomationEngine::class)->fire('card.label_added', $card, ['label_id' => $labelId]);
+                }
+            });
 
         $this->broadcastActivity('card.labels');
     }

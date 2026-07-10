@@ -147,10 +147,16 @@ class CardDetail extends Component
             'description' => ['nullable', 'string'],
         ]);
 
+        $renamed = $card->title !== $data['title'];
+
         $card->update([
             'title' => $data['title'],
             'description' => $data['description'] ?: null,
         ]);
+
+        if ($renamed) {
+            app(AutomationEngine::class)->fire('card.renamed', $card);
+        }
 
         $this->touched('card.updated');
     }
@@ -168,7 +174,12 @@ class CardDetail extends Component
         }
 
         $card = $this->guardedCard();
-        $card->update(['title' => $value]);
+
+        if ($card->title !== $value) {
+            $card->update(['title' => $value]);
+            app(AutomationEngine::class)->fire('card.renamed', $card);
+        }
+
         $this->touched('card.updated');
     }
 
@@ -209,6 +220,7 @@ class CardDetail extends Component
             $this->logActivity($card, 'card.due_removed');
         } elseif ($newDue !== null) {
             $this->logActivity($card, $hadDue ? 'card.due_changed' : 'card.due_set', ['value' => $newDue->translatedFormat('d M Y \à H:i')]);
+            app(AutomationEngine::class)->fire('card.due_set', $card);
         }
 
         $this->touched('card.updated');
@@ -300,6 +312,11 @@ class CardDetail extends Component
                 ['value' => $stored],
             );
         }
+
+        app(AutomationEngine::class)->fire('custom_field.changed', $card, [
+            'field_id' => $field->id,
+            'value' => $stored,
+        ]);
 
         $this->touched('card.updated');
     }
@@ -443,6 +460,7 @@ class CardDetail extends Component
             return;
         }
 
+        $fromListId = $card->board_list_id;
         $fromList = $card->list?->name;
         $card->update([
             'board_list_id' => $targetList->id,
@@ -453,6 +471,7 @@ class CardDetail extends Component
 
         app(AutomationEngine::class)->fire('card.moved', $card->fresh(), [
             'to_list_id' => $targetList->id,
+            'from_list_id' => $fromListId,
         ]);
 
         $this->touched('card.moved');
@@ -480,6 +499,8 @@ class CardDetail extends Component
         $copy->members()->attach($card->members->pluck('id'));
 
         $this->logActivity($copy, 'card.duplicated', ['from' => $card->id]);
+        // "Added to board/list" also means copied (Butler semantics).
+        app(AutomationEngine::class)->fire('card.created', $copy, ['list_id' => $copy->board_list_id]);
         $this->dispatch('toast', message: __('Carte dupliquée'), type: 'success');
         $this->touched('card.duplicated');
     }
@@ -493,6 +514,7 @@ class CardDetail extends Component
 
         $card->update(['archived_at' => now()]);
         $this->logActivity($card, 'card.archived', ['list' => $card->list?->name]);
+        app(AutomationEngine::class)->fire('card.archived', $card);
         $this->touched('card.archived');
         $this->close();
     }
@@ -557,6 +579,12 @@ class CardDetail extends Component
 
         $result = $card->members()->toggle($userId);
 
+        if (in_array($userId, $result['attached'], true)) {
+            // Fires for self-assignment too ("Rejoindre") — rules like
+            // "when I'm assigned" must see it.
+            app(AutomationEngine::class)->fire('card.member_assigned', $card, ['user_id' => $userId]);
+        }
+
         if (in_array($userId, $result['attached'], true) && $userId !== Auth::id()) {
             $assignee = User::find($userId);
 
@@ -575,7 +603,14 @@ class CardDetail extends Component
         $card = $this->guardedCard();
         $label = $this->board->labels()->findOrFail($labelId);
 
-        $card->labels()->toggle($label->id);
+        $result = $card->labels()->toggle($label->id);
+
+        app(AutomationEngine::class)->fire(
+            in_array($label->id, $result['attached'], true) ? 'card.label_added' : 'card.label_removed',
+            $card,
+            ['label_id' => $label->id],
+        );
+
         $this->touched('card.labels');
     }
 
@@ -637,6 +672,7 @@ class CardDetail extends Component
 
         $this->reset('newChecklistTitle');
         $this->logActivity($card, 'checklist.created');
+        app(AutomationEngine::class)->fire('checklist.added', $card);
         $this->touched('checklist.created');
     }
 
@@ -677,6 +713,17 @@ class CardDetail extends Component
             ->findOrFail($itemId);
 
         $item->update(['is_completed' => ! $item->is_completed]);
+
+        if ($item->is_completed) {
+            $engine = app(AutomationEngine::class);
+            $engine->fire('checklist.item_checked', $card, ['item_id' => $item->id]);
+
+            // Last unchecked item just got ticked → the whole checklist is done.
+            if ($item->checklist->items()->where('is_completed', false)->doesntExist()) {
+                $engine->fire('checklist.completed', $card, ['checklist_id' => $item->checklist_id]);
+            }
+        }
+
         $this->touched('checklist.item.toggled');
     }
 
@@ -879,6 +926,7 @@ class CardDetail extends Component
             'excerpt' => Str::limit(trim(strip_tags($data['newComment'])), 140),
             'comment_id' => $comment->id,
         ]);
+        app(AutomationEngine::class)->fire('comment.added', $card, ['body' => $data['newComment']]);
         $this->notifyForComment($card, $data['newComment']);
 
         $this->reset('newComment');
