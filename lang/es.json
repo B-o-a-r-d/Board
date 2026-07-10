@@ -919,5 +919,11 @@
     "Archiver toutes les cartes": "Archivar todas las tarjetas",
     "Quand une carte arrive ici…": "Cuando una tarjeta llega aquí…",
     "Chaque jour, trier cette liste…": "Cada día, ordenar esta lista…",
-    "Créer une règle…": "Crear una regla…"
+    "Créer une règle…": "Crear una regla…",
+    "Succès": "Éxito",
+    "Partiel": "Parcial",
+    "Échec": "Fallo",
+    "Règle supprimée": "Regla eliminada",
+    "{1}:count action|[2,*]:count actions": ":count acción|:count acciones",
+    "Aucune exécution enregistrée pour l’instant.": "Aún no hay ejecuciones registradas."
 }

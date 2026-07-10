@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\AutomationRun;
 use App\Models\Board;
 use Illuminate\Console\Command;
 
@@ -36,7 +37,10 @@ class PruneActivities extends Command
                 }
             });
 
-        $this->info("Pruned {$totalDeleted} activity entries across {$boardCount} board(s).");
+        // Automation runs are a bounded, high-churn journal — keep 30 days.
+        $runsDeleted = AutomationRun::where('created_at', '<', now()->subDays(30))->delete();
+
+        $this->info("Pruned {$totalDeleted} activity entries across {$boardCount} board(s), and {$runsDeleted} automation run(s).");
 
         return self::SUCCESS;
     }

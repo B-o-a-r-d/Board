@@ -29,6 +29,7 @@
             'due' => ['label' => __("Date d'échéance"), 'icon' => 'calendar-blank'],
             'buttons' => ['label' => __('Boutons de carte'), 'icon' => 'cursor-click'],
             'board_buttons' => ['label' => __('Boutons de tableau'), 'icon' => 'squares-four'],
+            'activity' => ['label' => __('Activité'), 'icon' => 'clock-counter-clockwise'],
         ];
         $hasTriggerStep = ! in_array($section, ['buttons', 'board_buttons'], true);
         $isButtonSection = in_array($section, ['buttons', 'board_buttons'], true);
@@ -70,7 +71,35 @@
             </div>
 
             <div class="mx-auto w-full max-w-4xl p-4 sm:p-8">
-                @if (! $building)
+                @if ($section === 'activity')
+                    {{-- ============ Activity journal ============ --}}
+                    <h1 class="mb-5 text-xl font-semibold">{{ __('Activité') }}</h1>
+                    @php $statusMeta = [
+                        'success' => ['label' => __('Succès'), 'class' => 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400'],
+                        'partial' => ['label' => __('Partiel'), 'class' => 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400'],
+                        'failed' => ['label' => __('Échec'), 'class' => 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400'],
+                    ]; @endphp
+                    <div class="space-y-2">
+                        @forelse ($runs as $run)
+                            @php $meta = $statusMeta[$run->status] ?? $statusMeta['failed']; @endphp
+                            <div wire:key="run-{{ $run->id }}" class="{{ $panelBox }} flex items-start gap-3 p-3">
+                                <span class="mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium {{ $meta['class'] }}">{{ $meta['label'] }}</span>
+                                <div class="min-w-0 flex-1">
+                                    <p class="truncate text-sm font-medium">{{ $run->automation?->name ?? __('Règle supprimée') }}</p>
+                                    <p class="text-xs text-neutral-500 dark:text-neutral-400">
+                                        {{ trans_choice('{1}:count action|[2,*]:count actions', $run->actions_run, ['count' => $run->actions_run]) }}@if ($run->actions_failed > 0) · <span class="text-red-500">{{ trans_choice('{1}:count échec|[2,*]:count échecs', $run->actions_failed, ['count' => $run->actions_failed]) }}</span>@endif
+                                        · {{ $run->created_at?->diffForHumans() }}
+                                    </p>
+                                    @if ($run->error)
+                                        <p class="mt-1 break-words rounded bg-red-50 px-2 py-1 font-mono text-[11px] text-red-600 dark:bg-red-500/10 dark:text-red-400">{{ $run->error }}</p>
+                                    @endif
+                                </div>
+                            </div>
+                        @empty
+                            <div class="{{ $panelBox }} p-8 text-center text-sm text-neutral-400">{{ __('Aucune exécution enregistrée pour l’instant.') }}</div>
+                        @endforelse
+                    </div>
+                @elseif (! $building)
                     {{-- ============ Listing ============ --}}
                     <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
                         <h1 class="text-xl font-semibold">{{ $sections[$section]['label'] }}</h1>

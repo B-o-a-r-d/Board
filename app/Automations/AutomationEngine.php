@@ -2,9 +2,13 @@
 
 namespace App\Automations;
 
+use App\Events\BoardActivity;
+use App\Models\Activity;
 use App\Models\Automation;
+use App\Models\AutomationRun;
 use App\Models\Card;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 /**
  * Evaluates a board's automations against a fired event and runs the matching
@@ -15,6 +19,9 @@ class AutomationEngine
 {
     /** Hard cap per rule execution — a runaway pipeline can't stall a request. */
     public const MAX_ACTIONS = 10;
+
+    /** Consecutive fully-failed runs before a rule is auto-quarantined. */
+    public const MAX_CONSECUTIVE_FAILURES = 10;
 
     public function __construct(private AutomationRegistry $registry) {}
 
@@ -154,12 +161,14 @@ class AutomationEngine
     {
         $executed = 0;
         $failed = 0;
+        $errors = [];
 
         foreach (array_slice($automation->actionList(), 0, self::MAX_ACTIONS) as $step) {
             $action = $this->registry->action($step['type']);
 
             if ($action === null) {
                 $failed++;
+                $errors[] = "action inconnue: {$step['type']}";
 
                 continue;
             }
@@ -170,15 +179,55 @@ class AutomationEngine
             } catch (\Throwable $e) {
                 report($e);
                 $failed++;
+                $errors[] = "{$step['type']}: {$e->getMessage()}";
             }
         }
+
+        // A fully-failed run (nothing ran) advances the quarantine counter; any
+        // successful action means the rule still does something → reset.
+        $fullyFailed = $executed === 0 && $failed > 0;
+        $consecutive = $fullyFailed ? $automation->consecutive_failures + 1 : 0;
 
         $automation->forceFill([
             'last_run_at' => now(),
             'runs_count' => $automation->runs_count + 1,
             'failures_count' => $automation->failures_count + $failed,
+            'consecutive_failures' => $consecutive,
         ])->save();
 
+        AutomationRun::create([
+            'automation_id' => $automation->id,
+            'board_id' => $automation->board_id,
+            'card_id' => $card->exists ? $card->id : null,
+            'status' => $failed === 0 ? 'success' : ($executed > 0 ? 'partial' : 'failed'),
+            'actions_run' => $executed,
+            'actions_failed' => $failed,
+            'error' => $errors === [] ? null : Str::limit(implode(' · ', $errors), 1000),
+        ]);
+
+        if ($consecutive >= self::MAX_CONSECUTIVE_FAILURES && $automation->is_active) {
+            $this->quarantine($automation, $card);
+        }
+
         return $executed;
+    }
+
+    /**
+     * Disable a rule that keeps failing and surface it in the board activity
+     * (which admins see, and which broadcasts live) — the same fail-safe idea
+     * as the plugin quarantine.
+     */
+    private function quarantine(Automation $automation, Card $card): void
+    {
+        $automation->forceFill(['is_active' => false])->save();
+
+        Activity::create([
+            'board_id' => $automation->board_id,
+            'card_id' => $card->exists ? $card->id : null,
+            'type' => 'automation.disabled',
+            'properties' => ['automation' => $automation->name],
+        ]);
+
+        broadcast(new BoardActivity($automation->board_id, 'automations.changed'));
     }
 }

@@ -19,4 +19,5 @@ return [
     'attachment.added' => 'attached :value to :card',
     'member.assigned' => 'assigned :user to :card',
     'comment.created' => 'commented on :card',
+    'automation.disabled' => 'disabled the automation “:automation” after repeated failures',
 ];

@@ -19,4 +19,5 @@ return [
     'attachment.added' => 'a joint :value à :card',
     'member.assigned' => 'a assigné :user à :card',
     'comment.created' => 'a commenté :card',
+    'automation.disabled' => 'a désactivé l’automatisation « :automation » après des échecs répétés',
 ];

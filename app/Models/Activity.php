@@ -121,6 +121,7 @@ class Activity extends Model
             'number' => $props['number'] ?? '',
             'user' => $props['user_name'] ?? '',
             'excerpt' => $props['excerpt'] ?? '',
+            'automation' => $props['automation'] ?? '',
         ];
 
         $key = 'board_activity.'.$type;

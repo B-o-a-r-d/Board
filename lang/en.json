@@ -919,5 +919,11 @@
     "Archiver toutes les cartes": "Archive every card",
     "Quand une carte arrive ici…": "When a card arrives here…",
     "Chaque jour, trier cette liste…": "Every day, sort this list…",
-    "Créer une règle…": "Create a rule…"
+    "Créer une règle…": "Create a rule…",
+    "Succès": "Success",
+    "Partiel": "Partial",
+    "Échec": "Failure",
+    "Règle supprimée": "Deleted rule",
+    "{1}:count action|[2,*]:count actions": ":count action|:count actions",
+    "Aucune exécution enregistrée pour l’instant.": "No runs recorded yet."
 }

@@ -6,6 +6,7 @@ use App\Automations\AutomationRegistry;
 use App\Automations\SentenceRenderer;
 use App\Events\BoardActivity;
 use App\Models\Automation;
+use App\Models\AutomationRun;
 use App\Models\Board;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
@@ -153,7 +154,7 @@ class Automations extends Component
 
     public function setSection(string $section): void
     {
-        if (in_array($section, ['rules', 'scheduled', 'due', 'buttons', 'board_buttons'], true)) {
+        if (in_array($section, ['rules', 'scheduled', 'due', 'buttons', 'board_buttons', 'activity'], true)) {
             $this->section = $section;
             $this->cancelBuild();
         }
@@ -482,7 +483,7 @@ class Automations extends Component
             default => array_merge(...array_values(self::TRIGGER_CATEGORIES)),
         };
 
-        $items = $this->showModal
+        $items = ($this->showModal && $this->section !== 'activity')
             ? $this->board->automations()
                 ->whereIn('trigger_type', $sectionTriggers)
                 ->latest()
@@ -490,7 +491,17 @@ class Automations extends Component
                 ->map(fn (Automation $a) => ['model' => $a, 'sentence' => $renderer->render($a)])
             : collect();
 
+        $runs = ($this->showModal && $this->section === 'activity')
+            ? AutomationRun::query()
+                ->where('board_id', $this->board->id)
+                ->with('automation:id,name,trigger_type')
+                ->latest()
+                ->limit(60)
+                ->get()
+            : collect();
+
         return view('livewire.boards.automations', [
+            'runs' => $runs,
             'items' => $items,
             'registryTriggers' => $registry->triggers(),
             'registryActions' => $registry->actions(),
