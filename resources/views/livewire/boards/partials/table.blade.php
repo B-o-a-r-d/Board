@@ -11,11 +11,12 @@
      wire:target="search, filterLabels, filterMembers, toggleLabel, toggleMember, toggleUnassigned, filterDue, resetFilters, applyFilter, applyView, sortTable, renameCard, setCardDue, moveCardToList, toggleCardMember, toggleCardLabel, setCardCustomField">
 
     @if ($tableCards->isEmpty())
-        <p class="py-10 text-center text-sm text-neutral-400">{{ __('Aucune carte à afficher.') }}</p>
+        <p class="py-10 text-center text-sm text-neutral-400 {{ $boardBg ? 'rounded-xl bg-white/70 backdrop-blur-md dark:bg-neutral-900/70' : '' }}">{{ __('Aucune carte à afficher.') }}</p>
     @else
-        <div class="min-h-0 flex-1 overflow-auto rounded-xl border border-neutral-300 dark:border-neutral-700">
+        {{-- Opaque/glass surface: the board background must never bleed through the rows --}}
+        <div class="min-h-0 flex-1 overflow-auto rounded-xl border {{ $boardBg ? 'border-white/20 bg-white/95 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-neutral-900/90' : 'border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900' }}">
             <table class="min-w-full border-collapse text-sm">
-                <thead class="sticky top-0 z-10 bg-neutral-100 text-left dark:bg-neutral-900">
+                <thead class="sticky top-0 z-10 bg-neutral-100 text-left dark:bg-neutral-800">
                     <tr class="border-b border-neutral-300 dark:border-neutral-700">
                         @foreach (['title' => __('Titre'), 'list' => __('Liste'), 'due' => __('Échéance')] as $col => $label)
                             <th class="whitespace-nowrap px-3 py-2 font-medium">

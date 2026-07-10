@@ -37,8 +37,15 @@
                     panel: 'comments',
                     openPicker: null,
                     checklistOpen: false,
-                    showRelations: @js($hasLinks),
-                    showMirror: @js($cardMirrors->isNotEmpty()),
+                    {{-- Empty sections stay hidden: when links/mirrors exist the x-show
+                         below is a literal `true`; these flags only cover the "just
+                         opened, still empty" window and auto-reset after 15s. --}}
+                    showRelations: false,
+                    showMirror: false,
+                    openTransient(flag) {
+                        this[flag] = true;
+                        setTimeout(() => { this[flag] = false }, 15000);
+                    },
                  }">
                 {{-- Header strip: cover (image / color) or plain surface, list chip + window actions --}}
                 <div class="relative">
@@ -136,7 +143,7 @@
                                         <x-phosphor-copy class="h-4 w-4 opacity-70"/> {{ __('Copier') }}
                                     </button>
                                     @if ($mirrorTargets->isNotEmpty() || $cardMirrors->isNotEmpty())
-                                        <button type="button" @click="menuOpen = false; showMirror = true; flashElement('card-mirrors')" class="{{ $menuItem }}">
+                                        <button type="button" @click="menuOpen = false; openTransient('showMirror'); flashElement('card-mirrors')" class="{{ $menuItem }}">
                                             <x-phosphor-cards class="h-4 w-4 opacity-70"/> {{ __('Miroir') }}
                                         </button>
                                     @endif
@@ -297,7 +304,7 @@
                                                 <span class="mt-0.5 block text-xs leading-5 text-neutral-500 dark:text-neutral-400">{{ __('Ajouter des fichiers ou des liens') }}</span>
                                             </span>
                                         </button>
-                                        <button type="button" class="{{ $menuEntry }}" @click="addMenuOpen = false; showRelations = true; flashElement('card-relations')">
+                                        <button type="button" class="{{ $menuEntry }}" @click="addMenuOpen = false; openTransient('showRelations'); flashElement('card-relations')">
                                             <span class="{{ $menuIcon }}"><x-phosphor-git-branch class="h-5 w-5"/></span>
                                             <span class="min-w-0 pt-0.5">
                                                 <span class="block text-sm font-medium text-neutral-800 dark:text-neutral-200">{{ __('Relations') }}</span>
@@ -798,7 +805,7 @@
                         @endif
 
                         {{-- Relations (card links) — hidden until links exist or "Ajouter → Relations" --}}
-                        <div id="card-relations" x-show="showRelations" x-cloak>
+                        <div id="card-relations" x-show="{{ $hasLinks ? 'true' : 'showRelations' }}" x-cloak>
                             <h3 class="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-neutral-500"><x-phosphor-git-branch class="h-4 w-4"/>{{ __('Relations') }}</h3>
 
                             @if ($hasLinks)
@@ -860,7 +867,7 @@
                         </div>
 
                         {{-- Mirrors — hidden until some exist or "⋯ → Miroir" --}}
-                        <div id="card-mirrors" x-show="showMirror" x-cloak>
+                        <div id="card-mirrors" x-show="{{ $cardMirrors->isNotEmpty() ? 'true' : 'showMirror' }}" x-cloak>
                             <h3 class="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-neutral-500"><x-phosphor-cards class="h-4 w-4"/>{{ __('Miroirs') }}</h3>
 
                             @if ($cardMirrors->isNotEmpty())

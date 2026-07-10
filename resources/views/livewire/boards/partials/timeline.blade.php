@@ -7,9 +7,10 @@
      wire:loading.class.delay="opacity-40"
      wire:target="search, filterLabels, filterMembers, toggleLabel, toggleMember, toggleUnassigned, filterDue, resetFilters, applyFilter, applyView, timelineStep, timelineToday, setCardSchedule">
 
-    {{-- Range navigation --}}
-    <div class="mb-3 flex items-center justify-between gap-2">
-        <h2 class="text-base font-semibold capitalize sm:text-lg">{{ $timeline['start']->translatedFormat('d MMM') }} – {{ $end->translatedFormat('d MMM Y') }}</h2>
+    {{-- Range navigation — glass bar over a board background so it stays readable.
+         translatedFormat uses PHP date chars: 'M' (short month), not ISO 'MMM'. --}}
+    <div class="mb-3 flex items-center justify-between gap-2 {{ $boardBg ? 'rounded-lg border border-white/20 bg-white/70 px-3 py-2 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-neutral-900/70' : '' }}">
+        <h2 class="text-base font-semibold capitalize sm:text-lg">{{ $timeline['start']->translatedFormat('d M') }} – {{ $end->translatedFormat('d M Y') }}</h2>
         <div class="flex items-center gap-1">
             <button type="button" wire:click="timelineToday"
                     class="rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800">{{ __("Aujourd'hui") }}</button>
@@ -21,9 +22,10 @@
     </div>
 
     @if (empty($timeline['lanes']))
-        <p class="py-10 text-center text-sm text-neutral-400">{{ __('Aucune carte datée sur cette période.') }}</p>
+        <p class="py-10 text-center text-sm text-neutral-400 {{ $boardBg ? 'rounded-xl bg-white/70 backdrop-blur-md dark:bg-neutral-900/70' : '' }}">{{ __('Aucune carte datée sur cette période.') }}</p>
     @else
-        <div class="min-h-0 flex-1 overflow-auto rounded-xl border border-neutral-300 dark:border-neutral-700">
+        {{-- Opaque/glass surface: the board background must never bleed through the lanes --}}
+        <div class="min-h-0 flex-1 overflow-auto rounded-xl border {{ $boardBg ? 'border-white/20 bg-white/95 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-neutral-900/90' : 'border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-950' }}">
             <div class="relative" style="width: {{ 176 + $timeline['days'] * 40 }}px;">
                 {{-- Day header (sticky, fixed 44px height — must match buildTimeline). --}}
                 <div class="sticky top-0 z-20 flex h-11 border-b border-neutral-300 bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900">
