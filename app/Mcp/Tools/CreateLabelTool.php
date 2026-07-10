@@ -4,6 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Mcp\Concerns\InteractsWithMcpBoard;
 use App\Models\Board;
+use App\Models\Label;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -20,7 +21,7 @@ class CreateLabelTool extends Tool
         $request->validate([
             'board_id' => 'required|string',
             'name' => 'nullable|string|max:255',
-            'color' => 'required|string|max:9',
+            'color' => ['required', 'string', Label::COLOR_RULE],
         ]);
 
         $board = $this->resolvePublicId(Board::class, $request->get('board_id'));

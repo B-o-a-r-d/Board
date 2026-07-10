@@ -20,7 +20,7 @@ class UpdateLabelTool extends Tool
         $request->validate([
             'label_id' => 'required|string',
             'name' => 'sometimes|nullable|string|max:255',
-            'color' => 'sometimes|string|max:9',
+            'color' => ['sometimes', 'string', Label::COLOR_RULE],
         ]);
 
         $label = Label::with('board')->where('public_id', $request->get('label_id'))->first();

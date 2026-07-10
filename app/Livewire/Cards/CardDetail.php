@@ -14,6 +14,7 @@ use App\Models\CardLink;
 use App\Models\CardMirror;
 use App\Models\CardTemplate;
 use App\Models\ChecklistItem;
+use App\Models\Label;
 use App\Models\LinkPreview;
 use App\Models\User;
 use App\Notifications\CardNotification;
@@ -23,6 +24,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -367,7 +369,7 @@ class CardDetail extends Component
 
         $data = $this->validate([
             'newLabelName' => ['nullable', 'string', 'max:255'],
-            'newLabelColor' => ['required', 'string', 'max:9'],
+            'newLabelColor' => ['required', 'string', Label::COLOR_RULE],
         ]);
 
         $label = $this->board->labels()->create([
@@ -382,7 +384,7 @@ class CardDetail extends Component
 
     public function renameLabel(int $labelId, string $name): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorize('contribute', $this->board);
 
         $this->board->labels()->findOrFail($labelId)->update(['name' => trim($name) ?: null]);
         $this->touched('label.renamed');
@@ -390,7 +392,9 @@ class CardDetail extends Component
 
     public function recolorLabel(int $labelId, string $color): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorize('contribute', $this->board);
+
+        Validator::make(['color' => $color], ['color' => ['required', 'string', Label::COLOR_RULE]])->validate();
 
         $this->board->labels()->whereKey($labelId)->update(['color' => $color]);
         $this->touched('label.recolored');
@@ -398,7 +402,7 @@ class CardDetail extends Component
 
     public function deleteLabel(int $labelId): void
     {
-        $this->authorize('view', $this->board);
+        $this->authorize('contribute', $this->board);
 
         $this->board->labels()->whereKey($labelId)->delete();
         $this->touched('label.deleted');

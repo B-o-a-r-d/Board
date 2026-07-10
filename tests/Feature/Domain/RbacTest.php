@@ -78,6 +78,60 @@ test('an observer cannot comment', function () {
     expect($card->comments()->count())->toBe(0);
 });
 
+test('an observer cannot rename, recolor or delete a board label', function () {
+    ['board' => $board, 'observer' => $observer, 'card' => $card] = boardWithObserver();
+    $label = $board->labels()->create(['name' => 'Ancien', 'color' => '#ef4444']);
+
+    Livewire::actingAs($observer)->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->call('renameLabel', $label->id, 'Piraté')
+        ->assertForbidden();
+
+    Livewire::actingAs($observer)->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->call('recolorLabel', $label->id, '#000000')
+        ->assertForbidden();
+
+    Livewire::actingAs($observer)->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->call('deleteLabel', $label->id)
+        ->assertForbidden();
+
+    $label->refresh();
+    expect($label->name)->toBe('Ancien')
+        ->and($label->color)->toBe('#ef4444')
+        ->and($board->labels()->whereKey($label->id)->exists())->toBeTrue();
+});
+
+test('a member (contributor) can rename, recolor and delete a board label', function () {
+    ['board' => $board, 'member' => $member, 'card' => $card] = makeCardContext();
+    $label = $board->labels()->create(['name' => 'Ancien', 'color' => '#ef4444']);
+
+    $component = Livewire::actingAs($member)->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id);
+
+    $component->call('renameLabel', $label->id, 'Nouveau')->assertHasNoErrors();
+    expect($label->fresh()->name)->toBe('Nouveau');
+
+    $component->call('recolorLabel', $label->id, '#22c55e')->assertHasNoErrors();
+    expect($label->fresh()->color)->toBe('#22c55e');
+
+    $component->call('deleteLabel', $label->id)->assertHasNoErrors();
+    expect($board->labels()->whereKey($label->id)->exists())->toBeFalse();
+});
+
+test('recolor rejects a non-hex color to prevent CSS injection', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+    $label = $board->labels()->create(['name' => 'X', 'color' => '#ef4444']);
+
+    Livewire::actingAs($owner)->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->call('recolorLabel', $label->id, 'red;background:url(//evil)')
+        ->assertHasErrors('color');
+
+    expect($label->fresh()->color)->toBe('#ef4444');
+});
+
 test('a member can still add a card', function () {
     ['board' => $board, 'member' => $member] = makeCardContext();
     $list = $board->lists()->firstOrFail();

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\CardResource;
 use App\Models\BoardList;
 use App\Models\Card;
+use App\Models\Label;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -59,7 +60,7 @@ class CardController extends Controller
             'title' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'due_at' => ['nullable', 'date'],
-            'cover_color' => ['nullable', 'string', 'max:9'],
+            'cover_color' => ['nullable', 'string', Label::COLOR_RULE],
             'completed' => ['sometimes', 'boolean'],
         ]);
 

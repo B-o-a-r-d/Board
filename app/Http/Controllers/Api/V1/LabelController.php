@@ -26,7 +26,7 @@ class LabelController extends Controller
 
         $data = $request->validate([
             'name' => ['nullable', 'string', 'max:255'],
-            'color' => ['required', 'string', 'max:9'],
+            'color' => ['required', 'string', Label::COLOR_RULE],
         ]);
 
         $label = $board->labels()->create([
@@ -43,7 +43,7 @@ class LabelController extends Controller
 
         $data = $request->validate([
             'name' => ['nullable', 'string', 'max:255'],
-            'color' => ['sometimes', 'string', 'max:9'],
+            'color' => ['sometimes', 'string', Label::COLOR_RULE],
         ]);
 
         $label->update($data);
