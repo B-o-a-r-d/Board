@@ -42,6 +42,9 @@ class AppServiceProvider extends ServiceProvider
                 // Dates
                 Triggers\CardDueSoonTrigger::class,
                 Triggers\CardDueDateSetTrigger::class,
+                Triggers\CardDueRelativeTrigger::class,
+                // Time-driven (no app event — evaluated by automations:run-scheduled)
+                Triggers\ScheduledTrigger::class,
                 // Checklists
                 Triggers\ChecklistAddedTrigger::class,
                 Triggers\ChecklistItemCheckedTrigger::class,

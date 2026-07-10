@@ -76,6 +76,39 @@ class AutomationEngine
     }
 
     /**
+     * Run a time-driven (scheduled) rule. There is no triggering card: the
+     * pipeline receives a phantom, unsaved card carrying only the board
+     * context, so board-scope actions (create_card, sort_list,
+     * archive_list_cards…) resolve their explicit list configs while
+     * card-mutating actions no-op or fail safely into failures_count.
+     * Conditions are card-based and therefore skipped for scheduled rules.
+     */
+    public function runScheduledRule(Automation $automation): int
+    {
+        $card = new Card(['board_id' => $automation->board_id]);
+        $card->setRelation('board', $automation->board);
+
+        return $this->runPipeline($automation, $card);
+    }
+
+    /**
+     * Run a rule against a specific card outside the event flow (the due-date
+     * rules). Actor scope and conditions apply as usual.
+     */
+    public function runForCard(Automation $automation, Card $card): int
+    {
+        if (! $automation->actorAllowed(Auth::id())) {
+            return 0;
+        }
+
+        if (! $this->conditionsPass($automation, $card)) {
+            return 0;
+        }
+
+        return $this->runPipeline($automation, $card);
+    }
+
+    /**
      * Every condition of the rule must pass (AND). A rule referencing an
      * unknown condition fails closed: better a silent skip than a rule firing
      * without the guard its author configured.
