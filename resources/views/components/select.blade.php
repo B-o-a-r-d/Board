@@ -4,6 +4,7 @@
     'placeholder' => null,
     'clearable' => false,
     'direction' => 'down',
+    'multiple' => false,
 ])
 
 @php
@@ -12,16 +13,21 @@
         ? ['value' => (string) ($o['value'] ?? ''), 'label' => (string) ($o['label'] ?? ($o['value'] ?? ''))]
         : ['value' => (string) $o, 'label' => (string) $o])->values()->all();
     $placeholder ??= __('Choisir…');
+
+    $initial = $multiple
+        ? collect(is_array($value) ? $value : [])->map(fn ($v) => (string) $v)->values()->all()
+        : ($value === null ? '' : (string) $value);
 @endphp
 
 {{--
-    Pretty, keyboard-accessible select. Emits `select-change` with the value.
+    Pretty, keyboard-accessible select. Emits `select-change` with the value
+    (or the array of values when `multiple`).
 
     <x-select :options="$field->options" :value="$val" clearable
               @select-change="$wire.saveCustomField({{ $field->id }}, $event.detail)" />
 --}}
 <div
-    x-data="selectMenu({ items: @js($items), initial: @js($value === null ? '' : (string) $value) })"
+    x-data="selectMenu({ items: @js($items), initial: @js($initial), multiple: @js((bool) $multiple) })"
     @keydown.escape.stop="open = false"
     @keydown.arrow-down.prevent="open ? next() : (open = true)"
     @keydown.arrow-up.prevent="open ? prev() : (open = true)"
@@ -35,7 +41,7 @@
         :aria-expanded="open"
         class="flex min-h-[38px] w-full items-center justify-between gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-left text-sm shadow-sm transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800"
     >
-        <span class="truncate" :class="! selected && 'text-neutral-400'" x-text="selected ? selected.label : @js($placeholder)"></span>
+        <span class="truncate" :class="! buttonLabel() && 'text-neutral-400'" x-text="buttonLabel() ?? @js($placeholder)"></span>
         <x-phosphor-caret-up-down class="h-4 w-4 shrink-0 text-neutral-400" />
     </button>
 
@@ -60,7 +66,7 @@
                 class="flex cursor-pointer items-center justify-between gap-2 rounded px-2 py-1.5 data-[active=true]:bg-neutral-100 dark:data-[active=true]:bg-neutral-700"
             >
                 <span class="truncate" x-text="item.label"></span>
-                <x-phosphor-check x-show="selected && selected.value === item.value" x-cloak class="h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
+                <x-phosphor-check x-show="isPicked(item)" x-cloak class="h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
             </li>
         </template>
         <li x-show="items.length === 0" class="px-2 py-1.5 text-neutral-400">{{ __('Aucune option') }}</li>

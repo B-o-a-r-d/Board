@@ -4,6 +4,7 @@ namespace Tests\Fixtures\Connector;
 
 use Board\PluginSdk\Contracts\DefinesActivities;
 use Board\PluginSdk\Contracts\Plugin;
+use Board\PluginSdk\Contracts\ProvidesCardFields;
 use Board\PluginSdk\Contracts\ProvidesListSource;
 use Board\PluginSdk\Contracts\ProvidesMcpTools;
 use Board\PluginSdk\Contracts\ProvidesOAuth;
@@ -21,7 +22,7 @@ use Illuminate\Support\Facades\Http;
  *
  * All I/O targets the fake `acme.test` host so tests can `Http::fake()` it.
  */
-class AcmePlugin implements DefinesActivities, Plugin, ProvidesListSource, ProvidesMcpTools, ProvidesOAuth, ProvidesSettings
+class AcmePlugin implements DefinesActivities, Plugin, ProvidesCardFields, ProvidesListSource, ProvidesMcpTools, ProvidesOAuth, ProvidesSettings
 {
     public const AUTHORIZE_URL = 'https://acme.test/oauth/authorize';
 
@@ -172,6 +173,19 @@ class AcmePlugin implements DefinesActivities, Plugin, ProvidesListSource, Provi
             $properties['ref_type'] ?? 'item',
             $properties['title'] ?? ($properties['ref_id'] ?? ''),
         );
+    }
+
+    // --- ProvidesCardFields -----------------------------------------------------
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function cardFields(array $config = []): array
+    {
+        return [
+            ['key' => 'acme_status', 'name' => 'Acme status', 'type' => 'select', 'options' => ['Open', 'In progress', 'Done'], 'placement' => 'content'],
+            ['key' => 'acme_ref', 'name' => 'Acme reference', 'type' => 'url'],
+        ];
     }
 
     // --- ProvidesMcpTools -----------------------------------------------------

@@ -2,6 +2,7 @@
 
 use App\Enums\Role;
 use App\Livewire\Cards\CardDetail;
+use App\Models\BoardList;
 use App\Models\Label;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -303,4 +304,72 @@ test('uploading a non media file is rejected', function () {
         ->assertHasErrors('upload');
 
     expect($card->attachments()->count())->toBe(0);
+});
+
+test('the modal list selector moves the card to another list', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+    $target = BoardList::factory()->create(['board_id' => $board->id, 'name' => 'Cible']);
+
+    Livewire::actingAs($owner)
+        ->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->call('moveToList', $target->id);
+
+    expect($card->fresh()->board_list_id)->toBe($target->id);
+});
+
+test('the card menu can duplicate the card with labels and members', function () {
+    ['board' => $board, 'owner' => $owner, 'member' => $member, 'card' => $card] = makeCardContext();
+    $label = Label::factory()->create(['board_id' => $board->id]);
+    $card->labels()->attach($label);
+    $card->members()->attach($member);
+
+    Livewire::actingAs($owner)
+        ->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->call('duplicate');
+
+    $copy = $board->cards()->where('title', 'like', $card->title.'%')->whereKeyNot($card->id)->first();
+    expect($copy)->not->toBeNull()
+        ->and($copy->labels->pluck('id')->all())->toBe([$label->id])
+        ->and($copy->members->pluck('id')->all())->toBe([$member->id]);
+});
+
+test('the card menu can archive the card and closes the modal', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+
+    Livewire::actingAs($owner)
+        ->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->call('archive')
+        ->assertSet('showModal', false);
+
+    expect($card->fresh()->archived_at)->not->toBeNull();
+});
+
+test('empty sections stay hidden: no attachment header, no checklist block for a bare card', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+
+    Livewire::actingAs($owner)
+        ->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->assertDontSee(__('Fichiers'))
+        ->assertDontSee(__('+ Ajouter un élément'));
+});
+
+test('an observer cannot move, duplicate or archive from the modal', function () {
+    ['board' => $board, 'outsider' => $outsider, 'card' => $card] = makeCardContext();
+    $board->workspace->members()->attach($outsider, ['role' => Role::Observer->value]);
+    $board->members()->attach($outsider, ['role' => Role::Observer->value]);
+    $target = BoardList::factory()->create(['board_id' => $board->id]);
+
+    // One component per attempt: a 403 leaves the Livewire snapshot unusable.
+    Livewire::actingAs($outsider)->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)->call('moveToList', $target->id)->assertForbidden();
+    Livewire::actingAs($outsider)->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)->call('duplicate')->assertForbidden();
+    Livewire::actingAs($outsider)->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)->call('archive')->assertForbidden();
+
+    expect($card->fresh()->archived_at)->toBeNull();
 });

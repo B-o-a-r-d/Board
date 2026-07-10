@@ -12,8 +12,10 @@ use App\Models\BoardList;
 use App\Models\Card;
 use App\Models\CardLink;
 use App\Models\CardTemplate;
+use App\Models\CustomField;
 use App\Models\User;
 use App\Notifications\CardNotification;
+use App\Plugins\PluginCardFieldSync;
 use Board\PluginSdk\Contracts\DefinesActivities;
 use Board\PluginSdk\Contracts\ProvidesListSource;
 use Board\PluginSdk\PluginRegistry;
@@ -26,6 +28,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -117,8 +120,14 @@ class Show extends Component
 
     public string $newFieldType = 'text';
 
-    /** Comma-separated options, only used when the new field type is "select". */
+    /** Comma-separated options, only used for the "select"/"multiselect" types. */
     public string $newFieldOptions = '';
+
+    /** Currency symbol, only used for the "money" type. */
+    public string $newFieldCurrency = '€';
+
+    /** Where the field renders in the card modal: sidebar | content. */
+    public string $newFieldPlacement = CustomField::PLACEMENT_SIDEBAR;
 
     public function toggleCustomFields(): void
     {
@@ -133,7 +142,8 @@ class Show extends Component
 
         $data = $this->validate([
             'newFieldName' => ['required', 'string', 'max:60'],
-            'newFieldType' => ['required', 'string', 'in:text,number,date,select,checkbox'],
+            'newFieldType' => ['required', 'string', Rule::enum(CustomFieldType::class)],
+            'newFieldPlacement' => ['required', 'string', 'in:sidebar,content'],
         ]);
 
         $type = CustomFieldType::from($data['newFieldType']);
@@ -154,15 +164,22 @@ class Show extends Component
             }
         }
 
+        if ($type === CustomFieldType::Money) {
+            $options = ['currency' => trim($this->newFieldCurrency) !== '' ? mb_substr(trim($this->newFieldCurrency), 0, 5) : '€'];
+        }
+
         $this->board->customFields()->create([
             'name' => $data['newFieldName'],
             'type' => $type,
             'options' => $options,
+            'placement' => $data['newFieldPlacement'],
             'position' => (int) $this->board->customFields()->max('position') + 1,
         ]);
 
         $this->reset('newFieldName', 'newFieldOptions');
         $this->newFieldType = 'text';
+        $this->newFieldCurrency = '€';
+        $this->newFieldPlacement = CustomField::PLACEMENT_SIDEBAR;
         $this->dispatch('board-refresh');
     }
 
@@ -170,7 +187,9 @@ class Show extends Component
     {
         $this->authorize('update', $this->board);
 
-        $this->board->customFields()->whereKey($fieldId)->delete();
+        // Plugin-managed fields are synced by their Power-Up; they go away when
+        // the plugin is uninstalled, never via the custom fields modal.
+        $this->board->customFields()->whereKey($fieldId)->whereNull('plugin_key')->delete();
         $this->dispatch('board-refresh');
     }
 
@@ -205,12 +224,15 @@ class Show extends Component
             return;
         }
 
-        $this->board->plugins()->create([
+        $instance = $this->board->plugins()->create([
             'plugin_key' => $pluginKey,
             'name' => $plugin->label(),
             'config' => [],
             'is_active' => true,
         ]);
+
+        // Materialize the custom fields the plugin injects into cards.
+        app(PluginCardFieldSync::class)->sync($instance);
 
         $this->dispatch('board-refresh');
     }
@@ -220,8 +242,15 @@ class Show extends Component
         $this->authorize('managePlugins', $this->board);
 
         // Plugin lists keep existing but lose their source (nullOnDelete),
-        // degrading to empty normal lists.
-        $this->board->plugins()->whereKey($pluginId)->delete();
+        // degrading to empty normal lists. Plugin-managed custom fields (and
+        // their card values) are removed with the instance.
+        $instance = $this->board->plugins()->whereKey($pluginId)->first();
+
+        if ($instance !== null) {
+            app(PluginCardFieldSync::class)->remove($instance);
+            $instance->delete();
+        }
+
         $this->configuringPluginId = null;
         $this->dispatch('board-refresh');
     }
@@ -232,6 +261,13 @@ class Show extends Component
 
         $plugin = $this->board->plugins()->findOrFail($pluginId);
         $plugin->update(['is_active' => ! $plugin->is_active]);
+
+        // Re-activation re-syncs the declared fields (they may depend on config);
+        // deactivation keeps rows + values, the visibility scope hides them.
+        if ($plugin->is_active) {
+            app(PluginCardFieldSync::class)->sync($plugin);
+        }
+
         $this->dispatch('board-refresh');
     }
 
@@ -294,6 +330,11 @@ class Show extends Component
         }
 
         $instance->update(['config' => $config]);
+
+        // Declared card fields may depend on the instance config — re-sync.
+        if ($instance->is_active) {
+            app(PluginCardFieldSync::class)->sync($instance->fresh());
+        }
 
         $this->editingPluginId = null;
         $this->reset('pluginConfigDraft');
@@ -1583,7 +1624,10 @@ class Show extends Component
                 ? $this->board->activities()->with(['user', 'card'])->latest()->limit(60)->get()
                 : collect(),
             'activityTabs' => $activityTabs,
-            'customFields' => $this->board->customFields,
+            // Fields visible on cards (user fields + fields of active plugins)…
+            'customFields' => $this->board->customFields()->visibleOn($this->board)->orderBy('position')->get(),
+            // …and every field for the admin modal (plugin-managed ones included).
+            'allCustomFields' => $this->board->customFields()->with(['list:id,name', 'card:id,title'])->orderBy('position')->get(),
             'pluginRegistry' => app(PluginRegistry::class),
             'availablePlugins' => $this->showPlugins ? app(PluginRegistry::class)->all() : [],
             'installedPlugins' => $this->showPlugins ? $this->board->plugins()->get() : collect(),

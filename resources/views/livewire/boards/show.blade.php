@@ -592,7 +592,7 @@
                                         @if ($customFields->isNotEmpty())
                                             @php
                                                 $cfValues = $card->customFieldValues->keyBy('custom_field_id');
-                                                $cfShown = $customFields->filter(fn ($f) => filled(optional($cfValues->get($f->id))->value));
+                                                $cfShown = $customFields->filter(fn ($f) => $f->appliesToCard($card) && filled(optional($cfValues->get($f->id))->value));
                                             @endphp
                                             @if ($cfShown->isNotEmpty())
                                                 <div class="mt-2 flex flex-wrap gap-1">
@@ -600,13 +600,34 @@
                                                         @php $val = $cfValues->get($field->id)->value; @endphp
                                                         <span class="inline-flex items-center gap-1 rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] text-neutral-600 dark:bg-neutral-700/50 dark:text-neutral-300">
                                                             <span class="font-medium">{{ $field->name }}:</span>
-                                                            @if ($field->type === \App\Enums\CustomFieldType::Checkbox)
-                                                                <x-phosphor-check class="h-3 w-3 text-green-600 dark:text-green-400"/>
-                                                            @elseif ($field->type === \App\Enums\CustomFieldType::Date)
-                                                                {{ \Illuminate\Support\Carbon::parse($val)->translatedFormat('d M Y') }}
-                                                            @else
-                                                                {{ $val }}
-                                                            @endif
+                                                            @switch($field->type)
+                                                                @case(\App\Enums\CustomFieldType::Checkbox)
+                                                                    <x-phosphor-check class="h-3 w-3 text-green-600 dark:text-green-400"/>
+                                                                    @break
+                                                                @case(\App\Enums\CustomFieldType::Date)
+                                                                    {{ \Illuminate\Support\Carbon::parse($val)->translatedFormat('d M Y') }}
+                                                                    @break
+                                                                @case(\App\Enums\CustomFieldType::MultiSelect)
+                                                                    {{ Str::limit(implode(', ', (array) $field->decode($val)), 30) }}
+                                                                    @break
+                                                                @case(\App\Enums\CustomFieldType::Member)
+                                                                    {{ $members->firstWhere('id', (int) $val)?->name ?? '—' }}
+                                                                    @break
+                                                                @case(\App\Enums\CustomFieldType::Money)
+                                                                    {{ rtrim(rtrim(number_format((float) $val, 2, ',', ' '), '0'), ',') }} {{ $field->currency() }}
+                                                                    @break
+                                                                @case(\App\Enums\CustomFieldType::Rating)
+                                                                    <span class="inline-flex items-center gap-0.5"><x-phosphor-star-fill class="h-3 w-3 text-amber-400"/>{{ (int) $val }}</span>
+                                                                    @break
+                                                                @case(\App\Enums\CustomFieldType::Progress)
+                                                                    <span class="inline-flex items-center gap-1"><span class="h-1 w-8 overflow-hidden rounded-full bg-neutral-300 dark:bg-neutral-600"><span class="block h-full rounded-full bg-indigo-500" style="width: {{ (int) $val }}%"></span></span>{{ (int) $val }}%</span>
+                                                                    @break
+                                                                @case(\App\Enums\CustomFieldType::Url)
+                                                                    <span class="inline-flex items-center gap-0.5"><x-phosphor-link class="h-3 w-3"/>{{ Str::limit((string) parse_url($val, PHP_URL_HOST) ?: $val, 24) }}</span>
+                                                                    @break
+                                                                @default
+                                                                    {{ Str::limit($val, 30) }}
+                                                            @endswitch
                                                         </span>
                                                     @endforeach
                                                 </div>
@@ -1049,23 +1070,35 @@
             </x-slot:header>
 
             <div class="space-y-5 p-5">
-                @if ($customFields->isEmpty())
+                @if ($allCustomFields->isEmpty())
                     <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ __('Aucun champ personnalisé. Ajoutez-en un ci-dessous pour enrichir les cartes.') }}</p>
                 @else
                     <ul class="divide-y divide-neutral-100 dark:divide-neutral-800">
-                        @foreach ($customFields as $field)
+                        @foreach ($allCustomFields as $field)
                             <li wire:key="cf-{{ $field->id }}" class="flex items-center justify-between gap-3 py-2">
                                 <div class="flex min-w-0 items-center gap-2">
                                     <x-dynamic-component :component="'phosphor-'.$field->type->icon()" class="h-4 w-4 shrink-0 text-neutral-400"/>
                                     <div class="min-w-0">
-                                        <p class="truncate text-sm font-medium">{{ $field->name }}</p>
-                                        <p class="truncate text-xs text-neutral-500 dark:text-neutral-400">{{ __($field->type->label()) }}@if ($field->type->hasOptions() && $field->options) · {{ implode(', ', $field->options) }}@endif</p>
+                                        <p class="flex items-center gap-1.5 truncate text-sm font-medium">
+                                            {{ $field->name }}
+                                            @if ($field->isPluginManaged())
+                                                <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300"><x-phosphor-puzzle-piece class="h-3 w-3"/> {{ $field->plugin_key }}</span>
+                                            @endif
+                                            @if ($field->card_id)
+                                                <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300" title="{{ $field->card?->title }}"><x-phosphor-cards class="h-3 w-3"/> {{ __('Carte') }} : {{ Str::limit($field->card?->title ?? '—', 18) }}</span>
+                                            @elseif ($field->board_list_id)
+                                                <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"><x-phosphor-list-dashes class="h-3 w-3"/> {{ __('Liste') }} : {{ Str::limit($field->list?->name ?? '—', 18) }}</span>
+                                            @endif
+                                        </p>
+                                        <p class="truncate text-xs text-neutral-500 dark:text-neutral-400">{{ __($field->type->label()) }}@if ($field->type->hasOptions() && $field->optionList()) · {{ implode(', ', $field->optionList()) }}@endif</p>
                                     </div>
                                 </div>
+                                @unless ($field->isPluginManaged())
                                 <button type="button"
                                         @click="$store.confirm.open({ title: '{{ __('Supprimer le champ') }}', message: '{{ __('Supprimer ce champ et toutes ses valeurs sur les cartes ?') }}', confirmLabel: '{{ __('Supprimer') }}', danger: true }).then(ok => ok && $wire.deleteCustomField({{ $field->id }}))"
                                         class="shrink-0 rounded-full p-1.5 text-neutral-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
                                         title="{{ __('Supprimer') }}"><x-phosphor-trash class="h-4 w-4"/></button>
+                                @endunless
                             </li>
                         @endforeach
                     </ul>
@@ -1090,7 +1123,7 @@
                         </div>
                     </div>
 
-                    @if ($newFieldType === 'select')
+                    @if (in_array($newFieldType, ['select', 'multiselect'], true))
                         <div>
                             <label class="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ __('Options (séparées par des virgules)') }}</label>
                             <input type="text" wire:model="newFieldOptions" placeholder="{{ __('Basse, Moyenne, Haute') }}"
@@ -1098,6 +1131,27 @@
                             @error('newFieldOptions') <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                         </div>
                     @endif
+
+                    @if ($newFieldType === 'money')
+                        <div>
+                            <label class="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ __('Devise') }}</label>
+                            <input type="text" wire:model="newFieldCurrency" maxlength="5" placeholder="€"
+                                   class="w-24 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                        </div>
+                    @endif
+
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ __('Emplacement sur la carte') }}</label>
+                        @php $placementOptions = [
+                            ['value' => 'sidebar', 'label' => __('Colonne Actions (latérale)')],
+                            ['value' => 'content', 'label' => __('Contenu (sous la description)')],
+                        ]; @endphp
+                        <x-select
+                            :options="$placementOptions"
+                            :value="$newFieldPlacement"
+                            @select-change="$wire.set('newFieldPlacement', $event.detail)"
+                        />
+                    </div>
 
                     <button type="submit"
                             class="flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700">

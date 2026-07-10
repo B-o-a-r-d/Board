@@ -9,6 +9,13 @@ enum CustomFieldType: string
     case Date = 'date';
     case Select = 'select';
     case Checkbox = 'checkbox';
+    case Url = 'url';
+    case Email = 'email';
+    case MultiSelect = 'multiselect';
+    case Member = 'member';
+    case Money = 'money';
+    case Rating = 'rating';
+    case Progress = 'progress';
 
     /**
      * Human readable label (French source; translated via JSON lang files).
@@ -21,6 +28,13 @@ enum CustomFieldType: string
             self::Date => __('Date'),
             self::Select => __('Liste déroulante'),
             self::Checkbox => __('Case à cocher'),
+            self::Url => __('Lien (URL)'),
+            self::Email => __('Email'),
+            self::MultiSelect => __('Choix multiples'),
+            self::Member => __('Membre'),
+            self::Money => __('Montant'),
+            self::Rating => __('Note (étoiles)'),
+            self::Progress => __('Progression'),
         };
     }
 
@@ -35,6 +49,13 @@ enum CustomFieldType: string
             self::Date => 'calendar-blank',
             self::Select => 'list-checks',
             self::Checkbox => 'check-square',
+            self::Url => 'link',
+            self::Email => 'envelope-simple',
+            self::MultiSelect => 'list-plus',
+            self::Member => 'user',
+            self::Money => 'currency-circle-dollar',
+            self::Rating => 'star',
+            self::Progress => 'percent',
         };
     }
 
@@ -43,6 +64,14 @@ enum CustomFieldType: string
      */
     public function hasOptions(): bool
     {
-        return $this === self::Select;
+        return $this === self::Select || $this === self::MultiSelect;
+    }
+
+    /**
+     * Whether stored values are JSON-encoded (decoded via {@see CustomField::decode()}).
+     */
+    public function storesJson(): bool
+    {
+        return $this === self::MultiSelect;
     }
 }

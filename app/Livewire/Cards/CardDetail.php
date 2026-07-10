@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -254,12 +255,41 @@ class CardDetail extends Component
     {
         $card = $this->guardedCard();
 
-        $field = $this->board->customFields()->findOrFail($fieldId);
+        $field = $this->board->customFields()->visibleOn($this->board)->findOrFail($fieldId);
+
+        // Scoped fields (list / single card) only accept values where they apply.
+        abort_unless($field->appliesToCard($card), 404);
+
+        $this->resetErrorBag('cf-'.$field->id);
+
+        // Invalid input keeps the previous value instead of silently clearing it.
+        if (in_array($field->type, [CustomFieldType::Url, CustomFieldType::Email], true)
+            && is_string($value) && trim($value) !== '') {
+            $trimmed = trim($value);
+            $invalid = $field->type === CustomFieldType::Url
+                ? (filter_var($trimmed, FILTER_VALIDATE_URL) === false || ! in_array(strtolower((string) parse_url($trimmed, PHP_URL_SCHEME)), ['http', 'https'], true))
+                : filter_var($trimmed, FILTER_VALIDATE_EMAIL) === false;
+
+            if ($invalid) {
+                $this->addError('cf-'.$field->id, $field->type === CustomFieldType::Url
+                    ? __('URL invalide (http/https requis).')
+                    : __('Adresse email invalide.'));
+
+                return;
+            }
+        }
 
         $stored = match ($field->type) {
             CustomFieldType::Checkbox => $value ? '1' : null,
-            CustomFieldType::Select => in_array($value, $field->options ?? [], true) ? $value : null,
-            default => ($value === '' || $value === null) ? null : (string) $value,
+            CustomFieldType::Select => in_array($value, $field->optionList(), true) ? $value : null,
+            CustomFieldType::MultiSelect => $this->encodeMultiSelect($field->optionList(), $value),
+            CustomFieldType::Member => $this->normalizeMemberValue($value),
+            CustomFieldType::Money => is_numeric(str_replace(',', '.', trim((string) $value)))
+                ? (string) (float) str_replace(',', '.', trim((string) $value))
+                : null,
+            CustomFieldType::Rating => ((int) $value > 0) ? (string) min(5, (int) $value) : null,
+            CustomFieldType::Progress => ($value === '' || $value === null) ? null : (string) max(0, min(100, (int) $value)),
+            default => ($value === '' || $value === null) ? null : (string) trim((string) $value),
         };
 
         if ($stored === null) {
@@ -272,6 +302,92 @@ class CardDetail extends Component
         }
 
         $this->touched('card.updated');
+    }
+
+    public string $newCfName = '';
+
+    public string $newCfType = 'text';
+
+    /** Comma-separated options for the select/multiselect types. */
+    public string $newCfOptions = '';
+
+    /** Field scope: card (this card only), list (inherited by its cards), board. */
+    public string $newCfScope = 'card';
+
+    /**
+     * Create a custom field from the card's "Add to card" menu. Card and list
+     * scopes are contributor actions; a board-wide field stays admin-only.
+     */
+    public function addCardCustomField(): void
+    {
+        $card = $this->guardedCard();
+
+        $data = $this->validate([
+            'newCfName' => ['required', 'string', 'max:60'],
+            'newCfType' => ['required', 'string', Rule::enum(CustomFieldType::class)],
+            'newCfScope' => ['required', 'string', 'in:card,list,board'],
+        ]);
+
+        if ($data['newCfScope'] === 'board') {
+            $this->authorize('update', $this->board);
+        }
+
+        $type = CustomFieldType::from($data['newCfType']);
+        $options = null;
+
+        if ($type->hasOptions()) {
+            $options = collect(explode(',', $this->newCfOptions))
+                ->map(fn (string $option): string => trim($option))
+                ->filter()
+                ->values()
+                ->all();
+
+            if (empty($options)) {
+                $this->addError('newCfOptions', __('Ajoutez au moins une option.'));
+
+                return;
+            }
+        }
+
+        $this->board->customFields()->create([
+            'board_list_id' => $data['newCfScope'] === 'list' ? $card->board_list_id : null,
+            'card_id' => $data['newCfScope'] === 'card' ? $card->id : null,
+            'name' => $data['newCfName'],
+            'type' => $type,
+            'options' => $options,
+            'position' => (int) $this->board->customFields()->max('position') + 1,
+        ]);
+
+        $this->reset('newCfName', 'newCfOptions');
+        $this->newCfType = 'text';
+        $this->newCfScope = 'card';
+        $this->dispatch('card-field-added');
+        $this->touched('card.updated');
+    }
+
+    /**
+     * Keep only declared options, JSON-encoded; null when nothing remains.
+     *
+     * @param  array<int, string>  $options
+     */
+    private function encodeMultiSelect(array $options, mixed $value): ?string
+    {
+        $picked = array_values(array_intersect(
+            array_map(strval(...), is_array($value) ? $value : (array) $value),
+            $options,
+        ));
+
+        return $picked === [] ? null : (string) json_encode($picked);
+    }
+
+    /**
+     * A Member field only accepts an actual member of this board.
+     */
+    private function normalizeMemberValue(mixed $value): ?string
+    {
+        $id = (int) $value;
+
+        return ($id > 0 && $this->board->members()->whereKey($id)->exists()) ? (string) $id : null;
     }
 
     public function saveDescription(string $markdown): void
@@ -309,6 +425,76 @@ class CardDetail extends Component
         $card = $this->guardedCard();
 
         $card->watchers()->toggle(Auth::id());
+    }
+
+    /**
+     * Move the card to the end of another list (the modal's list selector).
+     */
+    public function moveToList(int $listId): void
+    {
+        $card = $this->guardedCard();
+
+        $targetList = $this->board->lists()
+            ->whereNull('archived_at')
+            ->whereNull('source_plugin_id')
+            ->findOrFail($listId);
+
+        if ($targetList->id === $card->board_list_id) {
+            return;
+        }
+
+        $fromList = $card->list?->name;
+        $card->update([
+            'board_list_id' => $targetList->id,
+            'position' => (int) $targetList->cards()->max('position') + 1,
+        ]);
+
+        $this->logActivity($card, 'card.moved', ['from_list' => $fromList, 'to_list' => $targetList->name]);
+
+        app(AutomationEngine::class)->fire('card.moved', $card->fresh(), [
+            'to_list_id' => $targetList->id,
+        ]);
+
+        $this->touched('card.moved');
+    }
+
+    /**
+     * Duplicate the card into its own list (labels and members included).
+     */
+    public function duplicate(): void
+    {
+        $card = $this->guardedCard();
+
+        $copy = $card->list->cards()->create([
+            'board_id' => $this->board->id,
+            'created_by' => Auth::id(),
+            'title' => $card->title.' '.__('(copie)'),
+            'description' => $card->description,
+            'cover_path' => $card->cover_path,
+            'cover_color' => $card->cover_color,
+            'due_at' => $card->due_at,
+            'position' => (int) $card->list->cards()->max('position') + 1,
+        ]);
+
+        $copy->labels()->attach($card->labels->pluck('id'));
+        $copy->members()->attach($card->members->pluck('id'));
+
+        $this->logActivity($copy, 'card.duplicated', ['from' => $card->id]);
+        $this->dispatch('toast', message: __('Carte dupliquée'), type: 'success');
+        $this->touched('card.duplicated');
+    }
+
+    /**
+     * Archive the card and close the modal (restore lives in the board trash).
+     */
+    public function archive(): void
+    {
+        $card = $this->guardedCard();
+
+        $card->update(['archived_at' => now()]);
+        $this->logActivity($card, 'card.archived', ['list' => $card->list?->name]);
+        $this->touched('card.archived');
+        $this->close();
     }
 
     public string $linkType = 'blocks';
@@ -1033,11 +1219,15 @@ class CardDetail extends Component
             'card' => $card,
             'boardMembers' => $this->board->members,
             'boardLabels' => $this->board->labels,
+            'boardLists' => $this->board->lists()->whereNull('archived_at')->whereNull('source_plugin_id')->orderBy('position')->get(),
+            'boardPlugins' => $this->board->plugins()->where('is_active', true)->get(),
             'cardButtons' => $this->board->automations()->where('trigger_type', 'manual')->where('is_active', true)->get(),
             'reactionEmojis' => self::REACTIONS,
             'cardLinks' => $cardLinks,
             'linkCandidates' => $linkCandidates,
-            'customFields' => $this->board->customFields,
+            'customFields' => $card
+                ? $this->board->customFields()->visibleOn($this->board)->forCard($card)->orderBy('position')->get()
+                : collect(),
             'canContribute' => Auth::user()->can('contribute', $this->board),
             'canComment' => Auth::user()->can('comment', $this->board),
             'mirrorTargets' => $card ? $this->board->workspace->boards()
