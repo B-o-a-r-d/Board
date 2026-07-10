@@ -49,6 +49,16 @@ test('the service refuses private and reserved hosts (SSRF guard)', function () 
     Http::assertNothingSent();
 });
 
+test('the service refuses a redirect to an internal host', function () {
+    Http::fake([
+        'http://93.184.216.34/*' => Http::response('', 302, ['Location' => 'http://169.254.169.254/latest/meta-data']),
+    ]);
+
+    expect(app(UrlPreviewService::class)->preview('http://93.184.216.34/page'))->toBeNull();
+
+    Http::assertNotSent(fn ($request): bool => str_contains($request->url(), '169.254.169.254'));
+});
+
 test('the service extracts at most three urls from a text block', function () {
     $urls = app(UrlPreviewService::class)->extractUrls(
         'a https://a.com b https://b.com c https://c.com d https://d.com',

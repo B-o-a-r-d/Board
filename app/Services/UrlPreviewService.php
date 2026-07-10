@@ -3,7 +3,8 @@
 namespace App\Services;
 
 use App\Models\LinkPreview;
-use Illuminate\Support\Facades\Http;
+use App\Support\SafeHttp;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Str;
 
 class UrlPreviewService
@@ -83,29 +84,16 @@ class UrlPreviewService
      */
     private function fetch(string $url): ?array
     {
-        if (! $this->isSafeHost((string) parse_url($url, PHP_URL_HOST))) {
-            return null;
-        }
-
         try {
-            $response = Http::withHeaders([
-                'User-Agent' => 'BoardBot/1.0 (+link-preview)',
-                'Accept' => 'text/html,application/xhtml+xml',
-            ])
-                ->connectTimeout(3)
-                ->timeout(5)
-                ->withOptions([
-                    'allow_redirects' => [
-                        'max' => 3,
-                        'protocols' => ['http', 'https'],
-                        'on_redirect' => function ($request, $response, $uri) {
-                            if (! $this->isSafeHost($uri->getHost())) {
-                                throw new \RuntimeException('Unsafe redirect target.');
-                            }
-                        },
-                    ],
+            // SSRF-safe: validates every redirect hop and pins the connection to
+            // the checked IP (no redirect pivot, no DNS rebinding).
+            $response = SafeHttp::get($url, fn (PendingRequest $r): PendingRequest => $r
+                ->withHeaders([
+                    'User-Agent' => 'BoardBot/1.0 (+link-preview)',
+                    'Accept' => 'text/html,application/xhtml+xml',
                 ])
-                ->get($url);
+                ->connectTimeout(3)
+                ->timeout(5));
 
             if (! $response->ok()) {
                 return null;
@@ -121,30 +109,6 @@ class UrlPreviewService
         } catch (\Throwable) {
             return null;
         }
-    }
-
-    /**
-     * Reject hosts that resolve to private, loopback or reserved IP ranges (SSRF guard).
-     */
-    private function isSafeHost(string $host): bool
-    {
-        if ($host === '') {
-            return false;
-        }
-
-        $ips = filter_var($host, FILTER_VALIDATE_IP) ? [$host] : (gethostbynamel($host) ?: []);
-
-        if ($ips === []) {
-            return false;
-        }
-
-        foreach ($ips as $ip) {
-            if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     /**

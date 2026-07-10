@@ -17,6 +17,7 @@ use Board\PluginSdk\Contracts\ProvidesMcpTools;
 use Board\PluginSdk\Contracts\ProvidesOAuth;
 use Board\PluginSdk\PluginListItem;
 use Board\PluginSdk\PluginRegistry;
+use Board\PluginSdk\Support\PluginSettings;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -439,8 +440,8 @@ test('savePluginConfig accepts a public instance url', function () {
     expect($instance->fresh()->config['instance_url'])->toBe('https://93.184.216.34');
 });
 
-test('savePluginConfig permits an internal instance url on the allow-list', function () {
-    config(['board.plugin_url_allowlist' => ['10.0.0.5']]);
+test('savePluginConfig permits an internal instance url on the plugin allow-list', function () {
+    PluginSettings::for('acme')->put(['allowed_hosts' => '10.0.0.5']);
     ['board' => $board, 'owner' => $owner] = makePluginBoard();
     $instance = $board->plugins()->create([
         'plugin_key' => 'acme', 'name' => 'Acme', 'config' => [], 'is_active' => true,

@@ -37,6 +37,59 @@ function demoEntry(): array
     return ['key' => 'demo', 'name' => 'Demo', 'repo' => 'acme/demo'];
 }
 
+/**
+ * Fake the release + composer.json for acme/demo and serve the given zipball.
+ */
+function fakeGithubReleaseWithZip(string $zipball, string $tag = 'v1.0.0'): void
+{
+    Http::fake([
+        'api.github.com/repos/acme/demo/releases/latest' => Http::response(['tag_name' => $tag]),
+        'raw.githubusercontent.com/acme/demo/*/composer.json' => Http::response([
+            'name' => 'acme/demo', 'require' => ['board/plugin-sdk' => '^0.2'],
+        ]),
+        'api.github.com/repos/acme/demo/zipball/*' => Http::response($zipball),
+    ]);
+}
+
+test('it refuses a zip-slip archive (path traversal) and writes nothing', function () {
+    fakeGithubReleaseWithZip(maliciousZipball('acme-demo-abc1234/../../../../evil.php'));
+
+    expect(fn () => app(PluginInstaller::class)->install(demoEntry()))
+        ->toThrow(PluginInstallException::class);
+
+    expect(PluginPackage::count())->toBe(0)
+        ->and(is_dir(storage_path('app/plugins/demo')))->toBeFalse()
+        ->and(is_file(storage_path('evil.php')))->toBeFalse();
+});
+
+test('it refuses an archive with an absolute-path entry', function () {
+    fakeGithubReleaseWithZip(maliciousZipball('/tmp/board-evil.php'));
+
+    expect(fn () => app(PluginInstaller::class)->install(demoEntry()))
+        ->toThrow(PluginInstallException::class);
+
+    expect(is_file('/tmp/board-evil.php'))->toBeFalse();
+});
+
+test('it rejects an unsafe catalog repo before any download', function () {
+    expect(fn () => app(PluginInstaller::class)->install(['key' => 'demo', 'name' => 'X', 'repo' => '../evil']))
+        ->toThrow(PluginInstallException::class);
+});
+
+test('it rejects an unsafe catalog key before any download', function () {
+    expect(fn () => app(PluginInstaller::class)->install(['key' => '../x', 'name' => 'X', 'repo' => 'acme/demo']))
+        ->toThrow(PluginInstallException::class);
+});
+
+test('it rejects a release tag that carries path traversal', function () {
+    Http::fake([
+        'api.github.com/repos/acme/demo/releases/latest' => Http::response(['tag_name' => '../../evil']),
+    ]);
+
+    expect(fn () => app(PluginInstaller::class)->install(demoEntry()))
+        ->toThrow(PluginInstallException::class);
+});
+
 test('it installs a plugin package from a github release and the loader boots it', function () {
     fakeGithubRelease();
 

@@ -43,23 +43,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Plugin URL allow-list (SSRF)
-    |--------------------------------------------------------------------------
-    |
-    | Hosts that a plugin URL config field (e.g. a self-hosted GitLab instance
-    | URL) may point to even when they resolve to a private/reserved IP range.
-    | By default any such internal host is rejected to prevent SSRF; add your
-    | internal service hostnames here (comma-separated env) to allow them.
-    |
-    */
-
-    'plugin_url_allowlist' => array_values(array_filter(array_map(
-        'trim',
-        explode(',', (string) env('PLUGIN_URL_ALLOWED_HOSTS', ''))
-    ))),
-
-    /*
-    |--------------------------------------------------------------------------
     | Board backgrounds
     |--------------------------------------------------------------------------
     |

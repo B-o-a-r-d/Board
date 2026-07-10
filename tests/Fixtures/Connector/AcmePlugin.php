@@ -7,6 +7,7 @@ use Board\PluginSdk\Contracts\Plugin;
 use Board\PluginSdk\Contracts\ProvidesListSource;
 use Board\PluginSdk\Contracts\ProvidesMcpTools;
 use Board\PluginSdk\Contracts\ProvidesOAuth;
+use Board\PluginSdk\Contracts\ProvidesSettings;
 use Board\PluginSdk\PluginListItem;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Collection;
@@ -20,7 +21,7 @@ use Illuminate\Support\Facades\Http;
  *
  * All I/O targets the fake `acme.test` host so tests can `Http::fake()` it.
  */
-class AcmePlugin implements DefinesActivities, Plugin, ProvidesListSource, ProvidesMcpTools, ProvidesOAuth
+class AcmePlugin implements DefinesActivities, Plugin, ProvidesListSource, ProvidesMcpTools, ProvidesOAuth, ProvidesSettings
 {
     public const AUTHORIZE_URL = 'https://acme.test/oauth/authorize';
 
@@ -31,6 +32,18 @@ class AcmePlugin implements DefinesActivities, Plugin, ProvidesListSource, Provi
     public static function key(): string
     {
         return 'acme';
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function settings(): array
+    {
+        return [
+            ['key' => 'default_instance_url', 'label' => 'Default instance', 'type' => 'url', 'required' => false, 'placeholder' => 'https://acme.test'],
+            ['key' => 'allowed_hosts', 'label' => 'Allowed internal hosts', 'type' => 'text', 'required' => false],
+            ['key' => 'api_token', 'label' => 'API token', 'type' => 'password', 'required' => false],
+        ];
     }
 
     public function label(): string

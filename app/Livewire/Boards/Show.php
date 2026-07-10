@@ -17,6 +17,7 @@ use App\Notifications\CardNotification;
 use Board\PluginSdk\Contracts\DefinesActivities;
 use Board\PluginSdk\Contracts\ProvidesListSource;
 use Board\PluginSdk\PluginRegistry;
+use Board\PluginSdk\Support\PluginSettings;
 use Board\PluginSdk\Support\SafeUrl;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -279,8 +280,11 @@ class Show extends Component
             // SSRF: a URL field (e.g. a self-hosted instance URL) must be http(s)
             // and must not resolve to an internal/reserved host — otherwise the
             // server (and OAuth token exchange) could be pointed at cloud metadata
-            // or localhost. Internal hosts can be permitted via the allow-list.
-            if ($type === 'url' && $value !== '' && ! SafeUrl::isSafe($value, config('board.plugin_url_allowlist', []))) {
+            // or localhost. Internal hosts are permitted per plugin via its own
+            // `allowed_hosts` instance setting (configured in the marketplace).
+            $allowedHosts = SafeUrl::parseHostList((string) PluginSettings::for($instance->plugin_key)->get('allowed_hosts', ''));
+
+            if ($type === 'url' && $value !== '' && ! SafeUrl::isSafe($value, $allowedHosts)) {
                 $this->addError('pluginConfigDraft.'.$key, __('URL invalide ou non autorisée (http/https requis, hôte interne interdit).'));
 
                 return;

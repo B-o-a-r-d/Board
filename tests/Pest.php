@@ -95,3 +95,24 @@ function demoZipball(): string
 
     return $bytes;
 }
+
+/**
+ * A GitHub-style zipball that also carries one hostile entry (path traversal,
+ * absolute path, …) — used to prove the installer refuses to extract it.
+ */
+function maliciousZipball(string $entryName): string
+{
+    $src = base_path('tests/Fixtures/demo-plugin');
+    $tmp = tempnam(sys_get_temp_dir(), 'zb').'.zip';
+
+    $zip = new ZipArchive;
+    $zip->open($tmp, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+    $zip->addFile("$src/composer.json", 'acme-demo-abc1234/composer.json');
+    $zip->addFromString($entryName, '<?php /* pwned */');
+    $zip->close();
+
+    $bytes = (string) file_get_contents($tmp);
+    @unlink($tmp);
+
+    return $bytes;
+}

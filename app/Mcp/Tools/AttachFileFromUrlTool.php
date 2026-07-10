@@ -4,9 +4,10 @@ namespace App\Mcp\Tools;
 
 use App\Mcp\Concerns\InteractsWithMcpBoard;
 use App\Models\Card;
-use Board\PluginSdk\Support\SafeUrl;
+use App\Support\SafeHttp;
+use App\Support\SsrfException;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Mcp\Request;
@@ -37,12 +38,12 @@ class AttachFileFromUrlTool extends Tool
 
         $url = $request->get('url');
 
-        if (! SafeUrl::isSafe($url)) {
-            return Response::error('URL non autorisée (schéma ou hôte interne).');
-        }
-
         try {
-            $response = Http::timeout(10)->withOptions(['stream' => false])->get($url);
+            // SSRF-safe fetch: validates the URL and every redirect hop, and pins
+            // the connection to the checked IP (no redirect-based or rebinding pivot).
+            $response = SafeHttp::get($url, fn (PendingRequest $r): PendingRequest => $r->timeout(10)->withOptions(['stream' => false]));
+        } catch (SsrfException) {
+            return Response::error('URL non autorisée (schéma ou hôte interne).');
         } catch (\Throwable) {
             return Response::error('Impossible de récupérer le fichier.');
         }

@@ -5,9 +5,22 @@ use Board\Marketplace\Livewire\Marketplace;
 use Board\Marketplace\MarketplaceClient;
 use Board\Marketplace\Models\PluginPackage;
 use Board\Marketplace\Support\Settings;
+use Board\PluginSdk\Support\PluginSettings;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
+
+/**
+ * @param  array<string, mixed>  $overrides
+ */
+function installedAcmePackage(array $overrides = []): PluginPackage
+{
+    return PluginPackage::create(array_merge([
+        'key' => 'acme', 'name' => 'Acme', 'repo' => 'acme/demo', 'version' => '1.0.0',
+        'sdk_constraint' => '^0.2', 'path' => 'plugins/acme', 'enabled' => true, 'available_version' => '1.0.0',
+    ], $overrides));
+}
 
 afterEach(function () {
     File::deleteDirectory(storage_path('app/plugins'));
@@ -69,6 +82,99 @@ test('the marketplace client parses catalog front-matter', function () {
         ->and($catalog->first()['key'])->toBe('demo')
         ->and($catalog->first()['repo'])->toBe('acme/demo')
         ->and($catalog->first()['capabilities'])->toBe(['list-source', 'activities']);
+});
+
+test('the marketplace client drops a catalog entry with an unsafe repo or key', function () {
+    $malicious = <<<'MD'
+    ---
+    key: demo
+    name: Demo
+    repo: ../evil
+    ---
+    A tampered entry.
+    MD;
+
+    Http::fake([
+        'api.github.com/repos/B-o-a-r-d/Marketplace/contents/plugins' => Http::response([
+            ['type' => 'file', 'name' => 'demo.md', 'download_url' => 'https://raw.githubusercontent.com/B-o-a-r-d/Marketplace/main/plugins/demo.md'],
+        ]),
+        'raw.githubusercontent.com/B-o-a-r-d/Marketplace/*' => Http::response($malicious),
+    ]);
+
+    expect(app(MarketplaceClient::class)->catalog())->toHaveCount(0);
+});
+
+test('plugin instance settings round-trip through the encrypted settings store', function () {
+    PluginSettings::for('acme')->put(['allowed_hosts' => '10.0.0.5', 'api_token' => 's3cret']);
+
+    expect(PluginSettings::for('acme')->get('allowed_hosts'))->toBe('10.0.0.5')
+        ->and(PluginSettings::for('acme')->get('api_token'))->toBe('s3cret');
+
+    // Persisted encrypted, never in plaintext.
+    $raw = (string) DB::table('settings')->where('key', 'plugin.acme')->value('value');
+    expect($raw)->not->toContain('10.0.0.5')->not->toContain('s3cret');
+});
+
+test('an admin configures a plugin instance settings from the marketplace (no .env)', function () {
+    Settings::setEnabled(true);
+    fakeMarketplace();
+    installedAcmePackage();
+
+    Livewire::actingAs(admin())->test(Marketplace::class)
+        ->call('startSettings', 'acme')
+        ->assertSet('configuringKey', 'acme')
+        ->set('settingsDraft.default_instance_url', 'https://acme.example.com')
+        ->set('settingsDraft.allowed_hosts', 'gitlab.internal, 10.0.0.5')
+        ->set('settingsDraft.api_token', 'tok-123')
+        ->call('saveSettings')
+        ->assertHasNoErrors()
+        ->assertSet('configuringKey', null);
+
+    expect(PluginSettings::for('acme')->get('default_instance_url'))->toBe('https://acme.example.com')
+        ->and(PluginSettings::for('acme')->get('allowed_hosts'))->toBe('gitlab.internal, 10.0.0.5')
+        ->and(PluginSettings::for('acme')->get('api_token'))->toBe('tok-123');
+});
+
+test('a blank secret keeps the stored plugin setting on re-save', function () {
+    Settings::setEnabled(true);
+    fakeMarketplace();
+    installedAcmePackage();
+    PluginSettings::for('acme')->put(['api_token' => 'keep-me']);
+
+    Livewire::actingAs(admin())->test(Marketplace::class)
+        ->call('startSettings', 'acme')
+        ->set('settingsDraft.allowed_hosts', 'x.internal')
+        ->call('saveSettings') // api_token left blank
+        ->assertHasNoErrors();
+
+    expect(PluginSettings::for('acme')->get('api_token'))->toBe('keep-me')
+        ->and(PluginSettings::for('acme')->get('allowed_hosts'))->toBe('x.internal');
+});
+
+test('marketplace settings reject a malformed url', function () {
+    Settings::setEnabled(true);
+    fakeMarketplace();
+    installedAcmePackage();
+
+    Livewire::actingAs(admin())->test(Marketplace::class)
+        ->call('startSettings', 'acme')
+        ->set('settingsDraft.default_instance_url', 'not-a-url')
+        ->call('saveSettings')
+        ->assertHasErrors('settingsDraft.default_instance_url');
+});
+
+test('configuring plugin settings requires the marketplace master switch and admin', function () {
+    fakeMarketplace();
+    installedAcmePackage();
+
+    // Master switch off → guarded.
+    Livewire::actingAs(admin())->test(Marketplace::class)
+        ->call('startSettings', 'acme')
+        ->assertForbidden();
+
+    // Non-admin cannot even reach the page.
+    Settings::setEnabled(true);
+    Livewire::actingAs(User::factory()->create())->test(Marketplace::class)->assertForbidden();
 });
 
 test('the marketplace page is admin-only', function () {

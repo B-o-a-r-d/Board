@@ -213,6 +213,23 @@ test('attach file from url stores an attachment', function () {
         ->and($card->attachments()->first()->name)->toBe('schema.png');
 });
 
+test('mcp attach from url refuses a redirect onto an internal host (SSRF)', function () {
+    Setting::set('mcp_enabled', true);
+    Storage::fake('local');
+    Http::fake([
+        'http://93.184.216.34/img.png' => Http::response('', 302, ['Location' => 'http://169.254.169.254/x']),
+    ]);
+    ['board' => $board, 'owner' => $owner, 'list' => $list] = makeMcpBoard();
+    $card = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id]);
+
+    BoardServer::actingAs($owner)->tool(AttachFileFromUrlTool::class, [
+        'card_id' => $card->public_id, 'url' => 'http://93.184.216.34/img.png', 'name' => 'x.png',
+    ])->assertHasErrors();
+
+    expect($card->attachments()->count())->toBe(0);
+    Http::assertNotSent(fn ($request): bool => str_contains($request->url(), '169.254.169.254'));
+});
+
 test('mcp attach respects the workspace attachment allow-list', function () {
     Setting::set('mcp_enabled', true);
     Storage::fake('local');
