@@ -67,6 +67,16 @@ test('the public share page renders the board read-only for guests', function ()
         ->assertDontSee('Ajouter une carte');
 });
 
+test('the public share page renders the full-bleed background layer when set', function () {
+    ['board' => $board] = makeShareBoard();
+    $board->update(['background' => 'ocean']);
+    $board->enableSharing();
+
+    $this->get(route('boards.public', ['token' => $board->share_token]))
+        ->assertOk()
+        ->assertSee('fixed inset-0 -z-10', escape: false);
+});
+
 test('the public share page exposes Open Graph social meta tags', function () {
     ['board' => $board] = makeShareBoard();
     $board->update(['name' => 'Roadmap Q3', 'description' => 'Notre feuille de route trimestrielle.']);

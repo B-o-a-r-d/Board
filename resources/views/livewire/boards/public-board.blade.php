@@ -1,15 +1,29 @@
-<div class="flex h-[calc(100dvh-8rem)] flex-col">
-    {{-- Board header --}}
-    <div class="mb-3 flex flex-col gap-3 sm:mb-4 sm:flex-row sm:items-start sm:justify-between">
-        <div class="text-center sm:text-left">
-            <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">{{ $board->name }}</h1>
-            <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ $board->workspace->name }} · {{ __('Tableau partagé en lecture seule') }}</p>
+<div class="-mb-6 flex h-[calc(100dvh-5.5rem)] flex-col">
+    @php $boardBg = $board->backgroundStyle($board->share_token); @endphp
+    @if ($boardBg)
+        {{-- Full-bleed board background + contrast overlay, same as the members' board view --}}
+        <div class="pointer-events-none fixed inset-0 -z-10" style="background: {{ $boardBg }};" aria-hidden="true"></div>
+        <div class="pointer-events-none fixed inset-0 -z-10 bg-black/20" aria-hidden="true"></div>
+    @endif
+
+    {{-- Board topbar: slim full-bleed bar glued under the navbar (public layout uses py-6) --}}
+    <div @class([
+        'relative z-30 -mx-4 -mt-6 mb-3 flex min-h-12 flex-wrap items-center gap-x-2 gap-y-1.5 border-b px-4 py-1.5 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8',
+        'border-white/20 dark:border-white/10' => $boardBg,
+        'border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900' => ! $boardBg,
+    ])>
+        @if ($boardBg)
+            <div class="absolute inset-0 -z-10 bg-white/40 backdrop-blur-md dark:bg-neutral-900/50" aria-hidden="true"></div>
+        @endif
+        <div class="flex min-w-0 flex-1 items-center gap-2">
+            <h1 class="truncate text-base font-semibold tracking-tight sm:text-lg" title="{{ __('Tableau partagé en lecture seule') }}">{{ $board->name }}</h1>
+            <span class="hidden shrink-0 items-center rounded-full bg-neutral-200/80 px-2 py-0.5 text-[11px] font-medium text-neutral-600 sm:inline-flex dark:bg-neutral-800 dark:text-neutral-300">{{ $board->workspace->name }}</span>
         </div>
 
         {{-- Everyone currently on this board (members + anonymous guests) --}}
         <div
             x-data="publicPresence(@js($board->share_token), {{ $board->id }})"
-            class="flex items-center justify-center -space-x-2 sm:justify-end"
+            class="flex items-center -space-x-2"
             wire:ignore
         >
             <template x-for="viewer in viewers" :key="viewer.id">
@@ -24,17 +38,12 @@
         </div>
     </div>
 
-    @php $boardBg = $board->backgroundStyle($board->share_token); @endphp
-
-    {{-- Lists (columns) --}}
-    <div
-        @if ($boardBg) style="background: {{ $boardBg }};" @endif
-        class="flex flex-1 snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-p-1 py-4 sm:snap-none sm:gap-4 {{ $boardBg ? 'rounded-xl px-3' : '' }}"
-    >
+    {{-- Lists (columns) — the background is full-bleed behind the whole board --}}
+    <div class="flex flex-1 snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-p-1 py-4 sm:snap-none sm:gap-4">
         @forelse ($lists as $list)
             <div
                 wire:key="public-list-{{ $list->id }}"
-                class="flex max-h-full w-full shrink-0 snap-start flex-col overflow-hidden rounded-xl bg-neutral-200/70 sm:w-72 dark:bg-neutral-900"
+                class="flex max-h-full w-full shrink-0 snap-start flex-col overflow-hidden rounded-xl sm:w-72 {{ $boardBg ? 'border border-white/20 bg-white/50 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-neutral-900/60' : 'bg-neutral-200/70 dark:bg-neutral-900' }}"
             >
                 @if ($list->cover_color)
                     <div class="h-2 w-full" style="background-color: {{ $list->cover_color }}"></div>
