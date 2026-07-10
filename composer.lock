@@ -148,12 +148,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/B-o-a-r-d/Board-Plugin-SDK.git",
-                "reference": "145fbe79c475c48f063d07c0881b168897da2b1e"
+                "reference": "e53a53e375e5995b5770d6ccd59076044a7eb344"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/B-o-a-r-d/Board-Plugin-SDK/zipball/145fbe79c475c48f063d07c0881b168897da2b1e",
-                "reference": "145fbe79c475c48f063d07c0881b168897da2b1e",
+                "url": "https://api.github.com/repos/B-o-a-r-d/Board-Plugin-SDK/zipball/e53a53e375e5995b5770d6ccd59076044a7eb344",
+                "reference": "e53a53e375e5995b5770d6ccd59076044a7eb344",
                 "shasum": ""
             },
             "require": {
@@ -7883,12 +7883,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/B-o-a-r-d/marketplace-plugin.git",
-                "reference": "0f2482c7e10d50b60f2babb7e100ac9de816d531"
+                "reference": "c03e442b7bbd862fe81331e3cbccdb518c12244b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/B-o-a-r-d/marketplace-plugin/zipball/0f2482c7e10d50b60f2babb7e100ac9de816d531",
-                "reference": "0f2482c7e10d50b60f2babb7e100ac9de816d531",
+                "url": "https://api.github.com/repos/B-o-a-r-d/marketplace-plugin/zipball/c03e442b7bbd862fe81331e3cbccdb518c12244b",
+                "reference": "c03e442b7bbd862fe81331e3cbccdb518c12244b",
                 "shasum": ""
             },
             "require": {
