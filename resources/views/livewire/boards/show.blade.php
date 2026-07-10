@@ -161,6 +161,17 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-1.5">
+                {{-- Board buttons: manual board-scope automations, one click each --}}
+                @if ($canContribute)
+                    @foreach ($boardButtons as $boardButton)
+                        <button type="button" wire:click="runBoardButton({{ $boardButton->id }})" wire:key="boardbtn-{{ $boardButton->id }}"
+                                class="w-8 {{ $topBtn }}"
+                                title="{{ $boardButton->name }}">
+                            <x-dynamic-component :component="'phosphor-'.(($boardButton->trigger_config['icon'] ?? null) ?: 'lightning')" class="h-4 w-4 text-amber-500"/>
+                        </button>
+                    @endforeach
+                @endif
+
                 <button type="button" wire:click="toggleActivity"
                         class="w-8 {{ $topBtn }}"
                         title="{{ __('Activité') }}">

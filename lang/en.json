@@ -904,5 +904,11 @@
     "Valeur": "Value",
     "Le titre contient": "The title contains",
     "La carte a une échéance": "The card has a due date",
-    "Automatisation sur « :title »": "Automation on “:title”"
+    "Automatisation sur « :title »": "Automation on “:title”",
+    "Boutons de tableau": "Board buttons",
+    "au clic sur le bouton du tableau": "when the board button is clicked",
+    "Bouton manuel sur le tableau": "Manual board button",
+    "Icône (Phosphor)": "Icon (Phosphor)",
+    "Icône du bouton": "Button icon",
+    "Bouton « :name » exécuté": "Button “:name” executed"
 }

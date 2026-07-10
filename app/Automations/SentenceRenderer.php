@@ -91,6 +91,7 @@ class SentenceRenderer
                 ? __('quand le champ ":field" prend la valeur ":value"', ['field' => $this->fieldName($board, $config['field_id'] ?? 0), 'value' => $config['value']])
                 : __('quand le champ ":field" change', ['field' => $this->fieldName($board, $config['field_id'] ?? 0)]),
             'manual' => __('au clic sur le bouton'),
+            'board_button' => __('au clic sur le bouton du tableau'),
             default => $type,
         };
     }

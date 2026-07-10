@@ -28,8 +28,11 @@
             'scheduled' => ['label' => __('Programmées'), 'icon' => 'clock'],
             'due' => ['label' => __("Date d'échéance"), 'icon' => 'calendar-blank'],
             'buttons' => ['label' => __('Boutons de carte'), 'icon' => 'cursor-click'],
+            'board_buttons' => ['label' => __('Boutons de tableau'), 'icon' => 'squares-four'],
         ];
-        $hasTriggerStep = $section !== 'buttons';
+        $hasTriggerStep = ! in_array($section, ['buttons', 'board_buttons'], true);
+        $isButtonSection = in_array($section, ['buttons', 'board_buttons'], true);
+        $buttonIcons = ['lightning', 'check-circle', 'archive', 'tag', 'user-plus', 'clock', 'arrow-right', 'star', 'flag', 'bell', 'broom', 'rocket'];
         $panelBox = 'rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900';
         $rowBtn = 'flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left text-sm transition';
     @endphp
@@ -82,8 +85,8 @@
                             @php $automation = $item['model']; @endphp
                             <div wire:key="auto-{{ $automation->id }}" class="{{ $panelBox }} p-3 {{ $automation->is_active ? '' : 'opacity-60' }}">
                                 <div class="mb-2 flex items-center gap-1">
-                                    @if ($section === 'buttons')
-                                        <span class="mr-auto flex items-center gap-1.5 text-sm font-medium"><x-phosphor-lightning class="h-4 w-4 text-amber-500"/>{{ $automation->name }}</span>
+                                    @if ($isButtonSection)
+                                        <span class="mr-auto flex items-center gap-1.5 text-sm font-medium"><x-dynamic-component :component="'phosphor-'.(($automation->trigger_config['icon'] ?? null) ?: 'lightning')" class="h-4 w-4 text-amber-500"/>{{ $automation->name }}</span>
                                     @else
                                         <span class="mr-auto"></span>
                                     @endif
@@ -305,7 +308,7 @@
                             {{-- Catalog --}}
                             <div x-data="{ cat: 'move' }">
                                 <p class="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Ajouter une action') }}</p>
-                                @if ($section === 'scheduled')
+                                @if (in_array($section, ['scheduled', 'board_buttons'], true))
                                     <div class="space-y-1.5">
                                         @foreach (\App\Livewire\Boards\Automations::SCHEDULED_ACTIONS as $key)
                                             <button type="button" wire:click="addAction('{{ $key }}')"
@@ -372,7 +375,7 @@
                                 @error('actions')<p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>@enderror
 
                                 {{-- Conditions (event rules and card buttons only) --}}
-                                @if ($section !== 'scheduled')
+                                @if (! in_array($section, ['scheduled', 'board_buttons'], true))
                                     <p class="mb-2 mt-6 text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Et seulement si… (conditions, toutes requises)') }}</p>
                                     <div class="space-y-2">
                                         @foreach ($conditions as $i => $condition)
@@ -419,11 +422,25 @@
                             </div>
 
                             <div>
-                                <label class="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ $section === 'buttons' ? __('Nom du bouton') : __('Nom (optionnel — la phrase par défaut)') }}</label>
+                                <label class="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ $isButtonSection ? __('Nom du bouton') : __('Nom (optionnel — la phrase par défaut)') }}</label>
                                 <input type="text" wire:model="name" maxlength="255"
                                        class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-600 dark:bg-neutral-900">
                                 @error('name')<p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>@enderror
                             </div>
+
+                            @if ($isButtonSection)
+                                <div>
+                                    <label class="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ __('Icône du bouton') }}</label>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        @foreach ($buttonIcons as $icon)
+                                            <button type="button" wire:click="$set('triggerConfig.icon', '{{ $icon }}')" title="{{ $icon }}"
+                                                    class="flex h-9 w-9 items-center justify-center rounded-lg border transition {{ ($triggerConfig['icon'] ?? 'lightning') === $icon ? 'border-indigo-400 bg-indigo-50 text-indigo-600 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300' : 'border-neutral-200 text-neutral-500 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800' }}">
+                                                <x-dynamic-component :component="'phosphor-'.$icon" class="h-4 w-4"/>
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
 
                             <div class="flex justify-end gap-2">
                                 <button type="button" wire:click="goToStep(2)" class="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-600 transition hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800">{{ __('Retour') }}</button>

@@ -1100,7 +1100,7 @@
                                 <div class="space-y-1.5">
                                     @foreach ($cardButtons as $button)
                                         <button type="button" wire:click="runAutomation({{ $button->id }})" wire:key="cardbtn-{{ $button->id }}" class="flex w-full items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm font-medium transition hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900/60 dark:hover:bg-neutral-800">
-                                            <x-phosphor-lightning class="h-4 w-4 text-amber-500" /> {{ $button->name }}
+                                            <x-dynamic-component :component="'phosphor-'.(($button->trigger_config['icon'] ?? null) ?: 'lightning')" class="h-4 w-4 text-amber-500" /> {{ $button->name }}
                                         </button>
                                     @endforeach
                                 </div>

@@ -85,10 +85,28 @@ class AutomationEngine
      */
     public function runScheduledRule(Automation $automation): int
     {
+        return $this->runPipeline($automation, $this->phantomCard($automation));
+    }
+
+    /**
+     * Run a board button (topbar) on demand — same board-scope semantics as a
+     * scheduled rule: a phantom card carries the board context.
+     */
+    public function runBoardButton(Automation $automation): bool
+    {
+        if ($automation->trigger_type !== 'board_button' || ! $automation->is_active) {
+            return false;
+        }
+
+        return $this->runPipeline($automation, $this->phantomCard($automation)) > 0;
+    }
+
+    private function phantomCard(Automation $automation): Card
+    {
         $card = new Card(['board_id' => $automation->board_id]);
         $card->setRelation('board', $automation->board);
 
-        return $this->runPipeline($automation, $card);
+        return $card;
     }
 
     /**

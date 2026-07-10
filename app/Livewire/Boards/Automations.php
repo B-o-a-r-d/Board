@@ -97,7 +97,7 @@ class Automations extends Component
 
     public function setSection(string $section): void
     {
-        if (in_array($section, ['rules', 'scheduled', 'due', 'buttons'], true)) {
+        if (in_array($section, ['rules', 'scheduled', 'due', 'buttons', 'board_buttons'], true)) {
             $this->section = $section;
             $this->cancelBuild();
         }
@@ -114,6 +114,9 @@ class Automations extends Component
         // Buttons and due-date rules pre-pick their trigger type.
         if ($this->section === 'buttons') {
             $this->triggerType = 'manual';
+            $this->step = 2;
+        } elseif ($this->section === 'board_buttons') {
+            $this->triggerType = 'board_button';
             $this->step = 2;
         } elseif ($this->section === 'due') {
             $this->triggerType = 'card.due_relative';
@@ -173,7 +176,7 @@ class Automations extends Component
 
     public function goToStep(int $step): void
     {
-        $hasTriggerStep = $this->section !== 'buttons';
+        $hasTriggerStep = ! in_array($this->section, ['buttons', 'board_buttons'], true);
 
         if ($step === 1 && ! $hasTriggerStep) {
             return;
@@ -212,8 +215,8 @@ class Automations extends Component
 
     public function addCondition(string $key): void
     {
-        if ($this->section === 'scheduled') {
-            return; // conditions are card-based; scheduled rules have no card
+        if (in_array($this->section, ['scheduled', 'board_buttons'], true)) {
+            return; // conditions are card-based; these rules run on a phantom card
         }
 
         if (app(AutomationRegistry::class)->condition($key) !== null) {
@@ -270,7 +273,7 @@ class Automations extends Component
         $this->validate([
             'triggerType' => ['required', Rule::in(array_keys($registry->triggers()))],
             'actorScope' => ['required', Rule::in([Automation::ACTOR_ANYONE, Automation::ACTOR_ME])],
-            'name' => [$this->section === 'buttons' ? 'required' : 'nullable', 'string', 'max:255'],
+            'name' => [in_array($this->section, ['buttons', 'board_buttons'], true) ? 'required' : 'nullable', 'string', 'max:255'],
         ], [], ['name' => __('nom du bouton')]);
 
         if (! $this->triggerReady()) {
@@ -361,7 +364,7 @@ class Automations extends Component
      */
     public function allowedActionKeys(): array
     {
-        return $this->section === 'scheduled'
+        return in_array($this->section, ['scheduled', 'board_buttons'], true)
             ? self::SCHEDULED_ACTIONS
             : array_merge(...array_values(self::ACTION_CATEGORIES));
     }
@@ -370,6 +373,7 @@ class Automations extends Component
     {
         return match ($triggerType) {
             'manual' => 'buttons',
+            'board_button' => 'board_buttons',
             'scheduled' => 'scheduled',
             'card.due_relative' => 'due',
             default => 'rules',
@@ -403,6 +407,7 @@ class Automations extends Component
 
         $sectionTriggers = match ($this->section) {
             'buttons' => ['manual'],
+            'board_buttons' => ['board_button'],
             'scheduled' => ['scheduled'],
             'due' => ['card.due_relative'],
             default => array_merge(...array_values(self::TRIGGER_CATEGORIES)),

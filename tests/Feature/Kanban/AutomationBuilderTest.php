@@ -1,8 +1,11 @@
 <?php
 
+use App\Enums\Role;
 use App\Livewire\Boards\Automations;
+use App\Livewire\Boards\Show;
 use App\Models\Automation;
 use App\Models\BoardList;
+use App\Models\Card;
 use App\Models\Label;
 use Livewire\Livewire;
 
@@ -154,4 +157,74 @@ test('rules can be toggled, duplicated (disabled) and deleted from the listing',
 
     $component->call('deleteAutomation', $automation->id);
     expect($board->automations()->whereKey($automation->id)->exists())->toBeFalse();
+});
+
+test('a board button is created from its own section with an icon and board-scope actions', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+
+    Livewire::actingAs($owner)
+        ->test(Automations::class, ['board' => $board])
+        ->call('open')
+        ->call('setSection', 'board_buttons')
+        ->call('startCreate')
+        ->assertSet('step', 2)
+        ->call('addAction', 'archive_card')   // card action → refused (board scope only)
+        ->call('addAction', 'sort_list')
+        ->set('actions.0.config.list_id', $card->board_list_id)
+        ->set('actions.0.config.by', 'due')
+        ->set('name', 'Trier le backlog')
+        ->set('triggerConfig.icon', 'broom')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $button = $board->automations()->where('trigger_type', 'board_button')->first();
+
+    expect($button->name)->toBe('Trier le backlog')
+        ->and($button->trigger_config['icon'])->toBe('broom')
+        ->and(array_column($button->actionList(), 'type'))->toBe(['sort_list']);
+});
+
+test('a board button renders in the topbar and runs its pipeline on click', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+
+    $button = Automation::create([
+        'board_id' => $board->id,
+        'created_by' => $owner->id,
+        'name' => 'Carte du jour',
+        'trigger_type' => 'board_button',
+        'trigger_config' => ['icon' => 'rocket'],
+        'action_type' => 'create_card',
+        'actions' => [['type' => 'create_card', 'config' => ['title' => 'Daily', 'list_id' => $card->board_list_id]]],
+        'is_active' => true,
+    ]);
+
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+        ->assertSee('Carte du jour')
+        ->call('runBoardButton', $button->id);
+
+    expect(Card::where('title', 'Daily')->count())->toBe(1)
+        ->and($button->fresh()->runs_count)->toBe(1);
+});
+
+test('observers neither see nor run board buttons', function () {
+    ['board' => $board, 'owner' => $owner, 'outsider' => $observer, 'card' => $card] = makeCardContext();
+    $board->workspace->members()->attach($observer, ['role' => Role::Observer->value]);
+    $board->members()->attach($observer, ['role' => Role::Observer->value]);
+
+    $button = Automation::create([
+        'board_id' => $board->id,
+        'created_by' => $owner->id,
+        'name' => 'Bouton privé',
+        'trigger_type' => 'board_button',
+        'action_type' => 'create_card',
+        'actions' => [['type' => 'create_card', 'config' => ['title' => 'X', 'list_id' => $card->board_list_id]]],
+        'is_active' => true,
+    ]);
+
+    Livewire::actingAs($observer)->test(Show::class, ['board' => $board])
+        ->assertDontSee('Bouton privé')
+        ->call('runBoardButton', $button->id)
+        ->assertForbidden();
+
+    expect(Card::where('title', 'X')->count())->toBe(0);
 });

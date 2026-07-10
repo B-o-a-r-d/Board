@@ -205,6 +205,22 @@ class Show extends Component
     /** @var array<string, mixed> */
     public array $newPluginListConfig = [];
 
+    /**
+     * Run a board button (topbar) — a manual board-scope automation.
+     */
+    public function runBoardButton(int $automationId): void
+    {
+        $this->authorizeContribution();
+
+        $automation = $this->board->automations()
+            ->where('trigger_type', 'board_button')
+            ->findOrFail($automationId);
+
+        if (app(AutomationEngine::class)->runBoardButton($automation)) {
+            $this->dispatch('toast', message: __('Bouton « :name » exécuté', ['name' => $automation->name]), type: 'success');
+        }
+    }
+
     public function togglePlugins(): void
     {
         $this->authorize('managePlugins', $this->board);
@@ -1675,6 +1691,7 @@ class Show extends Component
             'customFields' => $this->board->customFields()->visibleOn($this->board)->orderBy('position')->get(),
             // …and every field for the admin modal (plugin-managed ones included).
             'allCustomFields' => $this->board->customFields()->with(['list:id,name', 'card:id,title'])->orderBy('position')->get(),
+            'boardButtons' => $this->board->automations()->where('trigger_type', 'board_button')->where('is_active', true)->orderBy('name')->get(),
             'pluginRegistry' => app(PluginRegistry::class),
             'availablePlugins' => $this->showPlugins ? app(PluginRegistry::class)->all() : [],
             'installedPlugins' => $this->showPlugins ? $this->board->plugins()->get() : collect(),

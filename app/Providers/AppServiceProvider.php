@@ -53,8 +53,9 @@ class AppServiceProvider extends ServiceProvider
                 Triggers\CardCommentAddedTrigger::class,
                 Triggers\CardTitleContainsTrigger::class,
                 Triggers\CustomFieldChangedTrigger::class,
-                // Manual (card buttons)
+                // Manual (card + board buttons)
                 Triggers\ManualTrigger::class,
+                Triggers\BoardButtonTrigger::class,
             ] as $trigger) {
                 $registry->registerTrigger(new $trigger);
             }

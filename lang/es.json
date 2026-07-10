@@ -904,5 +904,11 @@
     "Valeur": "Valor",
     "Le titre contient": "El título contiene",
     "La carte a une échéance": "La tarjeta tiene un vencimiento",
-    "Automatisation sur « :title »": "Automatización en «:title»"
+    "Automatisation sur « :title »": "Automatización en «:title»",
+    "Boutons de tableau": "Botones de tablero",
+    "au clic sur le bouton du tableau": "al pulsar el botón del tablero",
+    "Bouton manuel sur le tableau": "Botón manual en el tablero",
+    "Icône (Phosphor)": "Icono (Phosphor)",
+    "Icône du bouton": "Icono del botón",
+    "Bouton « :name » exécuté": "Botón «:name» ejecutado"
 }
