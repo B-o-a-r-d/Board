@@ -910,5 +910,14 @@
     "Bouton manuel sur le tableau": "Manual board button",
     "Icône (Phosphor)": "Icon (Phosphor)",
     "Icône du bouton": "Button icon",
-    "Bouton « :name » exécuté": "Button “:name” executed"
+    "Bouton « :name » exécuté": "Button “:name” executed",
+    "Trier les cartes par": "Sort the cards by",
+    "Création": "Creation",
+    "Déplacer toutes les cartes vers": "Move every card to",
+    "Archiver les cartes": "Archive the cards",
+    "Archiver toutes les cartes de cette liste ?": "Archive every card of this list?",
+    "Archiver toutes les cartes": "Archive every card",
+    "Quand une carte arrive ici…": "When a card arrives here…",
+    "Chaque jour, trier cette liste…": "Every day, sort this list…",
+    "Créer une règle…": "Create a rule…"
 }

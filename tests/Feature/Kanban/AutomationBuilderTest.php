@@ -1,12 +1,14 @@
 <?php
 
 use App\Enums\Role;
+use App\Events\BoardActivity;
 use App\Livewire\Boards\Automations;
 use App\Livewire\Boards\Show;
 use App\Models\Automation;
 use App\Models\BoardList;
 use App\Models\Card;
 use App\Models\Label;
+use Illuminate\Support\Facades\Event;
 use Livewire\Livewire;
 
 /** Phase 5: the Butler-style builder (sections, 3-step wizard, listing). */
@@ -227,4 +229,26 @@ test('observers neither see nor run board buttons', function () {
         ->assertForbidden();
 
     expect(Card::where('title', 'X')->count())->toBe(0);
+});
+
+test('saving, toggling and deleting a rule broadcast a board activity for live updates', function () {
+    Event::fake([BoardActivity::class]);
+    ['board' => $board, 'owner' => $owner] = makeCardContext();
+
+    $component = Livewire::actingAs($owner)
+        ->test(Automations::class, ['board' => $board])
+        ->call('open')
+        ->call('startCreate')
+        ->call('pickTrigger', 'card.completed')
+        ->call('addAction', 'archive_card')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    Event::assertDispatched(BoardActivity::class,
+        fn ($e) => $e->boardId === $board->id && $e->action === 'automations.changed');
+
+    $automation = $board->automations()->first();
+    Event::fake([BoardActivity::class]);
+    $component->call('toggleActive', $automation->id);
+    Event::assertDispatched(BoardActivity::class);
 });

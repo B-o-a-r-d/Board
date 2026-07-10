@@ -474,6 +474,45 @@
                         @if ($list->cover_path)
                             <x-context-menu.item icon="x" wire:click="removeListCover({{ $list->id }})">{{ __("Retirer l'image") }}</x-context-menu.item>
                         @endif
+
+                        {{-- Immediate list actions (Butler capture: Trier / Déplacer / Archiver toutes les cartes) --}}
+                        <x-context-menu.separator/>
+                        <div class="px-2 py-1.5">
+                            <p class="mb-1 text-xs text-neutral-500">{{ __('Trier les cartes par') }}</p>
+                            <div class="flex flex-wrap gap-1">
+                                @foreach (['due' => __('Échéance'), 'title' => __('Titre'), 'created' => __('Création')] as $by => $byLabel)
+                                    <button type="button" wire:click="sortListNow({{ $list->id }}, '{{ $by }}')" @click="shown = false"
+                                            class="rounded border border-neutral-200 px-2 py-0.5 text-xs text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800">{{ $byLabel }}</button>
+                                @endforeach
+                            </div>
+                        </div>
+                        @php $moveTargets = $lists->where('id', '!=', $list->id); @endphp
+                        @if ($moveTargets->isNotEmpty())
+                            <div class="px-2 py-1.5">
+                                <p class="mb-1 text-xs text-neutral-500">{{ __('Déplacer toutes les cartes vers') }}</p>
+                                <div class="max-h-32 space-y-0.5 overflow-y-auto">
+                                    @foreach ($moveTargets as $moveTarget)
+                                        <button type="button" wire:click="moveListCardsNow({{ $list->id }}, {{ $moveTarget->id }})" @click="shown = false"
+                                                class="block w-full truncate rounded px-2 py-1 text-left text-xs text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800">{{ $moveTarget->name }}</button>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+                        <x-context-menu.item icon="archive"
+                                             @click="$store.confirm.open({ title: '{{ __('Archiver les cartes') }}', message: '{{ __('Archiver toutes les cartes de cette liste ?') }}', confirmLabel: '{{ __('Archiver') }}' }).then(ok => ok && $wire.archiveListCardsNow({{ $list->id }}))">{{ __('Archiver toutes les cartes') }}</x-context-menu.item>
+
+                        {{-- Automation shortcuts (admins only — creating rules requires board update) --}}
+                        @can('update', $board)
+                            <x-context-menu.separator/>
+                            <p class="px-2 pb-0.5 pt-1 text-[10px] font-medium uppercase tracking-wide text-neutral-400">{{ __('Automatisation') }}</p>
+                            <x-context-menu.item icon="lightning"
+                                                 wire:click="$dispatch('open-automations', { prefill: { section: 'rules', trigger: 'card.moved_to_list', triggerConfig: { list_id: {{ $list->id }} }, step: 2 } })">{{ __('Quand une carte arrive ici…') }}</x-context-menu.item>
+                            <x-context-menu.item icon="clock"
+                                                 wire:click="$dispatch('open-automations', { prefill: { section: 'scheduled', triggerConfig: { freq: 'daily', at: '09:00' }, actions: [{ type: 'sort_list', config: { list_id: {{ $list->id }}, by: 'due' } }], step: 2 } })">{{ __('Chaque jour, trier cette liste…') }}</x-context-menu.item>
+                            <x-context-menu.item icon="robot"
+                                                 wire:click="$dispatch('open-automations', { prefill: { section: 'rules' } })">{{ __('Créer une règle…') }}</x-context-menu.item>
+                        @endcan
+
                         <x-context-menu.separator/>
                         <div class="px-2 py-1.5">
                             <p class="mb-1.5 text-xs text-neutral-500">{{ __('Couleur de la liste') }}</p>

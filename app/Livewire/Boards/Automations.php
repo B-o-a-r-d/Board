@@ -4,13 +4,13 @@ namespace App\Livewire\Boards;
 
 use App\Automations\AutomationRegistry;
 use App\Automations\SentenceRenderer;
+use App\Events\BoardActivity;
 use App\Models\Automation;
 use App\Models\Board;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
@@ -82,11 +82,67 @@ class Automations extends Component
         $this->showTrigger = $showTrigger;
     }
 
-    #[On('open-automations')]
-    public function open(): void
+    /**
+     * Listen for the open request and re-render live when another user changes
+     * a board automation (so the listing / buttons stay in sync without a
+     * manual refresh — real-time via Reverb).
+     *
+     * @return array<string, string>
+     */
+    public function getListeners(): array
+    {
+        return [
+            'open-automations' => 'open',
+            "echo-private:board.{$this->board->id},.board.activity" => 'onRemoteChange',
+        ];
+    }
+
+    public function onRemoteChange(): void {}
+
+    public function open(?array $prefill = null): void
     {
         $this->authorize('update', $this->board);
         $this->showModal = true;
+
+        if (! empty($prefill)) {
+            $this->applyPrefill($prefill);
+        }
+    }
+
+    /**
+     * Open the wizard pre-filled from a list context-menu shortcut, e.g.
+     * ['section' => 'rules', 'trigger' => 'card.moved_to_list',
+     *  'triggerConfig' => ['list_id' => 3], 'actions' => [[...]], 'step' => 2].
+     *
+     * @param  array<string, mixed>  $prefill
+     */
+    private function applyPrefill(array $prefill): void
+    {
+        $this->resetForm();
+        $this->section = in_array($prefill['section'] ?? '', ['rules', 'scheduled', 'due', 'buttons', 'board_buttons'], true)
+            ? $prefill['section']
+            : 'rules';
+        $this->building = true;
+
+        // Sections other than "rules" imply their trigger type (as startCreate does).
+        $this->triggerType = (string) ($prefill['trigger'] ?? match ($this->section) {
+            'scheduled' => 'scheduled',
+            'due' => 'card.due_relative',
+            'buttons' => 'manual',
+            'board_buttons' => 'board_button',
+            default => '',
+        });
+        if (! empty($prefill['triggerConfig']) && is_array($prefill['triggerConfig'])) {
+            $this->triggerConfig = $prefill['triggerConfig'];
+        }
+        if (! empty($prefill['actions']) && is_array($prefill['actions'])) {
+            $this->actions = array_values(array_map(
+                fn ($a) => ['type' => (string) ($a['type'] ?? ''), 'config' => (array) ($a['config'] ?? [])],
+                $prefill['actions'],
+            ));
+        }
+
+        $this->step = (int) ($prefill['step'] ?? ($this->section === 'rules' ? 1 : 2));
     }
 
     public function close(): void
@@ -320,6 +376,7 @@ class Automations extends Component
             $this->dispatch('toast', message: __('Automation créée'), type: 'success');
         }
 
+        $this->broadcastChange();
         $this->cancelBuild();
     }
 
@@ -331,6 +388,7 @@ class Automations extends Component
 
         $automation = $this->board->automations()->findOrFail($id);
         $automation->update(['is_active' => ! $automation->is_active]);
+        $this->broadcastChange();
     }
 
     public function duplicateAutomation(int $id): void
@@ -346,6 +404,7 @@ class Automations extends Component
         $copy->is_active = false;
         $copy->save();
 
+        $this->broadcastChange();
         $this->dispatch('toast', message: __('Automation dupliquée (désactivée)'), type: 'success');
     }
 
@@ -354,10 +413,20 @@ class Automations extends Component
         $this->authorize('update', $this->board);
 
         $this->board->automations()->whereKey($id)->delete();
+        $this->broadcastChange();
         $this->dispatch('toast', message: __('Automation supprimée'), type: 'info');
     }
 
     // --- Internals ------------------------------------------------------------------
+
+    /**
+     * Broadcast a board activity so every open board view (topbar buttons,
+     * card modal buttons, other admins' builders) re-renders live via Reverb.
+     */
+    private function broadcastChange(): void
+    {
+        broadcast(new BoardActivity($this->board->id, 'automations.changed', Auth::id()))->toOthers();
+    }
 
     /**
      * Action keys the current rule type may use (scheduled rules are cardless).

@@ -910,5 +910,14 @@
     "Bouton manuel sur le tableau": "Botón manual en el tablero",
     "Icône (Phosphor)": "Icono (Phosphor)",
     "Icône du bouton": "Icono del botón",
-    "Bouton « :name » exécuté": "Botón «:name» ejecutado"
+    "Bouton « :name » exécuté": "Botón «:name» ejecutado",
+    "Trier les cartes par": "Ordenar las tarjetas por",
+    "Création": "Creación",
+    "Déplacer toutes les cartes vers": "Mover todas las tarjetas a",
+    "Archiver les cartes": "Archivar las tarjetas",
+    "Archiver toutes les cartes de cette liste ?": "¿Archivar todas las tarjetas de esta lista?",
+    "Archiver toutes les cartes": "Archivar todas las tarjetas",
+    "Quand une carte arrive ici…": "Cuando una tarjeta llega aquí…",
+    "Chaque jour, trier cette liste…": "Cada día, ordenar esta lista…",
+    "Créer une règle…": "Crear una regla…"
 }

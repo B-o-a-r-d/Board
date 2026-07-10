@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Boards;
 
+use App\Automations\Actions\ArchiveListCardsAction;
+use App\Automations\Actions\SortListAction;
 use App\Automations\AutomationEngine;
 use App\Enums\CustomFieldType;
 use App\Enums\Role;
@@ -1207,6 +1209,77 @@ class Show extends Component
 
         $this->listForBoard($listId)->update(['archived_at' => now()]);
         $this->broadcastActivity('list.archived');
+    }
+
+    /**
+     * Immediate list action (context menu): sort the list's live cards by due
+     * date, title or creation date. Reuses the automation action so the manual
+     * and automated paths stay identical.
+     */
+    public function sortListNow(int $listId, string $by): void
+    {
+        $this->authorizeContribution();
+
+        if (! in_array($by, ['due', 'title', 'created'], true)) {
+            return;
+        }
+
+        app(SortListAction::class)->run($this->phantomListCard($listId), ['list_id' => $listId, 'by' => $by]);
+        $this->broadcastActivity('list.sorted');
+    }
+
+    /**
+     * Immediate list action: archive every live card of the list at once.
+     */
+    public function archiveListCardsNow(int $listId): void
+    {
+        $this->authorizeContribution();
+
+        app(ArchiveListCardsAction::class)->run($this->phantomListCard($listId), ['list_id' => $listId]);
+        $this->broadcastActivity('card.archived');
+    }
+
+    /**
+     * Immediate list action: move every live card of the list to another list.
+     */
+    public function moveListCardsNow(int $listId, int $targetListId): void
+    {
+        $this->authorizeContribution();
+
+        $source = $this->listForBoard($listId);
+        $target = $this->listForBoard($targetListId);
+
+        if ($source->id === $target->id) {
+            return;
+        }
+
+        $cards = $source->cards()->whereNull('archived_at')->orderBy('position')->get();
+        $position = (int) $target->cards()->max('position');
+
+        foreach ($cards as $card) {
+            $card->update(['board_list_id' => $target->id, 'position' => ++$position]);
+            app(AutomationEngine::class)->fire('card.moved', $card->fresh(), [
+                'to_list_id' => $target->id,
+                'from_list_id' => $source->id,
+            ]);
+        }
+
+        if ($cards->isNotEmpty()) {
+            $this->resequence($source->id);
+            $this->broadcastActivity('card.moved');
+        }
+    }
+
+    /**
+     * A phantom card carrying the board + list context, so board-scope
+     * automation actions can run against a list without a real card.
+     */
+    private function phantomListCard(int $listId): Card
+    {
+        $card = new Card(['board_id' => $this->board->id, 'board_list_id' => $listId]);
+        $card->setRelation('board', $this->board);
+
+        return $card;
     }
 
     public function restoreList(int $listId): void
