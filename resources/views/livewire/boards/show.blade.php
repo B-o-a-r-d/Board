@@ -42,9 +42,11 @@
             'dashboard' => ['label' => __('Dashboard'), 'icon' => 'chart-pie-slice'],
         ];
 
-        // Topbar icon buttons get an opaque surface so they stand out over the glass.
+        // Over a board background every surface is true glass: a dark translucent
+        // veil + blur, identical whatever the global theme. The `dark` class on the
+        // surface forces the dark-theme styles inside (light, readable text).
         $topBtn = 'flex h-8 shrink-0 items-center justify-center rounded-lg border shadow-sm transition '.($boardBg
-            ? 'border-black/10 bg-white/90 text-neutral-700 hover:bg-white dark:border-white/10 dark:bg-neutral-800/90 dark:text-neutral-200 dark:hover:bg-neutral-800'
+            ? 'border-white/20 bg-white/10 text-neutral-100 hover:bg-white/20'
             : 'border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700');
         $panelClasses = 'rounded-xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900';
     @endphp
@@ -54,13 +56,13 @@
          creates sibling stacking contexts painted in DOM order). --}}
     <div @class([
         'relative z-30 -mx-4 -mt-8 mb-3 flex min-h-12 flex-wrap items-center gap-x-2 gap-y-1.5 border-b px-4 py-1.5 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8',
-        'border-white/20 dark:border-white/10' => $boardBg,
+        'dark border-white/15 text-neutral-100' => $boardBg,
         'border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900' => ! $boardBg,
     ])>
         @if ($boardBg)
             {{-- The blur lives on a -z child: backdrop-filter on the bar itself would make it
                  the containing block of the fixed mobile filters modal and break its stacking. --}}
-            <div class="absolute inset-0 -z-10 bg-white/40 backdrop-blur-md dark:bg-neutral-900/50" aria-hidden="true"></div>
+            <div class="absolute inset-0 -z-10 bg-neutral-900/45 backdrop-blur-xl" aria-hidden="true"></div>
         @endif
         <div class="flex min-w-0 flex-1 items-center gap-2">
             @if ($renamingBoard)
@@ -395,7 +397,7 @@
                 @collapse-all.window="collapsed = true"
                 @expand-all.window="collapsed = false"
                 :class="collapsed ? 'w-11 self-stretch' : 'w-full sm:w-72'"
-                class="flex max-h-full shrink-0 snap-start flex-col overflow-hidden rounded-xl {{ $boardBg ? 'border border-white/20 bg-white/50 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-neutral-900/60' : 'bg-neutral-200/70 dark:bg-neutral-900' }}"
+                class="flex max-h-full shrink-0 snap-start flex-col overflow-hidden rounded-xl {{ $boardBg ? 'dark border border-white/15 bg-neutral-900/50 text-neutral-100 shadow-lg backdrop-blur-md' : 'bg-neutral-200/70 dark:bg-neutral-900' }}"
             >
                 {{-- Collapsed strip --}}
                 <div x-show="collapsed" x-cloak @click="collapsed = false" class="flex flex-1 cursor-pointer select-none flex-col items-center gap-2 py-2.5" title="{{ $list->name }}">
@@ -748,7 +750,7 @@
                 type="text"
                 wire:model="newListName"
                 placeholder="{{ __('+ Ajouter une liste') }}"
-                class="w-full rounded-xl border border-dashed border-neutral-300 bg-white/50 px-3 py-2 text-sm  placeholder-neutral-500 dark:placeholder-neutral-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900/50 {{ $boardBg ? 'backdrop-blur-md' : '' }}"
+                class="w-full rounded-xl border border-dashed px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none {{ $boardBg ? 'dark border-white/25 bg-neutral-900/45 text-neutral-100 placeholder-neutral-300 backdrop-blur-xl' : 'border-neutral-300 bg-white/50 placeholder-neutral-500 dark:border-neutral-700 dark:bg-neutral-900/50 dark:placeholder-neutral-200' }}"
             >
             @error('newListName') <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
         </form>
