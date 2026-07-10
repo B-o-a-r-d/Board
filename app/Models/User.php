@@ -42,6 +42,16 @@ class User extends Authenticatable implements MustVerifyEmail
             ->withTimestamps();
     }
 
+    /**
+     * Boards this user has pinned for quick access on the dashboard, regardless
+     * of workspace. Pinning is independent of membership (via the `board_pins`
+     * pivot).
+     */
+    public function pinnedBoards(): BelongsToMany
+    {
+        return $this->belongsToMany(Board::class, 'board_pins')->withTimestamps();
+    }
+
     public function assignedCards(): BelongsToMany
     {
         return $this->belongsToMany(Card::class)->withTimestamps();

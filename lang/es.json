@@ -615,5 +615,14 @@
     "Activez le flux pour générer un lien iCal en lecture seule.": "Activa el feed para generar un enlace iCal de solo lectura.",
     "Un lien privé regroupant les cartes datées de tous vos tableaux. Abonnez-vous depuis Google Agenda, Apple Calendar ou Outlook pour les voir dans votre agenda.": "Un enlace privado que reúne las tarjetas con fecha de todos tus tableros. Suscríbete desde Google Calendar, Apple Calendar u Outlook para verlas en tu calendario.",
     "Activez le flux pour générer votre lien iCal privé.": "Activa el feed para generar tu enlace iCal privado.",
-    "Notifications (:count non lues)": "Notificaciones (:count sin leer)"
+    "Notifications (:count non lues)": "Notificaciones (:count sin leer)",
+    "Épingler": "Fijar",
+    "Désépingler": "Quitar",
+    "Épinglés": "Fijados",
+    "Supprimer ce board et tout son contenu ? Cette action est irréversible.": "¿Eliminar este tablero y todo su contenido? Esta acción es irreversible.",
+    "Retirer du board": "Quitar del tablero",
+    "Ajouter un membre du workspace": "Añadir un miembro del workspace",
+    "Rechercher par nom ou email…": "Buscar por nombre o correo…",
+    "Aucun membre trouvé.": "No se encontró ningún miembro.",
+    "Board supprimé": "Tablero eliminado"
 }

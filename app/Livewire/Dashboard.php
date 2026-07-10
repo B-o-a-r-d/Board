@@ -9,6 +9,8 @@ use App\Models\Workspace;
 use App\Services\BoardTemplateService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -144,6 +146,139 @@ class Dashboard extends Component
         return $this->redirectRoute('boards.show', $board, navigate: true);
     }
 
+    // --- Pin boards (per-user, across workspaces) -----------------------------
+
+    public function togglePin(int $boardId): void
+    {
+        $board = Board::findOrFail($boardId);
+        $this->authorize('view', $board);
+
+        $user = Auth::user();
+
+        if ($user->pinnedBoards()->whereKey($boardId)->exists()) {
+            $user->pinnedBoards()->detach($boardId);
+        } else {
+            $user->pinnedBoards()->attach($boardId);
+        }
+    }
+
+    // --- Board rename / delete from the dashboard ------------------------------
+
+    public ?int $renamingBoardId = null;
+
+    public string $boardNameDraft = '';
+
+    public function startRenameBoard(int $boardId): void
+    {
+        $board = Board::findOrFail($boardId);
+        $this->authorize('update', $board);
+
+        $this->renamingBoardId = $boardId;
+        $this->boardNameDraft = $board->name;
+    }
+
+    public function renameBoard(): void
+    {
+        if ($this->renamingBoardId === null) {
+            return;
+        }
+
+        $board = Board::findOrFail($this->renamingBoardId);
+        $this->authorize('update', $board);
+
+        $name = trim($this->boardNameDraft);
+
+        if ($name !== '') {
+            $board->update(['name' => $name]);
+        }
+
+        $this->renamingBoardId = null;
+    }
+
+    public function deleteBoard(int $boardId): void
+    {
+        $board = Board::findOrFail($boardId);
+        $this->authorize('delete', $board);
+
+        $board->delete();
+        $this->dispatch('toast', message: __('Board supprimé'), type: 'success');
+    }
+
+    // --- Board member management (modal) --------------------------------------
+
+    public ?int $managingMembersBoardId = null;
+
+    public string $memberSearch = '';
+
+    public function openBoardMembers(int $boardId): void
+    {
+        $board = Board::findOrFail($boardId);
+        $this->authorize('manageMembers', $board);
+
+        $this->managingMembersBoardId = $boardId;
+        $this->memberSearch = '';
+    }
+
+    public function closeBoardMembers(): void
+    {
+        $this->managingMembersBoardId = null;
+        $this->memberSearch = '';
+    }
+
+    private function managedBoard(): Board
+    {
+        $board = Board::findOrFail($this->managingMembersBoardId);
+        $this->authorize('manageMembers', $board);
+
+        return $board;
+    }
+
+    public function addBoardMember(int $userId): void
+    {
+        $board = $this->managedBoard();
+
+        // Only workspace members may be added to a board (Trello-style).
+        if (! $board->workspace->members()->whereKey($userId)->exists()) {
+            return;
+        }
+
+        $board->members()->syncWithoutDetaching([$userId => ['role' => Role::Member->value]]);
+    }
+
+    public function updateBoardMemberRole(int $userId, string $role): void
+    {
+        $board = $this->managedBoard();
+
+        $membership = $board->members()->whereKey($userId)->first();
+        $assignable = $board->workspace->roles()->where('key', '!=', 'owner')->pluck('key');
+
+        if (! $membership || $membership->pivot->role === Role::Owner->value || ! $assignable->contains($role)) {
+            return;
+        }
+
+        $board->members()->updateExistingPivot($userId, ['role' => $role]);
+    }
+
+    public function removeBoardMember(int $userId): void
+    {
+        $board = $this->managedBoard();
+
+        $membership = $board->members()->whereKey($userId)->first();
+
+        // The board owner cannot be removed.
+        if (! $membership || $membership->pivot->role === Role::Owner->value) {
+            return;
+        }
+
+        $board->members()->detach($userId);
+
+        // Drop their card assignments on this board so no orphan assignee remains.
+        DB::table('card_user')
+            ->whereIn('card_id', $board->cards()->select('id'))
+            ->where('user_id', $userId)
+            ->delete();
+    }
+
     public function render(): View
     {
         $user = Auth::user();
@@ -156,14 +291,56 @@ class Dashboard extends Component
                         $scoped->where('visibility', BoardVisibility::Workspace)
                             ->orWhereHas('members', fn ($members) => $members->whereKey($user->getKey()));
                     })
+                    ->with('members')
                     ->orderBy('position');
             }])
             ->orderBy('name')
             ->get();
 
+        $pinnedIds = $user->pinnedBoards()->pluck('boards.id')->all();
+
+        // Pinned boards the user can still view, across every workspace.
+        $pinnedBoards = $user->pinnedBoards()
+            ->notArchived()
+            ->where('is_template', false)
+            ->with(['members', 'workspace'])
+            ->orderBy('boards.name')
+            ->get()
+            ->filter(fn (Board $board): bool => Gate::allows('view', $board))
+            ->values();
+
+        $managingBoard = null;
+        $memberCandidates = collect();
+        $assignableRoles = collect();
+
+        if ($this->managingMembersBoardId !== null) {
+            $candidate = Board::with(['members', 'workspace.roles'])->find($this->managingMembersBoardId);
+
+            if ($candidate && Gate::allows('manageMembers', $candidate)) {
+                $managingBoard = $candidate;
+                $search = trim($this->memberSearch);
+
+                $memberCandidates = $candidate->workspace->members()
+                    ->whereNotIn('users.id', $candidate->members->pluck('id'))
+                    ->when($search !== '', fn ($query) => $query->where(fn ($where) => $where
+                        ->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('email', 'like', '%'.$search.'%')))
+                    ->orderBy('name')
+                    ->limit(8)
+                    ->get();
+
+                $assignableRoles = $candidate->workspace->roles()->where('key', '!=', 'owner')->orderBy('position')->get();
+            }
+        }
+
         return view('livewire.dashboard', [
             'workspaces' => $workspaces,
             'templates' => Board::templates()->orderBy('name')->get(),
+            'pinnedBoards' => $pinnedBoards,
+            'pinnedIds' => $pinnedIds,
+            'managingBoard' => $managingBoard,
+            'memberCandidates' => $memberCandidates,
+            'assignableRoles' => $assignableRoles,
         ]);
     }
 }

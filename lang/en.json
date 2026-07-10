@@ -615,5 +615,14 @@
     "Activez le flux pour générer un lien iCal en lecture seule.": "Enable the feed to generate a read-only iCal link.",
     "Un lien privé regroupant les cartes datées de tous vos tableaux. Abonnez-vous depuis Google Agenda, Apple Calendar ou Outlook pour les voir dans votre agenda.": "A private link bundling the dated cards from all your boards. Subscribe from Google Calendar, Apple Calendar or Outlook to see them in your calendar.",
     "Activez le flux pour générer votre lien iCal privé.": "Enable the feed to generate your private iCal link.",
-    "Notifications (:count non lues)": "Notifications (:count unread)"
+    "Notifications (:count non lues)": "Notifications (:count unread)",
+    "Épingler": "Pin",
+    "Désépingler": "Unpin",
+    "Épinglés": "Pinned",
+    "Supprimer ce board et tout son contenu ? Cette action est irréversible.": "Delete this board and all its content? This action is irreversible.",
+    "Retirer du board": "Remove from board",
+    "Ajouter un membre du workspace": "Add a workspace member",
+    "Rechercher par nom ou email…": "Search by name or email…",
+    "Aucun membre trouvé.": "No member found.",
+    "Board supprimé": "Board deleted"
 }
