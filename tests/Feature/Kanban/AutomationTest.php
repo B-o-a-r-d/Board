@@ -134,11 +134,12 @@ test('a board admin can build and delete an automation from the UI', function ()
     $done = BoardList::factory()->create(['board_id' => $board->id]);
 
     $component = Livewire::actingAs($owner)->test(Automations::class, ['board' => $board])
+        ->call('open')
         ->call('startCreate')
         ->set('name', 'Terminer dans Fait')
-        ->set('triggerType', 'card.moved_to_list')
+        ->call('pickTrigger', 'card.moved_to_list')
         ->set('triggerConfig.list_id', $done->id)
-        ->set('actionType', 'mark_complete')
+        ->call('addAction', 'mark_complete')
         ->call('save')
         ->assertHasNoErrors();
 
@@ -161,12 +162,14 @@ test('a board admin can edit an existing automation', function () {
     ]);
 
     Livewire::actingAs($owner)->test(Automations::class, ['board' => $board])
+        ->call('open')
         ->call('startEdit', $automation->id)
         ->assertSet('editingId', $automation->id)
         ->assertSet('name', 'Ancien nom')
         ->assertSet('triggerType', 'card.moved_to_list')
         ->set('name', 'Nouveau nom')
-        ->set('actionType', 'archive_card')
+        ->call('removeAction', 0)
+        ->call('addAction', 'archive_card')
         ->call('save')
         ->assertHasNoErrors();
 

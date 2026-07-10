@@ -193,7 +193,7 @@ test('set_custom_field coerces by type and clears on empty', function () {
     expect($card->customFieldValues()->count())->toBe(0);
 });
 
-test('notify_members notifies members and watchers except the actor', function () {
+test('notify_members notifies members and watchers but never the triggering user', function () {
     ['board' => $board, 'owner' => $owner, 'member' => $member, 'card' => $card] = makeCardContext();
     Notification::fake();
     $this->actingAs($owner);

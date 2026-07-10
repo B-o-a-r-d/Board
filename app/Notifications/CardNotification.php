@@ -122,6 +122,7 @@ class CardNotification extends Notification implements ShouldQueue
             'mention' => __(':actor vous a mentionné dans « :title »', ['actor' => $actor, 'title' => $title]),
             'reaction' => __(':actor a réagi à votre commentaire sur « :title »', ['actor' => $actor, 'title' => $title]),
             'due_soon' => __('« :title » arrive à échéance', ['title' => $title]),
+            'automation' => __('Automatisation sur « :title »', ['title' => $title]),
             default => __('Activité sur « :title »', ['title' => $title]),
         };
     }

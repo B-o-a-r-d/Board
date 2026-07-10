@@ -39,6 +39,7 @@ class NotifyMembersAction implements AutomationAction
 
         $excerpt = Str::limit(trim((string) ($config['message'] ?? '')), 120) ?: null;
 
+        // No self-notification: the triggering user already knows what they did.
         $recipientIds = $card->members()->pluck('users.id')
             ->merge($card->watchers()->pluck('users.id'))
             ->unique()
