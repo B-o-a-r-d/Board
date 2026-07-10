@@ -1,6 +1,11 @@
 <?php
 
+use App\Automations\AutomationEngine;
+use App\Automations\AutomationRegistry;
+use App\Automations\Contracts\AutomationAction;
 use App\Models\Automation;
+use App\Models\Card;
+use App\Models\Label;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -137,4 +142,215 @@ test('the migration backfills legacy rows into one-action pipelines', function (
     expect($automation->fresh()->actions)->toBe([
         ['type' => 'assign_member', 'config' => ['user_id' => 7]],
     ]);
+});
+
+// --- Phase 1: engine pipeline -------------------------------------------------------
+
+abstract class FakePipelineAction implements AutomationAction
+{
+    /** @var array<int, string> shared execution trace across all fake actions */
+    public static array $log = [];
+
+    public function label(): string
+    {
+        return static::key();
+    }
+
+    public function configFields(): array
+    {
+        return [];
+    }
+
+    public function run(Card $card, array $config): void
+    {
+        self::$log[] = static::key();
+    }
+}
+
+class FakeActionA extends FakePipelineAction
+{
+    public static function key(): string
+    {
+        return 'fake_a';
+    }
+}
+
+class FakeActionB extends FakePipelineAction
+{
+    public static function key(): string
+    {
+        return 'fake_b';
+    }
+}
+
+class FakeBoomAction extends FakePipelineAction
+{
+    public static function key(): string
+    {
+        return 'fake_boom';
+    }
+
+    public function run(Card $card, array $config): void
+    {
+        throw new RuntimeException('boom');
+    }
+}
+
+function registerFakeActions(): void
+{
+    FakePipelineAction::$log = [];
+    $registry = app(AutomationRegistry::class);
+    $registry->registerAction(new FakeActionA);
+    $registry->registerAction(new FakeActionB);
+    $registry->registerAction(new FakeBoomAction);
+}
+
+test('the engine runs a multi-action pipeline in order and updates the counters', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+    registerFakeActions();
+
+    $automation = Automation::create([
+        'board_id' => $board->id,
+        'created_by' => $owner->id,
+        'name' => 'Pipeline ordonné',
+        'trigger_type' => 'card.completed',
+        'action_type' => 'noop',
+        'actions' => [
+            ['type' => 'fake_a', 'config' => []],
+            ['type' => 'fake_b', 'config' => []],
+        ],
+    ]);
+
+    $ran = app(AutomationEngine::class)->fire('card.completed', $card);
+
+    expect($ran)->toBe(2)
+        ->and(FakePipelineAction::$log)->toBe(['fake_a', 'fake_b']);
+
+    $automation->refresh();
+    expect($automation->runs_count)->toBe(1)
+        ->and($automation->failures_count)->toBe(0)
+        ->and($automation->last_run_at)->not->toBeNull();
+});
+
+test('a failing or unknown action is isolated and counted, the pipeline continues', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+    registerFakeActions();
+
+    $automation = Automation::create([
+        'board_id' => $board->id,
+        'created_by' => $owner->id,
+        'name' => 'Échec isolé',
+        'trigger_type' => 'card.completed',
+        'action_type' => 'noop',
+        'actions' => [
+            ['type' => 'fake_a', 'config' => []],
+            ['type' => 'fake_boom', 'config' => []],
+            ['type' => 'unknown_action', 'config' => []],
+            ['type' => 'fake_b', 'config' => []],
+        ],
+    ]);
+
+    $ran = app(AutomationEngine::class)->fire('card.completed', $card);
+
+    expect($ran)->toBe(2)
+        ->and(FakePipelineAction::$log)->toBe(['fake_a', 'fake_b'])
+        ->and($automation->fresh()->failures_count)->toBe(2);
+});
+
+test('AND conditions gate the pipeline and an unknown condition fails closed', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+    registerFakeActions();
+    $label = Label::factory()->create(['board_id' => $board->id]);
+
+    $automation = Automation::create([
+        'board_id' => $board->id,
+        'created_by' => $owner->id,
+        'name' => 'Conditionnée',
+        'trigger_type' => 'card.completed',
+        'action_type' => 'noop',
+        'actions' => [['type' => 'fake_a', 'config' => []]],
+        'conditions' => [
+            ['type' => 'in_list', 'config' => ['list_id' => $card->board_list_id]],
+            ['type' => 'has_label', 'config' => ['label_id' => $label->id]],
+        ],
+    ]);
+
+    $engine = app(AutomationEngine::class);
+
+    // Label missing → the AND fails, nothing runs.
+    expect($engine->fire('card.completed', $card))->toBe(0)
+        ->and($automation->fresh()->runs_count)->toBe(0);
+
+    // Both conditions satisfied → the pipeline runs.
+    $card->labels()->attach($label);
+    expect($engine->fire('card.completed', $card))->toBe(1);
+
+    // A rule referencing a removed/unknown condition never fires.
+    $automation->update(['conditions' => [['type' => 'ghost_condition', 'config' => []]]]);
+    FakePipelineAction::$log = [];
+    expect($engine->fire('card.completed', $card))->toBe(0)
+        ->and(FakePipelineAction::$log)->toBe([]);
+});
+
+test('the "by me" actor scope only fires for the rule creator', function () {
+    ['board' => $board, 'owner' => $owner, 'member' => $member, 'card' => $card] = makeCardContext();
+    registerFakeActions();
+
+    Automation::create([
+        'board_id' => $board->id,
+        'created_by' => $owner->id,
+        'name' => 'Par moi',
+        'trigger_type' => 'card.completed',
+        'action_type' => 'noop',
+        'actions' => [['type' => 'fake_a', 'config' => []]],
+        'actor_scope' => Automation::ACTOR_ME,
+    ]);
+
+    $engine = app(AutomationEngine::class);
+
+    $this->actingAs($member);
+    expect($engine->fire('card.completed', $card))->toBe(0);
+
+    $this->actingAs($owner);
+    expect($engine->fire('card.completed', $card))->toBe(1);
+});
+
+test('a pipeline is capped at MAX_ACTIONS steps', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+    registerFakeActions();
+
+    Automation::create([
+        'board_id' => $board->id,
+        'created_by' => $owner->id,
+        'name' => 'Débordement',
+        'trigger_type' => 'card.completed',
+        'action_type' => 'noop',
+        'actions' => array_fill(0, 12, ['type' => 'fake_a', 'config' => []]),
+    ]);
+
+    $ran = app(AutomationEngine::class)->fire('card.completed', $card);
+
+    expect($ran)->toBe(AutomationEngine::MAX_ACTIONS)
+        ->and(FakePipelineAction::$log)->toHaveCount(10);
+});
+
+test('a card button (manual trigger) runs its whole pipeline', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+    registerFakeActions();
+
+    $button = Automation::create([
+        'board_id' => $board->id,
+        'created_by' => $owner->id,
+        'name' => 'Bouton',
+        'trigger_type' => 'manual',
+        'action_type' => 'noop',
+        'is_active' => true,
+        'actions' => [
+            ['type' => 'fake_a', 'config' => []],
+            ['type' => 'fake_b', 'config' => []],
+        ],
+    ]);
+
+    expect(app(AutomationEngine::class)->runManual($button, $card))->toBeTrue()
+        ->and(FakePipelineAction::$log)->toBe(['fake_a', 'fake_b']);
 });

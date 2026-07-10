@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Automations\Actions;
 use App\Automations\AutomationRegistry;
+use App\Automations\Conditions;
 use App\Automations\Triggers;
 use App\Models\User;
 use App\Plugins\PluginContext;
@@ -34,6 +35,17 @@ class AppServiceProvider extends ServiceProvider
                 Triggers\ManualTrigger::class,
             ] as $trigger) {
                 $registry->registerTrigger(new $trigger);
+            }
+
+            foreach ([
+                Conditions\HasLabelCondition::class,
+                Conditions\InListCondition::class,
+                Conditions\AssignedToCondition::class,
+                Conditions\CustomFieldEqualsCondition::class,
+                Conditions\TitleContainsCondition::class,
+                Conditions\HasDueDateCondition::class,
+            ] as $condition) {
+                $registry->registerCondition(new $condition);
             }
 
             foreach ([
