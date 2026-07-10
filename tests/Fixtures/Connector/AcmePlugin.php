@@ -61,6 +61,7 @@ class AcmePlugin implements DefinesActivities, Plugin, ProvidesListSource, Provi
     public function configFields(array $config = []): array
     {
         return [
+            ['key' => 'instance_url', 'label' => 'Instance URL', 'type' => 'url', 'placeholder' => 'https://acme.example.com'],
             ['key' => 'client_id', 'label' => 'Client ID', 'type' => 'text', 'placeholder' => 'acme-xxxx'],
             ['key' => 'client_secret', 'label' => 'Client secret', 'type' => 'password'],
         ];
@@ -77,7 +78,7 @@ class AcmePlugin implements DefinesActivities, Plugin, ProvidesListSource, Provi
             : self::AUTHORIZE_URL;
     }
 
-    public function tokenUrl(): string
+    public function tokenUrl(array $config = []): string
     {
         return self::TOKEN_URL;
     }
@@ -92,7 +93,7 @@ class AcmePlugin implements DefinesActivities, Plugin, ProvidesListSource, Provi
         return ['prompt' => 'consent'];
     }
 
-    public function resolveAccount(string $accessToken): ?string
+    public function resolveAccount(string $accessToken, array $config = []): ?string
     {
         return Http::withToken($accessToken)->acceptJson()
             ->get(self::API.'/user')

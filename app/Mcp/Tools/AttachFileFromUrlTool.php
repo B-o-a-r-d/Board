@@ -4,6 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Mcp\Concerns\InteractsWithMcpBoard;
 use App\Models\Card;
+use Board\PluginSdk\Support\SafeUrl;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -36,7 +37,7 @@ class AttachFileFromUrlTool extends Tool
 
         $url = $request->get('url');
 
-        if (! $this->isSafeUrl($url)) {
+        if (! SafeUrl::isSafe($url)) {
             return Response::error('URL non autorisée (schéma ou hôte interne).');
         }
 
@@ -90,30 +91,6 @@ class AttachFileFromUrlTool extends Tool
             'name' => $attachment->name,
             'url' => $attachment->url,
         ]);
-    }
-
-    private function isSafeUrl(string $url): bool
-    {
-        $parts = parse_url($url);
-
-        if ($parts === false || ! in_array(strtolower($parts['scheme'] ?? ''), ['http', 'https'], true)) {
-            return false;
-        }
-
-        $host = $parts['host'] ?? '';
-        $ips = filter_var($host, FILTER_VALIDATE_IP) ? [$host] : (gethostbynamel($host) ?: []);
-
-        if ($ips === []) {
-            return false;
-        }
-
-        foreach ($ips as $ip) {
-            if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     /**

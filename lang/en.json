@@ -20,6 +20,7 @@
     "Configurer": "Configure",
     "Configurez le Client ID GitHub avant de connecter.": "Configure the GitHub Client ID before connecting.",
     "Configuration enregistrée": "Configuration saved",
+    "URL invalide ou non autorisée (http/https requis, hôte interne interdit).": "Invalid or disallowed URL (http/https required, internal host forbidden).",
     "URL de rappel à renseigner dans l'app OAuth :": "Callback URL to set in the OAuth app:",
     "Copié": "Copied",
     "Renseignez les identifiants OAuth pour connecter.": "Enter the OAuth credentials to connect.",

@@ -17,6 +17,7 @@ use App\Notifications\CardNotification;
 use Board\PluginSdk\Contracts\DefinesActivities;
 use Board\PluginSdk\Contracts\ProvidesListSource;
 use Board\PluginSdk\PluginRegistry;
+use Board\PluginSdk\Support\SafeUrl;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
@@ -267,11 +268,22 @@ class Show extends Component
 
         foreach ($definition?->configFields($config) ?? [] as $field) {
             $key = $field['key'];
+            $type = $field['type'] ?? 'text';
             $value = trim((string) ($this->pluginConfigDraft[$key] ?? ''));
 
             // A blank secret keeps the stored value (so it isn't wiped on edit).
-            if (($field['type'] ?? 'text') === 'password' && $value === '') {
+            if ($type === 'password' && $value === '') {
                 continue;
+            }
+
+            // SSRF: a URL field (e.g. a self-hosted instance URL) must be http(s)
+            // and must not resolve to an internal/reserved host — otherwise the
+            // server (and OAuth token exchange) could be pointed at cloud metadata
+            // or localhost. Internal hosts can be permitted via the allow-list.
+            if ($type === 'url' && $value !== '' && ! SafeUrl::isSafe($value, config('board.plugin_url_allowlist', []))) {
+                $this->addError('pluginConfigDraft.'.$key, __('URL invalide ou non autorisée (http/https requis, hôte interne interdit).'));
+
+                return;
             }
 
             $config[$key] = $value;

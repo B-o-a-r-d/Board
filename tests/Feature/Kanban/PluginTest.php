@@ -409,6 +409,52 @@ test('connecting is blocked until oauth credentials are configured', function ()
     expect(session('plugin_oauth'))->toBeNull();
 });
 
+test('savePluginConfig rejects an SSRF-unsafe instance url (metadata/localhost)', function () {
+    ['board' => $board, 'owner' => $owner] = makePluginBoard();
+    $instance = $board->plugins()->create([
+        'plugin_key' => 'acme', 'name' => 'Acme', 'config' => [], 'is_active' => true,
+    ]);
+
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+        ->call('startPluginConfig', $instance->id)
+        ->set('pluginConfigDraft.instance_url', 'http://169.254.169.254')
+        ->call('savePluginConfig')
+        ->assertHasErrors('pluginConfigDraft.instance_url');
+
+    expect($instance->fresh()->config['instance_url'] ?? null)->toBeNull();
+});
+
+test('savePluginConfig accepts a public instance url', function () {
+    ['board' => $board, 'owner' => $owner] = makePluginBoard();
+    $instance = $board->plugins()->create([
+        'plugin_key' => 'acme', 'name' => 'Acme', 'config' => [], 'is_active' => true,
+    ]);
+
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+        ->call('startPluginConfig', $instance->id)
+        ->set('pluginConfigDraft.instance_url', 'https://93.184.216.34')
+        ->call('savePluginConfig')
+        ->assertHasNoErrors();
+
+    expect($instance->fresh()->config['instance_url'])->toBe('https://93.184.216.34');
+});
+
+test('savePluginConfig permits an internal instance url on the allow-list', function () {
+    config(['board.plugin_url_allowlist' => ['10.0.0.5']]);
+    ['board' => $board, 'owner' => $owner] = makePluginBoard();
+    $instance = $board->plugins()->create([
+        'plugin_key' => 'acme', 'name' => 'Acme', 'config' => [], 'is_active' => true,
+    ]);
+
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+        ->call('startPluginConfig', $instance->id)
+        ->set('pluginConfigDraft.instance_url', 'http://10.0.0.5')
+        ->call('savePluginConfig')
+        ->assertHasNoErrors();
+
+    expect($instance->fresh()->config['instance_url'])->toBe('http://10.0.0.5');
+});
+
 test('the oauth redirect targets the per-board instance url from config', function () {
     ['board' => $board, 'owner' => $owner] = makePluginBoard();
     // An admin has configured a custom (self-hosted) instance URL on the instance.
