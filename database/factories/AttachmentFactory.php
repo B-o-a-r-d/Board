@@ -23,7 +23,7 @@ class AttachmentFactory extends Factory
         return [
             'card_id' => Card::factory(),
             'uploaded_by' => User::factory(),
-            'disk' => 'public',
+            'disk' => 'local',
             'path' => 'attachments/'.Str::random(20).'.png',
             'name' => $name,
             'mime_type' => 'image/png',

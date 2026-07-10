@@ -103,7 +103,7 @@ test('the owner cannot be deactivated', function () {
 /* ------------------------------ Attachment type restrictions ---------------------------- */
 
 test('an attachment with a disallowed extension is rejected', function () {
-    Storage::fake('public');
+    Storage::fake('local');
     ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
     $board->workspace->update(['allowed_attachment_extensions' => ['png']]);
 
@@ -117,7 +117,7 @@ test('an attachment with a disallowed extension is rejected', function () {
 });
 
 test('an attachment with an allowed extension is accepted', function () {
-    Storage::fake('public');
+    Storage::fake('local');
     ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
     $board->workspace->update(['allowed_attachment_extensions' => ['png']]);
 

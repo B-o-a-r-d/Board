@@ -116,11 +116,11 @@ class Profile extends Component
         $user = Auth::user();
         $old = $user->avatar_path;
 
-        $path = $this->avatar->store('avatars', 'public');
+        $path = $this->avatar->store('avatars', 'local');
         $user->update(['avatar_path' => $path]);
 
         if ($old) {
-            Storage::disk('public')->delete($old);
+            Storage::disk('local')->delete($old);
         }
 
         $this->reset('avatar');
@@ -132,7 +132,7 @@ class Profile extends Component
         $user = Auth::user();
 
         if ($user->avatar_path) {
-            Storage::disk('public')->delete($user->avatar_path);
+            Storage::disk('local')->delete($user->avatar_path);
             $user->update(['avatar_path' => null]);
         }
 

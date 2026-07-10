@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Http\Controllers\MediaController;
 use App\Models\Concerns\HasPublicId;
 use Database\Factories\CardFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -29,6 +30,26 @@ class Card extends Model
             'archived_at' => 'datetime',
             'hidden_previews' => 'array',
         ];
+    }
+
+    /**
+     * Authorized URL of the uploaded cover image, or null when unset. Served
+     * through {@see MediaController} from a private disk.
+     * On the public share page pass the board share token for guest access.
+     */
+    public function coverUrl(?string $shareToken = null): ?string
+    {
+        if (! $this->cover_path) {
+            return null;
+        }
+
+        $params = [$this];
+
+        if ($shareToken !== null) {
+            $params['t'] = $shareToken;
+        }
+
+        return route('media.card-cover', $params);
     }
 
     public function list(): BelongsTo

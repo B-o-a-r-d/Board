@@ -179,7 +179,7 @@ test('a board can be created updated and deleted via mcp', function () {
 
 test('attach file from base64 content stores a local file', function () {
     Setting::set('mcp_enabled', true);
-    Storage::fake('public');
+    Storage::fake('local');
     ['board' => $board, 'owner' => $owner, 'list' => $list] = makeMcpBoard();
     $card = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id]);
 
@@ -193,12 +193,12 @@ test('attach file from base64 content stores a local file', function () {
     $attachment = $card->attachments()->firstOrFail();
     expect($attachment->name)->toBe('capture.png')
         ->and($attachment->mime_type)->toBe('image/png');
-    Storage::disk('public')->assertExists($attachment->path);
+    Storage::disk('local')->assertExists($attachment->path);
 });
 
 test('attach file from url stores an attachment', function () {
     Setting::set('mcp_enabled', true);
-    Storage::fake('public');
+    Storage::fake('local');
     Http::fake([
         '*' => Http::response('binarydata', 200, ['Content-Type' => 'image/png']),
     ]);
@@ -215,7 +215,7 @@ test('attach file from url stores an attachment', function () {
 
 test('mcp attach respects the workspace attachment allow-list', function () {
     Setting::set('mcp_enabled', true);
-    Storage::fake('public');
+    Storage::fake('local');
     ['board' => $board, 'owner' => $owner, 'list' => $list] = makeMcpBoard();
     $board->workspace->update(['allowed_attachment_extensions' => ['png']]);
     $card = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id]);

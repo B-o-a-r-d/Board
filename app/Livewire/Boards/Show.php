@@ -945,7 +945,7 @@ class Show extends Component
             'backgroundUpload' => ['required', 'image', 'max:10240'],
         ]);
 
-        $path = $this->backgroundUpload->store("board-backgrounds/{$this->board->id}", 'public');
+        $path = $this->backgroundUpload->store("board-backgrounds/{$this->board->id}", 'local');
 
         $this->board->update(['background_image' => $path, 'background' => null]);
         $this->reset('backgroundUpload');
@@ -1051,10 +1051,10 @@ class Show extends Component
         $list = $this->listForBoard((int) $this->coverListId);
 
         if ($list->cover_path) {
-            Storage::disk('public')->delete($list->cover_path);
+            Storage::disk('local')->delete($list->cover_path);
         }
 
-        $list->update(['cover_path' => $this->listCoverUpload->store("list-covers/{$this->board->id}", 'public')]);
+        $list->update(['cover_path' => $this->listCoverUpload->store("list-covers/{$this->board->id}", 'local')]);
 
         $this->reset('listCoverUpload');
         $this->broadcastActivity('list.recolored');
@@ -1068,7 +1068,7 @@ class Show extends Component
         $list = $this->listForBoard($listId);
 
         if ($list->cover_path) {
-            Storage::disk('public')->delete($list->cover_path);
+            Storage::disk('local')->delete($list->cover_path);
             $list->update(['cover_path' => null]);
             $this->broadcastActivity('list.recolored');
         }

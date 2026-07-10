@@ -72,11 +72,11 @@ class AttachFileFromUrlTool extends Tool
 
         $path = 'attachments/'.$card->board_id.'/'.Str::random(40).'.'.$extension;
 
-        Storage::disk('public')->put($path, $body);
+        Storage::disk('local')->put($path, $body);
 
         $attachment = $card->attachments()->create([
             'uploaded_by' => $request->user()->id,
-            'disk' => 'public',
+            'disk' => 'local',
             'path' => $path,
             'name' => $name,
             'mime_type' => $mime,
@@ -88,7 +88,7 @@ class AttachFileFromUrlTool extends Tool
         return Response::json([
             'id' => $attachment->public_id,
             'name' => $attachment->name,
-            'url' => Storage::disk('public')->url($path),
+            'url' => $attachment->url,
         ]);
     }
 

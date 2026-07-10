@@ -67,5 +67,5 @@ test('the presence channel payload carries the user avatar url and biography', f
         'name' => $owner->name,
         'biography' => 'Chef de projet.',
         'guest' => false,
-    ])->and($payload['avatar_url'])->toContain('avatars/me.png');
+    ])->and($payload['avatar_url'])->toContain('/media/avatars/');
 });

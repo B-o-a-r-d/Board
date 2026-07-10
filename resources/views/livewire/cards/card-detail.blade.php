@@ -24,7 +24,7 @@
         <x-modal max-width="3xl" on-close="$wire.close()" wire:key="card-modal-{{ $card->id }}">
                 {{-- Cover --}}
                 @if ($card->cover_path)
-                    <img src="{{ Storage::disk('public')->url($card->cover_path) }}" alt="" class="h-40 w-full rounded-t-2xl object-cover">
+                    <img src="{{ $card->coverUrl() }}" alt="" class="h-40 w-full rounded-t-2xl object-cover">
                 @elseif ($card->cover_color)
                     <div class="h-20 w-full rounded-t-2xl" style="background-color: {{ $card->cover_color }}"></div>
                 @endif
@@ -820,7 +820,7 @@
                             <div x-show="open" x-cloak>
                                 @if ($card->cover_path)
                                     <div class="relative mb-2 overflow-hidden rounded-lg">
-                                        <img src="{{ Storage::disk('public')->url($card->cover_path) }}" alt="" class="h-24 w-full object-cover">
+                                        <img src="{{ $card->coverUrl() }}" alt="" class="h-24 w-full object-cover">
                                         <button type="button" wire:click="clearCover" class="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70" title="{{ __('Retirer la couverture') }}"><x-phosphor-x class="h-3.5 w-3.5" /></button>
                                     </div>
                                 @endif

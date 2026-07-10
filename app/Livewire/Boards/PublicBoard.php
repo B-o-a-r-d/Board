@@ -6,7 +6,6 @@ use App\Models\Board;
 use App\Models\BoardList;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Component;
 
@@ -73,9 +72,8 @@ class PublicBoard extends Component
     /** Absolute URL for the preview image: the board background if any, else the logo. */
     private function socialImage(): string
     {
-        $image = $this->board->background_image
-            ? Storage::disk('public')->url($this->board->background_image)
-            : asset('logo.png');
+        $image = $this->board->backgroundImageUrl($this->board->share_token)
+            ?? asset('logo.png');
 
         return Str::startsWith($image, ['http://', 'https://']) ? $image : url($image);
     }

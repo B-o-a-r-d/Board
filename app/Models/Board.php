@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\BoardVisibility;
 use App\Enums\Permission;
 use App\Enums\Role;
+use App\Http\Controllers\MediaController;
 use App\Models\Concerns\HasPublicId;
 use App\Models\Role as RoleModel;
 use Database\Factories\BoardFactory;
@@ -15,7 +16,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 #[Fillable(['workspace_id', 'created_by', 'name', 'slug', 'description', 'background', 'background_image', 'visibility', 'is_template', 'share_token', 'ical_token', 'position', 'archived_at'])]
@@ -89,13 +89,34 @@ class Board extends Model
     }
 
     /**
+     * Authorized URL of the uploaded background image, or null when unset.
+     * The file lives on a private disk and is served through
+     * {@see MediaController}. On the public share page
+     * pass the board's share token so guests (and social crawlers) can load it.
+     */
+    public function backgroundImageUrl(?string $shareToken = null): ?string
+    {
+        if (! $this->background_image) {
+            return null;
+        }
+
+        $params = [$this];
+
+        if ($shareToken !== null) {
+            $params['t'] = $shareToken;
+        }
+
+        return route('media.board-background', $params);
+    }
+
+    /**
      * CSS background value for the board surface: an uploaded image takes
      * precedence over a gradient preset; null means no custom background.
      */
-    public function backgroundStyle(): ?string
+    public function backgroundStyle(?string $shareToken = null): ?string
     {
         if ($this->background_image) {
-            return "url('".Storage::disk('public')->url($this->background_image)."') center / cover no-repeat";
+            return "url('".$this->backgroundImageUrl($shareToken)."') center / cover no-repeat";
         }
 
         if ($this->background) {

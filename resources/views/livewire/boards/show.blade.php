@@ -421,7 +421,7 @@
                         <x-phosphor-arrows-out-line-horizontal class="h-4 w-4"/>
                     </button>
                     @if ($list->cover_path)
-                        <img src="{{ Storage::disk('public')->url($list->cover_path) }}" alt="" class="h-6 w-6 shrink-0 rounded object-cover">
+                        <img src="{{ $list->coverUrl() }}" alt="" class="h-6 w-6 shrink-0 rounded object-cover">
                     @elseif ($list->cover_color)
                         <span class="h-6 w-1.5 shrink-0 rounded-full" style="background-color: {{ $list->cover_color }}"></span>
                     @endif
@@ -432,7 +432,7 @@
                 {{-- Expanded content --}}
                 <div x-show="! collapsed" class="flex min-h-0 flex-1 flex-col overflow-hidden">
                 @if ($list->cover_path)
-                    <img src="{{ Storage::disk('public')->url($list->cover_path) }}" alt="" class="h-16 w-full shrink-0 object-cover">
+                    <img src="{{ $list->coverUrl() }}" alt="" class="h-16 w-full shrink-0 object-cover">
                 @elseif ($list->cover_color)
                     <div class="h-2 w-full shrink-0" style="background-color: {{ $list->cover_color }}"></div>
                 @endif
@@ -542,7 +542,7 @@
                             <x-context-menu class="block">
                                 <x-slot:trigger>
                                     @if ($card->cover_path)
-                                        <img src="{{ Storage::disk('public')->url($card->cover_path) }}" alt="" draggable="false"
+                                        <img src="{{ $card->coverUrl() }}" alt="" draggable="false"
                                              wire:click="$dispatch('open-card', { cardId: {{ $card->id }} })"
                                              class="h-24 w-full object-cover">
                                     @elseif ($card->cover_color)
@@ -957,7 +957,7 @@
             <div class="space-y-4 p-5">
                 @if ($board->background_image)
                     <div class="relative overflow-hidden rounded-lg">
-                        <img src="{{ Storage::disk('public')->url($board->background_image) }}" alt=""
+                        <img src="{{ $board->backgroundImageUrl() }}" alt=""
                              class="h-32 w-full object-cover">
                         <button type="button" wire:click="setBackground(null)"
                                 class="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
@@ -1337,7 +1337,7 @@
             <div class="space-y-4 p-5">
                 @if ($coverList?->cover_path)
                     <div class="relative overflow-hidden rounded-lg">
-                        <img src="{{ Storage::disk('public')->url($coverList->cover_path) }}" alt="" class="h-32 w-full object-cover">
+                        <img src="{{ $coverList->coverUrl() }}" alt="" class="h-32 w-full object-cover">
                         <button type="button" wire:click="removeListCover({{ $coverListId }})" class="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70" title="{{ __("Retirer l'image") }}"><x-phosphor-x class="h-4 w-4"/></button>
                     </div>
                 @endif

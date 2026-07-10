@@ -182,7 +182,7 @@ test('a non-author cannot edit a comment', function () {
 });
 
 test('an uploaded image cover is set and clears the color cover', function () {
-    Storage::fake('public');
+    Storage::fake('local');
     ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
     $card->update(['cover_color' => '#3b82f6']);
 
@@ -196,7 +196,7 @@ test('an uploaded image cover is set and clears the color cover', function () {
     $card->refresh();
     expect($card->cover_path)->not->toBeNull()
         ->and($card->cover_color)->toBeNull();
-    Storage::disk('public')->assertExists($card->cover_path);
+    Storage::disk('local')->assertExists($card->cover_path);
 });
 
 test('a solid color cover can be set and cleared on a card', function () {
@@ -266,7 +266,7 @@ test('checklists and items with completion can be managed', function () {
 });
 
 test('an image attachment can be uploaded and set as cover', function () {
-    Storage::fake('public');
+    Storage::fake('local');
     ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
 
     $component = Livewire::actingAs($owner)
@@ -280,19 +280,19 @@ test('an image attachment can be uploaded and set as cover', function () {
 
     expect($attachment->isImage())->toBeTrue()
         ->and($attachment->uploaded_by)->toBe($owner->id);
-    Storage::disk('public')->assertExists($attachment->path);
+    Storage::disk('local')->assertExists($attachment->path);
 
     $component->call('setCover', $attachment->id);
     expect($card->fresh()->cover_path)->toBe($attachment->path);
 
     $component->call('deleteAttachment', $attachment->id);
-    Storage::disk('public')->assertMissing($attachment->path);
+    Storage::disk('local')->assertMissing($attachment->path);
     expect($card->fresh()->cover_path)->toBeNull()
         ->and($card->attachments()->count())->toBe(0);
 });
 
 test('uploading a non media file is rejected', function () {
-    Storage::fake('public');
+    Storage::fake('local');
     ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
 
     Livewire::actingAs($owner)

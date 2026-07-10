@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Http\Controllers\MediaController;
 use App\Models\Concerns\HasPublicId;
 use Database\Factories\AttachmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -9,7 +10,6 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 #[Fillable(['card_id', 'uploaded_by', 'disk', 'path', 'name', 'mime_type', 'size'])]
@@ -39,11 +39,15 @@ class Attachment extends Model
     }
 
     /**
+     * Authorized, access-controlled URL. The file lives on a private disk and
+     * is streamed through {@see MediaController} after a
+     * board `view` check, with anti-XSS headers (never a direct public URL).
+     *
      * @return Attribute<string, never>
      */
     protected function url(): Attribute
     {
-        return Attribute::get(fn (): string => Storage::disk($this->disk)->url($this->path));
+        return Attribute::get(fn (): string => route('attachments.show', $this));
     }
 
     public function isImage(): bool

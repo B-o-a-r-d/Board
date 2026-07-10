@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Board;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Storage;
 
 class BoardExportService
 {
@@ -59,7 +58,7 @@ class BoardExportService
                     'Membres' => $card->members->pluck('name')->implode(', '),
                     'Échéance' => optional($card->due_at)->format('Y-m-d H:i'),
                     'Terminée' => $card->completed_at ? 'Oui' : 'Non',
-                    'Couverture' => $card->cover_color ?: ($card->cover_path ? Storage::disk('public')->url($card->cover_path) : ''),
+                    'Couverture' => $card->cover_color ?: ($card->coverUrl() ?? ''),
                     'Checklists' => $checklists,
                     'Commentaires' => $comments,
                     'Pièces jointes' => $attachments,
@@ -103,7 +102,7 @@ class BoardExportService
                     'description' => $card->description,
                     'position' => $card->position,
                     'cover_color' => $card->cover_color,
-                    'cover_url' => $card->cover_path ? Storage::disk('public')->url($card->cover_path) : null,
+                    'cover_url' => $card->coverUrl(),
                     'due_at' => optional($card->due_at)->toIso8601String(),
                     'completed_at' => optional($card->completed_at)->toIso8601String(),
                     'created_at' => optional($card->created_at)->toIso8601String(),

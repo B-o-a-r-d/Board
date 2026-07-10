@@ -524,18 +524,25 @@ class CardDetail extends Component
             return;
         }
 
-        $path = $this->upload->store("attachments/{$this->board->id}", 'public');
+        // Read metadata BEFORE store(): the attachments disk is now the same as
+        // Livewire's temporary-upload disk, so store() moves (not copies) the temp
+        // file — reading getSize()/getMimeType() afterwards would fail.
+        $name = $this->upload->getClientOriginalName();
+        $mimeType = $this->upload->getMimeType();
+        $size = $this->upload->getSize();
+
+        $path = $this->upload->store("attachments/{$this->board->id}", 'local');
 
         $card->attachments()->create([
             'uploaded_by' => Auth::id(),
-            'disk' => 'public',
+            'disk' => 'local',
             'path' => $path,
-            'name' => $this->upload->getClientOriginalName(),
-            'mime_type' => $this->upload->getMimeType(),
-            'size' => $this->upload->getSize(),
+            'name' => $name,
+            'mime_type' => $mimeType,
+            'size' => $size,
         ]);
 
-        $this->logActivity($card, 'attachment.added', ['value' => $this->upload->getClientOriginalName()]);
+        $this->logActivity($card, 'attachment.added', ['value' => $name]);
         $this->reset('upload');
         $this->touched('attachment.added');
         $this->dispatch('toast', message: __('Pièce jointe ajoutée'), type: 'success');
@@ -599,7 +606,7 @@ class CardDetail extends Component
 
         $this->validate(['coverUpload' => ['required', 'image', 'max:10240']]);
 
-        $path = $this->coverUpload->store("covers/{$this->board->id}", 'public');
+        $path = $this->coverUpload->store("covers/{$this->board->id}", 'local');
 
         $card->update(['cover_path' => $path, 'cover_color' => null]);
         $this->reset('coverUpload');

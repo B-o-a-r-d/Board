@@ -191,7 +191,7 @@ test('a board admin can set and clear the board background', function () {
 });
 
 test('a board admin can upload a background image which replaces the preset', function () {
-    Storage::fake('public');
+    Storage::fake('local');
     ['board' => $board, 'owner' => $owner] = makeBoard();
     $board->update(['background' => 'ocean']);
 
@@ -204,7 +204,7 @@ test('a board admin can upload a background image which replaces the preset', fu
     $board->refresh();
     expect($board->background_image)->not->toBeNull()
         ->and($board->background)->toBeNull();
-    Storage::disk('public')->assertExists($board->background_image);
+    Storage::disk('local')->assertExists($board->background_image);
 
     // Choosing a preset clears the uploaded image.
     Livewire::actingAs($owner)->test(Show::class, ['board' => $board])->call('setBackground', 'forest');
@@ -383,7 +383,7 @@ test('a list WIP limit is set and cleared', function () {
 });
 
 test('a list cover image is uploaded and removed', function () {
-    Storage::fake('public');
+    Storage::fake('local');
     ['board' => $board, 'owner' => $owner] = makeBoard();
     $list = BoardList::factory()->create(['board_id' => $board->id]);
 
@@ -395,12 +395,12 @@ test('a list cover image is uploaded and removed', function () {
 
     $path = $list->fresh()->cover_path;
     expect($path)->not->toBeNull();
-    Storage::disk('public')->assertExists($path);
+    Storage::disk('local')->assertExists($path);
 
     Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
         ->call('removeListCover', $list->id);
     expect($list->fresh()->cover_path)->toBeNull();
-    Storage::disk('public')->assertMissing($path);
+    Storage::disk('local')->assertMissing($path);
 });
 
 test('bulk archive archives only the selected cards', function () {

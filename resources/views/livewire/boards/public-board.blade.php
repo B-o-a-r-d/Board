@@ -24,7 +24,7 @@
         </div>
     </div>
 
-    @php $boardBg = $board->backgroundStyle(); @endphp
+    @php $boardBg = $board->backgroundStyle($board->share_token); @endphp
 
     {{-- Lists (columns) --}}
     <div
@@ -58,7 +58,7 @@
                             class="shrink-0 overflow-hidden rounded-lg border border-neutral-200 bg-white text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-800"
                         >
                             @if ($card->cover_path)
-                                <img src="{{ Storage::disk('public')->url($card->cover_path) }}" alt="" class="h-24 w-full object-cover">
+                                <img src="{{ $card->coverUrl($board->share_token) }}" alt="" class="h-24 w-full object-cover">
                             @elseif ($card->cover_color)
                                 <div class="h-9 w-full" style="background-color: {{ $card->cover_color }}"></div>
                             @endif

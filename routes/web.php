@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BoardExportController;
 use App\Http\Controllers\BoardIcalController;
+use App\Http\Controllers\MediaController;
 use App\Http\Controllers\PluginOAuthController;
 use App\Http\Controllers\PublicBoardPresenceController;
 use App\Http\Controllers\UserIcalController;
@@ -37,12 +38,23 @@ Route::get('/invitations/{token}', AcceptInvitation::class)->name('invitations.a
 Route::get('/share/{token}', PublicBoard::class)->name('boards.public');
 Route::post('/share/{token}/presence-auth', PublicBoardPresenceController::class)->name('boards.public.presence');
 
+// Board-scoped media served from a private disk. Authorized in the controller:
+// board members (policy `view`) or guests presenting the board share token.
+Route::get('/media/cards/{card}/cover', [MediaController::class, 'cardCover'])->name('media.card-cover');
+Route::get('/media/lists/{list}/cover', [MediaController::class, 'listCover'])->name('media.list-cover');
+Route::get('/media/boards/{board}/background', [MediaController::class, 'boardBackground'])->name('media.board-background');
+
 // Public, read-only iCal feeds (calendar apps subscribe without auth; signed token).
 Route::get('/calendar/board/{token}.ics', BoardIcalController::class)->where('token', '[A-Za-z0-9]+')->name('boards.ical');
 Route::get('/calendar/user/{token}.ics', UserIcalController::class)->where('token', '[A-Za-z0-9]+')->name('calendar.ical');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', Profile::class)->name('profile.edit');
+
+    // Attachments (members only) and avatars (any authenticated user), streamed
+    // from a private disk with anti-XSS headers by MediaController.
+    Route::get('/media/attachments/{attachment}', [MediaController::class, 'attachment'])->name('attachments.show');
+    Route::get('/media/avatars/{user}', [MediaController::class, 'avatar'])->name('media.avatar');
 
     // Plugin (Power-Up) OAuth connection flow — one provider-agnostic broker,
     // driven by the plugin's ProvidesOAuth declaration.
