@@ -88,7 +88,7 @@ document.addEventListener('alpine:init', () => {
                 if (this.$refs.readview) {
                     this.$refs.readview.innerHTML = markdown.trim()
                         ? editor.getHTML()
-                        : '<span class="text-neutral-400">Ajoutez une description… (cliquez pour éditer)</span>'
+                        : '<span class="text-neutral-400">Ajoutez une description…</span>'
                 }
 
                 this.$wire.saveDescription(markdown)

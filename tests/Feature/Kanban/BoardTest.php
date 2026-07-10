@@ -190,6 +190,25 @@ test('a board admin can set and clear the board background', function () {
     expect($board->fresh()->background)->toBeNull();
 });
 
+test('a board with a background renders a full-bleed background layer', function () {
+    ['board' => $board, 'owner' => $owner] = makeBoard();
+    $board->update(['background' => 'ocean']);
+
+    $html = Livewire::actingAs($owner)->test(Show::class, ['board' => $board])->html();
+
+    // The background is now a fixed, full-bleed layer behind the whole board
+    // (not a boxed image confined to the columns container).
+    expect($html)->toContain('fixed inset-0 -z-10');
+});
+
+test('a board without a background has no full-bleed background layer', function () {
+    ['board' => $board, 'owner' => $owner] = makeBoard();
+
+    $html = Livewire::actingAs($owner)->test(Show::class, ['board' => $board])->html();
+
+    expect($html)->not->toContain('fixed inset-0 -z-10');
+});
+
 test('a board admin can upload a background image which replaces the preset', function () {
     Storage::fake('local');
     ['board' => $board, 'owner' => $owner] = makeBoard();

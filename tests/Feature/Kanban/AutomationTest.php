@@ -55,6 +55,46 @@ test('moving a card into a target list runs its automation', function () {
     expect($card->fresh()->completed_at)->not->toBeNull();
 });
 
+test('completing a card runs its automation (move it to the Done list)', function () {
+    ['board' => $board, 'owner' => $owner] = makeAutoBoard();
+    $todo = BoardList::factory()->create(['board_id' => $board->id, 'name' => 'À faire']);
+    $done = BoardList::factory()->create(['board_id' => $board->id, 'name' => 'Terminé']);
+    $card = Card::factory()->create(['board_list_id' => $todo->id, 'board_id' => $board->id, 'position' => 0]);
+
+    Automation::create([
+        'board_id' => $board->id, 'name' => 'Terminé → Done', 'is_active' => true,
+        'trigger_type' => 'card.completed', 'trigger_config' => [],
+        'action_type' => 'move_to_list', 'action_config' => ['list_id' => $done->id],
+    ]);
+
+    Livewire::actingAs($owner)->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->call('toggleComplete');
+
+    $card->refresh();
+    expect($card->completed_at)->not->toBeNull()
+        ->and($card->board_list_id)->toBe($done->id);
+});
+
+test('un-completing a card does not fire the completed automation', function () {
+    ['board' => $board, 'owner' => $owner] = makeAutoBoard();
+    $todo = BoardList::factory()->create(['board_id' => $board->id]);
+    $done = BoardList::factory()->create(['board_id' => $board->id]);
+    $card = Card::factory()->create(['board_list_id' => $todo->id, 'board_id' => $board->id, 'completed_at' => now()]);
+
+    Automation::create([
+        'board_id' => $board->id, 'name' => 'Terminé → Done', 'is_active' => true,
+        'trigger_type' => 'card.completed', 'trigger_config' => [],
+        'action_type' => 'move_to_list', 'action_config' => ['list_id' => $done->id],
+    ]);
+
+    Livewire::actingAs($owner)->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->call('toggleComplete'); // toggles it back to not-completed → no fire
+
+    expect($card->fresh()->board_list_id)->toBe($todo->id);
+});
+
 test('creating a card in a list runs its automation (assign a label)', function () {
     ['board' => $board, 'owner' => $owner] = makeAutoBoard();
     $list = BoardList::factory()->create(['board_id' => $board->id]);

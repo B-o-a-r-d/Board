@@ -469,6 +469,11 @@ class Show extends Component
         $type = $card->completed_at ? 'card.completed' : 'card.uncompleted';
         $this->logActivity($type, $card->id, ['card_title' => $card->title]);
         $this->broadcastActivity($type);
+
+        // Let automations react (e.g. "when a card is completed → move to Done").
+        if ($card->completed_at) {
+            app(AutomationEngine::class)->fire('card.completed', $card->fresh());
+        }
     }
 
     public function setView(string $view): void
@@ -967,6 +972,17 @@ class Show extends Component
         $this->reset('backgroundUpload');
         $this->broadcastActivity('board.background');
         $this->dispatch('toast', message: __('Fond du board mis à jour'), type: 'success');
+    }
+
+    /** Board admins set how long the activity log is kept (pruned daily). */
+    public function saveActivityRetention(?string $days): void
+    {
+        $this->authorize('update', $this->board);
+
+        $value = ($days === null || $days === '') ? null : max(0, (int) $days);
+        $this->board->update(['activity_retention_days' => $value ?: null]);
+
+        $this->dispatch('toast', message: __('Rétention du journal mise à jour'), type: 'success');
     }
 
     public function toggleTemplate(): void

@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-#[Fillable(['workspace_id', 'created_by', 'name', 'slug', 'description', 'background', 'background_image', 'visibility', 'is_template', 'share_token', 'ical_token', 'position', 'archived_at'])]
+#[Fillable(['workspace_id', 'created_by', 'name', 'slug', 'description', 'background', 'background_image', 'visibility', 'is_template', 'share_token', 'ical_token', 'position', 'archived_at', 'activity_retention_days'])]
 class Board extends Model
 {
     /** @use HasFactory<BoardFactory> */
@@ -33,6 +33,7 @@ class Board extends Model
             'visibility' => BoardVisibility::class,
             'archived_at' => 'datetime',
             'is_template' => 'boolean',
+            'activity_retention_days' => 'integer',
         ];
     }
 

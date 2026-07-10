@@ -57,11 +57,11 @@ test('an observer is forbidden from adding a card', function () {
 test('an observer can open a card to read but cannot edit it', function () {
     ['board' => $board, 'observer' => $observer, 'card' => $card] = boardWithObserver();
 
+    // Editing the title (implicit save on change) is forbidden for a read-only observer.
     Livewire::actingAs($observer)->test(CardDetail::class, ['board' => $board])
         ->call('openCard', $card->id)
         ->assertOk()
         ->set('title', 'Piraté')
-        ->call('saveDetails')
         ->assertForbidden();
 
     expect($card->fresh()->title)->not->toBe('Piraté');

@@ -2,8 +2,7 @@
      @keydown.window="
         if ($event.metaKey || $event.ctrlKey || $event.altKey) return;
         if ($event.target.matches('input, textarea, select, [contenteditable]')) return;
-        if ($event.key === '/') { $event.preventDefault(); document.getElementById('board-search')?.focus(); }
-        else if ($event.key === 'b') { $wire.setView('board'); }
+        if ($event.key === 'b') { $wire.setView('board'); }
         else if ($event.key === 'c') { $wire.setView('calendar'); }
         else if ($event.key === 't') { $wire.setView('timeline'); }
         else if ($event.key === 'e') { $wire.setView('table'); }
@@ -12,38 +11,80 @@
      "
      @open-shortcuts.window="helpOpen = true"
      wire:init="loadCards"
-     class="flex h-[calc(100dvh-8rem)] flex-col">
-    {{-- Board header --}}
-    <div class="mb-3 flex flex-col gap-3 sm:mb-4 sm:flex-row sm:items-start sm:justify-between">
-        <div class="min-w-0">
-            <a href="{{ route('dashboard') }}" wire:navigate
-               class="flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200">
-                <x-phosphor-arrow-left class="h-4 w-4"/> {{ __('Tableau de bord') }}
-            </a>
-            <div class="text-center sm:text-left">
-                @if ($renamingBoard)
-                    <input
-                        type="text"
-                        wire:model="boardNameDraft"
-                        wire:keydown.enter="renameBoard"
-                        wire:keydown.escape="$set('renamingBoard', false)"
-                        wire:blur="renameBoard"
-                        x-init="$el.focus(); $el.select()"
-                        class="w-full rounded-lg border border-indigo-300 bg-white px-2 py-0.5 text-xl font-semibold tracking-tight focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none sm:text-2xl dark:border-indigo-700 dark:bg-neutral-800"
-                    >
-                @else
-                    <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">{{ $board->name }}</h1>
-                @endif
-                <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ $board->workspace->name }}</p>
-                @unless ($canContribute)
-                    <span class="mt-1 inline-flex items-center gap-1 rounded-full bg-neutral-200 px-2 py-0.5 text-xs font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300" title="{{ __('Votre rôle est en lecture seule sur ce tableau.') }}">
-                        <x-phosphor-eye class="h-3.5 w-3.5"/> {{ __('Lecture seule') }}
-                    </span>
-                @endunless
-            </div>
+     class="-mb-8 flex h-[calc(100dvh-6rem)] flex-col">
+    @php $boardBg = $board->backgroundStyle(); @endphp
+    @if ($boardBg)
+        {{-- Full-bleed board background: a fixed layer behind every board surface,
+             plus a soft contrast overlay so the glass topbar and lists stay legible. --}}
+        <div class="pointer-events-none fixed inset-0 -z-10" style="background: {{ $boardBg }};" aria-hidden="true"></div>
+        <div class="pointer-events-none fixed inset-0 -z-10 bg-black/20" aria-hidden="true"></div>
+    @endif
+    @php
+        // Options shared by the topbar filter/view dropdowns.
+        $optLabels = ['' => __('Tous les labels')];
+        foreach ($labels as $optLabel) { $optLabels[$optLabel->id] = $optLabel->name ?? __('Sans nom'); }
+
+        $optMembers = ['' => __('Tous les membres')];
+        foreach ($members as $optMember) { $optMembers[$optMember->id] = $optMember->name; }
+
+        $optDue = [
+            '' => __('Échéance : toutes'),
+            'overdue' => __('En retard'),
+            'due' => __('Avec échéance'),
+            'none' => __('Sans échéance'),
+        ];
+
+        $viewOptions = [
+            'board' => ['label' => __('Tableau'), 'icon' => 'squares-four'],
+            'calendar' => ['label' => __('Calendrier'), 'icon' => 'calendar-blank'],
+            'timeline' => ['label' => __('Timeline'), 'icon' => 'chart-bar-horizontal'],
+            'table' => ['label' => __('Table'), 'icon' => 'table'],
+            'dashboard' => ['label' => __('Dashboard'), 'icon' => 'chart-pie-slice'],
+        ];
+
+        // Topbar icon buttons get an opaque surface so they stand out over the glass.
+        $topBtn = 'flex h-8 shrink-0 items-center justify-center rounded-lg border shadow-sm transition '.($boardBg
+            ? 'border-black/10 bg-white/90 text-neutral-700 hover:bg-white dark:border-white/10 dark:bg-neutral-800/90 dark:text-neutral-200 dark:hover:bg-neutral-800'
+            : 'border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700');
+        $panelClasses = 'rounded-xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-800 dark:bg-neutral-900';
+    @endphp
+
+    {{-- Board topbar: slim full-bleed bar glued under the navbar (no rounding).
+         relative z-30 keeps its dropdowns above the list columns (whose backdrop-blur
+         creates sibling stacking contexts painted in DOM order). --}}
+    <div @class([
+        'relative z-30 -mx-4 -mt-8 mb-3 flex min-h-12 flex-wrap items-center gap-x-2 gap-y-1.5 border-b px-4 py-1.5 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8',
+        'border-white/20 dark:border-white/10' => $boardBg,
+        'border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900' => ! $boardBg,
+    ])>
+        @if ($boardBg)
+            {{-- The blur lives on a -z child: backdrop-filter on the bar itself would make it
+                 the containing block of the fixed mobile filters modal and break its stacking. --}}
+            <div class="absolute inset-0 -z-10 bg-white/40 backdrop-blur-md dark:bg-neutral-900/50" aria-hidden="true"></div>
+        @endif
+        <div class="flex min-w-0 flex-1 items-center gap-2">
+            @if ($renamingBoard)
+                <input
+                    type="text"
+                    wire:model="boardNameDraft"
+                    wire:keydown.enter="renameBoard"
+                    wire:keydown.escape="$set('renamingBoard', false)"
+                    wire:blur="renameBoard"
+                    x-init="$el.focus(); $el.select()"
+                    class="w-full max-w-xs rounded-lg border border-indigo-300 bg-white px-2 py-0.5 text-base font-semibold tracking-tight focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-indigo-700 dark:bg-neutral-800"
+                >
+            @else
+                <h1 class="truncate text-base font-semibold tracking-tight sm:text-lg">{{ $board->name }}</h1>
+            @endif
+            <span class="hidden shrink-0 items-center rounded-full bg-neutral-200/80 px-2 py-0.5 text-[11px] font-medium text-neutral-600 sm:inline-flex dark:bg-neutral-800 dark:text-neutral-300">{{ $board->workspace->name }}</span>
+            @unless ($canContribute)
+                <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-neutral-200/80 px-2 py-0.5 text-[11px] font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300" title="{{ __('Votre rôle est en lecture seule sur ce tableau.') }}">
+                    <x-phosphor-eye class="h-3.5 w-3.5"/><span class="hidden sm:inline">{{ __('Lecture seule') }}</span>
+                </span>
+            @endunless
         </div>
 
-        <div class="flex items-center justify-between gap-2 sm:justify-end sm:gap-3">
+        <div class="flex flex-wrap items-center gap-2">
             {{-- Presence: who is currently viewing this board --}}
             <div
                 class="flex items-center -space-x-2"
@@ -117,9 +158,9 @@
                 </template>
             </div>
 
-            <div class="flex gap-2">
+            <div class="flex flex-wrap items-center gap-1.5">
                 <button type="button" wire:click="toggleActivity"
-                        class="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                        class="w-8 {{ $topBtn }}"
                         title="{{ __('Activité') }}">
                     <x-phosphor-clock-counter-clockwise class="h-4 w-4"/>
                 </button>
@@ -128,7 +169,7 @@
                     <button type="button"
                             x-data="{ allCollapsed: false }"
                             @click="allCollapsed = ! allCollapsed; $dispatch(allCollapsed ? 'collapse-all' : 'expand-all')"
-                            class="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                            class="w-8 {{ $topBtn }}"
                             :title="allCollapsed ? '{{ __('Tout déplier') }}' : '{{ __('Tout replier') }}'">
                         <x-phosphor-arrows-in-line-horizontal x-show="! allCollapsed" class="h-4 w-4"/>
                         <x-phosphor-arrows-out-line-horizontal x-show="allCollapsed" x-cloak class="h-4 w-4"/>
@@ -136,19 +177,134 @@
 
                     @if ($canContribute)
                     <button type="button" @click="selectMode = ! selectMode; if (! selectMode) selected = []"
-                            class="flex h-9 w-9 items-center justify-center rounded-lg border transition"
-                            :class="selectMode ? 'border-indigo-400 bg-indigo-50 text-indigo-600 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300' : 'border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800'"
+                            class="w-8 {{ $topBtn }}"
+                            :class="selectMode && '!border-indigo-400 !bg-indigo-50 !text-indigo-600 dark:!border-indigo-500/40 dark:!bg-indigo-500/15 dark:!text-indigo-300'"
                             title="{{ __('Sélectionner des cartes') }}">
                         <x-phosphor-check-square class="h-4 w-4"/>
                     </button>
                     @endif
                 @endif
 
+                {{-- Filters: icon trigger → dropdown on desktop, modal on mobile --}}
+                <div x-data="{ filtersOpen: false }" @keydown.escape.window="filtersOpen = false" class="relative">
+                    <button type="button" @click="filtersOpen = ! filtersOpen" class="relative w-8 {{ $topBtn }}" title="{{ __('Filtres') }}">
+                        <x-phosphor-funnel class="h-4 w-4"/>
+                        @if ($this->activeFilterCount() > 0)
+                            <span class="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-600 px-1 text-[10px] font-semibold text-white">{{ $this->activeFilterCount() }}</span>
+                        @endif
+                    </button>
+
+                    {{-- Mobile backdrop --}}
+                    <div x-show="filtersOpen" x-cloak x-transition.opacity @click="filtersOpen = false"
+                         class="fixed inset-0 z-40 bg-neutral-900/40 backdrop-blur-sm sm:hidden"></div>
+
+                    {{-- Panel: centered modal on mobile, right-aligned dropdown on sm+ --}}
+                    <div x-show="filtersOpen" x-cloak x-transition @click.outside="filtersOpen = false"
+                         class="fixed inset-x-4 top-1/2 z-50 max-h-[85dvh] -translate-y-1/2 overflow-y-auto p-3 {{ $panelClasses }} sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-1 sm:max-h-none sm:w-72 sm:translate-y-0 sm:overflow-visible">
+                        <div class="mb-2 flex items-center justify-between">
+                            <h3 class="text-sm font-semibold">{{ __('Filtres') }}</h3>
+                            <button type="button" @click="filtersOpen = false" class="rounded p-1 text-neutral-400 hover:bg-neutral-100 sm:hidden dark:hover:bg-neutral-800"><x-phosphor-x class="h-4 w-4"/></button>
+                        </div>
+                        <div class="space-y-2">
+                            <x-filter-dropdown icon="tag" :options="$optLabels" :selected="$filterLabels" :multiple="true" action="toggleLabel" :placeholder="__('Labels')" />
+                            <x-filter-dropdown icon="user" :options="$optMembers" :selected="$filterMembers" :multiple="true" action="toggleMember" :placeholder="__('Membres')" />
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" wire:click="toggleMember({{ auth()->id() }})"
+                                        class="rounded-lg border px-3 py-1.5 text-center text-sm shadow-sm transition {{ in_array(auth()->id(), $filterMembers, true) ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300' : 'border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300' }}">
+                                    {{ __('Moi') }}
+                                </button>
+                                <button type="button" wire:click="toggleUnassigned"
+                                        class="rounded-lg border px-3 py-1.5 text-center text-sm shadow-sm transition {{ $filterUnassigned ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300' : 'border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300' }}">
+                                    {{ __('Sans membre') }}
+                                </button>
+                            </div>
+                            <x-filter-dropdown field="filterDue" icon="clock" :options="$optDue" :current="$filterDue" :placeholder="__('Échéance : toutes')" />
+                            @if ($this->hasActiveFilters())
+                                <button type="button" wire:click="resetFilters"
+                                        class="w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-center text-sm font-medium text-indigo-600 hover:bg-indigo-50 dark:border-neutral-700 dark:text-indigo-400 dark:hover:bg-indigo-500/10">
+                                    {{ __('Réinitialiser') }}
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                {{-- View switcher: dropdown --}}
+                <div x-data="{ open: false }" @click.outside="open = false" @keydown.escape="open = false" class="relative">
+                    <button type="button" @click="open = ! open" class="gap-1.5 px-2 {{ $topBtn }}" title="{{ __('Changer de vue') }}">
+                        <x-dynamic-component :component="'phosphor-'.$viewOptions[$view]['icon']" class="h-4 w-4"/>
+                        <span class="hidden text-sm md:inline">{{ $viewOptions[$view]['label'] }}</span>
+                        <x-phosphor-caret-down class="h-3.5 w-3.5 opacity-60 transition-transform" ::class="open && 'rotate-180'"/>
+                    </button>
+                    <div x-show="open" x-cloak x-transition class="absolute right-0 z-40 mt-1 w-44 p-1 {{ $panelClasses }}">
+                        @foreach ($viewOptions as $viewKey => $viewOpt)
+                            <button type="button" wire:click="setView('{{ $viewKey }}')" @click="open = false"
+                                    class="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition hover:bg-neutral-100 dark:hover:bg-neutral-800 {{ $view === $viewKey ? 'font-medium text-indigo-600 dark:text-indigo-400' : 'text-neutral-700 dark:text-neutral-300' }}">
+                                <x-dynamic-component :component="'phosphor-'.$viewOpt['icon']" class="h-4 w-4 shrink-0 opacity-70"/>
+                                <span class="flex-1">{{ $viewOpt['label'] }}</span>
+                                @if ($view === $viewKey)<x-phosphor-check class="h-4 w-4 shrink-0"/>@endif
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+
+                {{-- Saved views: icon trigger --}}
+                <div x-data="{ open: false }" @click.outside="open = false" @keydown.escape="open = false" class="relative">
+                    <button type="button" @click="open = ! open" class="relative w-8 {{ $topBtn }}" title="{{ __('Vues enregistrées') }}">
+                        <x-phosphor-bookmarks-simple class="h-4 w-4"/>
+                        @if ($views->isNotEmpty())
+                            <span class="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-neutral-500 px-1 text-[10px] font-semibold text-white dark:bg-neutral-600">{{ $views->count() }}</span>
+                        @endif
+                    </button>
+
+                    <div x-show="open" x-cloak x-transition
+                         class="absolute right-0 z-40 mt-1 w-72 max-w-[calc(100vw-2rem)] p-1 {{ $panelClasses }}">
+                        @forelse ($views as $savedView)
+                            @php $isCalendarView = ($savedView->filters['view'] ?? 'board') === 'calendar'; @endphp
+                            <div wire:key="view-{{ $savedView->id }}" x-data="{ editing: false }" class="group/view flex items-center gap-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800">
+                                <template x-if="!editing">
+                                    <button type="button" wire:click="applyView({{ $savedView->id }})" @click="open = false"
+                                            class="flex min-w-0 flex-1 items-center gap-1.5 px-2.5 py-1.5 text-left text-sm text-neutral-700 dark:text-neutral-300">
+                                        @if ($isCalendarView)
+                                            <x-phosphor-calendar-blank class="h-3.5 w-3.5 shrink-0 opacity-60"/>
+                                        @else
+                                            <x-phosphor-squares-four class="h-3.5 w-3.5 shrink-0 opacity-60"/>
+                                        @endif
+                                        <span class="truncate">{{ $savedView->name }}</span>
+                                    </button>
+                                </template>
+                                <template x-if="editing">
+                                    <form class="flex min-w-0 flex-1 items-center px-1.5 py-1" @click.stop
+                                          x-on:submit.prevent="$wire.renameView({{ $savedView->id }}, $refs.renameInput.value); editing = false">
+                                        <input x-ref="renameInput" type="text" value="{{ $savedView->name }}" maxlength="60"
+                                               x-on:keydown.escape="editing = false" x-on:blur="editing = false"
+                                               class="w-full rounded border border-neutral-300 bg-white px-1.5 py-0.5 text-sm focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                    </form>
+                                </template>
+                                <button type="button" x-show="!editing"
+                                        x-on:click.stop="editing = true; $nextTick(() => { $refs.renameInput.focus(); $refs.renameInput.select(); })"
+                                        class="shrink-0 rounded p-1 text-neutral-300 opacity-100 transition hover:text-indigo-500 sm:opacity-0 sm:group-hover/view:opacity-100" title="{{ __('Renommer') }}"><x-phosphor-pencil-simple class="h-3.5 w-3.5"/></button>
+                                <button type="button" wire:click="deleteView({{ $savedView->id }})" x-show="!editing" class="mr-1 shrink-0 rounded p-1 text-neutral-300 opacity-100 transition hover:text-red-500 sm:opacity-0 sm:group-hover/view:opacity-100" title="{{ __('Supprimer') }}"><x-phosphor-x class="h-3.5 w-3.5"/></button>
+                            </div>
+                        @empty
+                            <p class="px-2.5 py-2 text-xs text-neutral-400">{{ __('Aucune vue enregistrée.') }}</p>
+                        @endforelse
+
+                        <div class="mt-1 border-t border-neutral-100 p-1.5 dark:border-neutral-800">
+                            <form wire:submit="saveView" class="flex items-center gap-1.5" @click.stop>
+                                <input type="text" wire:model="newViewName" placeholder="{{ __('Nom de la vue') }}" class="min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
+                                <button type="submit" class="shrink-0 rounded-lg bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-indigo-500">{{ __('Enregistrer') }}</button>
+                            </form>
+                            @error('newViewName') <p class="mt-1 px-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                        </div>
+                    </div>
+                </div>
+
                 @can('update', $board)
                     <x-context-menu>
                         <x-slot:trigger>
                             <button type="button" @click="openAt($event.clientX, $event.clientY)"
-                                    class="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                                    class="w-8 {{ $topBtn }}"
                                     title="{{ __('Options du board (clic droit aussi)') }}">
                                 <x-phosphor-dots-three-vertical class="h-4 w-4"/>
                             </button>
@@ -209,192 +365,18 @@
         </div>
     </div>
 
-    {{-- View switcher: its own right-aligned row to keep the header uncluttered --}}
-    <div class="mb-3 flex justify-end sm:mb-4">
-        <div class="flex items-center rounded-lg border border-neutral-300 p-0.5 dark:border-neutral-700">
-            <button type="button" wire:click="setView('board')"
-                    class="flex items-center gap-1 rounded-md px-2 py-1 text-sm transition {{ $view === 'board' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200' }}"
-                    title="{{ __('Tableau') }}">
-                <x-phosphor-squares-four class="h-4 w-4"/><span class="hidden sm:inline">{{ __('Tableau') }}</span>
-            </button>
-            <button type="button" wire:click="setView('calendar')"
-                    class="flex items-center gap-1 rounded-md px-2 py-1 text-sm transition {{ $view === 'calendar' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200' }}"
-                    title="{{ __('Calendrier') }}">
-                <x-phosphor-calendar-blank class="h-4 w-4"/><span class="hidden sm:inline">{{ __('Calendrier') }}</span>
-            </button>
-            <button type="button" wire:click="setView('timeline')"
-                    class="flex items-center gap-1 rounded-md px-2 py-1 text-sm transition {{ $view === 'timeline' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200' }}"
-                    title="{{ __('Timeline') }}">
-                <x-phosphor-chart-bar-horizontal class="h-4 w-4"/><span class="hidden sm:inline">{{ __('Timeline') }}</span>
-            </button>
-            <button type="button" wire:click="setView('table')"
-                    class="flex items-center gap-1 rounded-md px-2 py-1 text-sm transition {{ $view === 'table' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200' }}"
-                    title="{{ __('Table') }}">
-                <x-phosphor-table class="h-4 w-4"/><span class="hidden sm:inline">{{ __('Table') }}</span>
-            </button>
-            <button type="button" wire:click="setView('dashboard')"
-                    class="flex items-center gap-1 rounded-md px-2 py-1 text-sm transition {{ $view === 'dashboard' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200' }}"
-                    title="{{ __('Dashboard') }}">
-                <x-phosphor-chart-pie-slice class="h-4 w-4"/><span class="hidden sm:inline">{{ __('Dashboard') }}</span>
-            </button>
-        </div>
-    </div>
-
-    {{-- Filters --}}
-    @php
-        $optLabels = ['' => __('Tous les labels')];
-        foreach ($labels as $optLabel) { $optLabels[$optLabel->id] = $optLabel->name ?? __('Sans nom'); }
-
-        $optMembers = ['' => __('Tous les membres')];
-        foreach ($members as $optMember) { $optMembers[$optMember->id] = $optMember->name; }
-
-        $optDue = [
-            '' => __('Échéance : toutes'),
-            'overdue' => __('En retard'),
-            'due' => __('Avec échéance'),
-            'none' => __('Sans échéance'),
-        ];
-    @endphp
-    <div x-data="{ showFilters: false }" class="mb-3 space-y-2">
-        {{-- Primary row: search + (desktop) filters inline + (mobile) filters toggle + saved views --}}
-        <div class="flex items-center gap-2">
-            <div class="relative min-w-0 flex-1 sm:flex-none">
-                <x-phosphor-magnifying-glass class="pointer-events-none absolute left-2.5 top-2 h-4 w-4 text-neutral-400"/>
-                <input
-                    type="search"
-                    id="board-search"
-                    wire:model.live.debounce.300ms="search"
-                    placeholder="{{ __('Rechercher une carte…') }}"
-                    class="w-full rounded-lg border border-neutral-300 bg-white py-1.5 pl-8 pr-8 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none sm:w-56 dark:border-neutral-700 dark:bg-neutral-800"
-                >
-                <x-phosphor-spinner-gap wire:loading wire:target="search"
-                                        class="absolute right-2 top-2 h-4 w-4 animate-spin text-neutral-400"/>
-            </div>
-
-            {{-- Desktop: filter dropdowns inline --}}
-            <div class="hidden items-center gap-2 sm:flex">
-                <x-filter-dropdown icon="tag" :options="$optLabels" :selected="$filterLabels" :multiple="true" action="toggleLabel" :placeholder="__('Labels')" />
-                <x-filter-dropdown icon="user" :options="$optMembers" :selected="$filterMembers" :multiple="true" action="toggleMember" :placeholder="__('Membres')" />
-                <button type="button" wire:click="toggleMember({{ auth()->id() }})"
-                        class="rounded-lg border px-3 py-1.5 text-sm shadow-sm transition {{ in_array(auth()->id(), $filterMembers, true) ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300' : 'border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300' }}">
-                    {{ __('Moi') }}
-                </button>
-                <button type="button" wire:click="toggleUnassigned"
-                        class="rounded-lg border px-3 py-1.5 text-sm shadow-sm transition {{ $filterUnassigned ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300' : 'border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300' }}">
-                    {{ __('Sans membre') }}
-                </button>
-                <x-filter-dropdown field="filterDue" icon="clock" :options="$optDue" :current="$filterDue" :placeholder="__('Échéance : toutes')" />
-                @if ($this->hasActiveFilters())
-                    <button type="button" wire:click="resetFilters"
-                            class="rounded-lg px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-500/10">
-                        {{ __('Réinitialiser') }}
-                    </button>
-                @endif
-            </div>
-
-            {{-- Mobile: filters toggle --}}
-            <button type="button" @click="showFilters = ! showFilters"
-                    class="flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm shadow-sm sm:hidden {{ $this->activeFilterCount() > 0 ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300' : 'border-neutral-300 bg-white text-neutral-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300' }}">
-                <x-phosphor-funnel class="h-4 w-4"/>
-                <span>{{ __('Filtres') }}</span>
-                @if ($this->activeFilterCount() > 0)
-                    <span class="rounded-full bg-indigo-600 px-1.5 text-xs font-semibold text-white">{{ $this->activeFilterCount() }}</span>
-                @endif
-            </button>
-
-            {{-- Saved views --}}
-            <div x-data="{ open: false }" @click.outside="open = false" @keydown.escape="open = false" class="relative shrink-0 sm:ml-auto">
-                <button type="button" @click="open = ! open"
-                        class="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-600 shadow-sm hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
-                    <x-phosphor-bookmarks-simple class="h-4 w-4 shrink-0 opacity-70"/>
-                    <span class="hidden sm:inline">{{ __('Vues') }}</span>
-                    @if ($views->isNotEmpty())
-                        <span class="rounded-full bg-neutral-200 px-1.5 text-xs font-medium text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300">{{ $views->count() }}</span>
-                    @endif
-                    <x-phosphor-caret-down class="h-3.5 w-3.5 shrink-0 opacity-60 transition-transform" ::class="open && 'rotate-180'"/>
-                </button>
-
-                <div x-show="open" x-cloak x-transition
-                     class="absolute right-0 z-40 mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-neutral-200 bg-white p-1 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
-                    @forelse ($views as $savedView)
-                        @php $isCalendarView = ($savedView->filters['view'] ?? 'board') === 'calendar'; @endphp
-                        <div wire:key="view-{{ $savedView->id }}" x-data="{ editing: false }" class="group/view flex items-center gap-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800">
-                            <template x-if="!editing">
-                                <button type="button" wire:click="applyView({{ $savedView->id }})" @click="open = false"
-                                        class="flex min-w-0 flex-1 items-center gap-1.5 px-2.5 py-1.5 text-left text-sm text-neutral-700 dark:text-neutral-300">
-                                    @if ($isCalendarView)
-                                        <x-phosphor-calendar-blank class="h-3.5 w-3.5 shrink-0 opacity-60"/>
-                                    @else
-                                        <x-phosphor-squares-four class="h-3.5 w-3.5 shrink-0 opacity-60"/>
-                                    @endif
-                                    <span class="truncate">{{ $savedView->name }}</span>
-                                </button>
-                            </template>
-                            <template x-if="editing">
-                                <form class="flex min-w-0 flex-1 items-center px-1.5 py-1" @click.stop
-                                      x-on:submit.prevent="$wire.renameView({{ $savedView->id }}, $refs.renameInput.value); editing = false">
-                                    <input x-ref="renameInput" type="text" value="{{ $savedView->name }}" maxlength="60"
-                                           x-on:keydown.escape="editing = false" x-on:blur="editing = false"
-                                           class="w-full rounded border border-neutral-300 bg-white px-1.5 py-0.5 text-sm focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
-                                </form>
-                            </template>
-                            <button type="button" x-show="!editing"
-                                    x-on:click.stop="editing = true; $nextTick(() => { $refs.renameInput.focus(); $refs.renameInput.select(); })"
-                                    class="shrink-0 rounded p-1 text-neutral-300 opacity-100 transition hover:text-indigo-500 sm:opacity-0 sm:group-hover/view:opacity-100" title="{{ __('Renommer') }}"><x-phosphor-pencil-simple class="h-3.5 w-3.5"/></button>
-                            <button type="button" wire:click="deleteView({{ $savedView->id }})" x-show="!editing" class="mr-1 shrink-0 rounded p-1 text-neutral-300 opacity-100 transition hover:text-red-500 sm:opacity-0 sm:group-hover/view:opacity-100" title="{{ __('Supprimer') }}"><x-phosphor-x class="h-3.5 w-3.5"/></button>
-                        </div>
-                    @empty
-                        <p class="px-2.5 py-2 text-xs text-neutral-400">{{ __('Aucune vue enregistrée.') }}</p>
-                    @endforelse
-
-                    <div class="mt-1 border-t border-neutral-100 p-1.5 dark:border-neutral-800">
-                        <form wire:submit="saveView" class="flex items-center gap-1.5" @click.stop>
-                            <input type="text" wire:model="newViewName" placeholder="{{ __('Nom de la vue') }}" class="min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
-                            <button type="submit" class="shrink-0 rounded-lg bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-indigo-500">{{ __('Enregistrer') }}</button>
-                        </form>
-                        @error('newViewName') <p class="mt-1 px-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- Mobile: collapsible filter controls (stacked full-width) --}}
-        <div x-show="showFilters" x-cloak x-transition class="grid grid-cols-1 gap-2 sm:!hidden">
-            <x-filter-dropdown icon="tag" :options="$optLabels" :selected="$filterLabels" :multiple="true" action="toggleLabel" :placeholder="__('Labels')" />
-            <x-filter-dropdown icon="user" :options="$optMembers" :selected="$filterMembers" :multiple="true" action="toggleMember" :placeholder="__('Membres')" />
-            <div class="grid grid-cols-2 gap-2">
-                <button type="button" wire:click="toggleMember({{ auth()->id() }})"
-                        class="rounded-lg border px-3 py-1.5 text-center text-sm shadow-sm transition {{ in_array(auth()->id(), $filterMembers, true) ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300' : 'border-neutral-300 bg-white text-neutral-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300' }}">
-                    {{ __('Moi') }}
-                </button>
-                <button type="button" wire:click="toggleUnassigned"
-                        class="rounded-lg border px-3 py-1.5 text-center text-sm shadow-sm transition {{ $filterUnassigned ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300' : 'border-neutral-300 bg-white text-neutral-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300' }}">
-                    {{ __('Sans membre') }}
-                </button>
-            </div>
-            <x-filter-dropdown field="filterDue" icon="clock" :options="$optDue" :current="$filterDue" :placeholder="__('Échéance : toutes')" />
-            @if ($this->hasActiveFilters())
-                <button type="button" wire:click="resetFilters"
-                        class="rounded-lg border border-neutral-200 px-3 py-1.5 text-center text-sm font-medium text-indigo-600 hover:bg-indigo-50 dark:border-neutral-700 dark:text-indigo-400 dark:hover:bg-indigo-500/10">
-                    {{ __('Réinitialiser') }}
-                </button>
-            @endif
-        </div>
-    </div>
 
     @php
         $coverPalette = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'];
-        $boardBg = $board->backgroundStyle();
     @endphp
 
     @if ($view === 'board')
-    {{-- Lists (columns) --}}
+    {{-- Lists (columns) — the background is now full-bleed behind the whole board --}}
     <div
         @if ($canContribute) wire:sort="reorderLists" @endif
         wire:loading.class.delay="opacity-40"
         wire:target="search, filterLabels, filterMembers, toggleLabel, toggleMember, toggleUnassigned, filterDue, resetFilters, applyFilter, applyView"
-        @if ($boardBg) style="background: {{ $boardBg }};" @endif
-        class="flex flex-1 snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-p-1 py-4 transition-opacity sm:snap-none sm:gap-4 {{ $boardBg ? 'rounded-xl px-3' : '' }}"
+        class="flex flex-1 snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-p-1 py-4 transition-opacity sm:snap-none sm:gap-4"
     >
         @foreach ($lists as $list)
             <div
@@ -413,7 +395,7 @@
                 @collapse-all.window="collapsed = true"
                 @expand-all.window="collapsed = false"
                 :class="collapsed ? 'w-11 self-stretch' : 'w-full sm:w-72'"
-                class="flex max-h-full shrink-0 snap-start flex-col overflow-hidden rounded-xl bg-neutral-200/70 dark:bg-neutral-900"
+                class="flex max-h-full shrink-0 snap-start flex-col overflow-hidden rounded-xl {{ $boardBg ? 'border border-white/20 bg-white/50 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-neutral-900/60' : 'bg-neutral-200/70 dark:bg-neutral-900' }}"
             >
                 {{-- Collapsed strip --}}
                 <div x-show="collapsed" x-cloak @click="collapsed = false" class="flex flex-1 cursor-pointer select-none flex-col items-center gap-2 py-2.5" title="{{ $list->name }}">
@@ -745,7 +727,7 @@
                 type="text"
                 wire:model="newListName"
                 placeholder="{{ __('+ Ajouter une liste') }}"
-                class="w-full rounded-xl border border-dashed border-neutral-300 bg-white/50 px-3 py-2 text-sm  placeholder-neutral-500 dark:placeholder-neutral-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900/50"
+                class="w-full rounded-xl border border-dashed border-neutral-300 bg-white/50 px-3 py-2 text-sm  placeholder-neutral-500 dark:placeholder-neutral-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900/50 {{ $boardBg ? 'backdrop-blur-md' : '' }}"
             >
             @error('newListName') <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
         </form>
@@ -1099,12 +1081,12 @@
                         </div>
                         <div>
                             <label class="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ __('Type') }}</label>
-                            <select wire:model.live="newFieldType"
-                                    class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
-                                @foreach ($fieldTypes as $ft)
-                                    <option value="{{ $ft->value }}">{{ __($ft->label()) }}</option>
-                                @endforeach
-                            </select>
+                            @php $typeOptions = collect($fieldTypes)->map(fn ($ft) => ['value' => $ft->value, 'label' => $ft->label()])->all(); @endphp
+                            <x-select
+                                :options="$typeOptions"
+                                :value="$newFieldType"
+                                @select-change="$wire.set('newFieldType', $event.detail)"
+                            />
                         </div>
                     </div>
 
@@ -1360,7 +1342,6 @@
             </div>
             @php
                 $shortcuts = [
-                    __('Rechercher une carte') => '/',
                     __('Vue tableau') => 'B',
                     __('Vue calendrier') => 'C',
                     __('Fermer / annuler') => 'Échap',
@@ -1436,9 +1417,7 @@
                              wire:keydown.enter="focusActivity({{ $ft['card'] }}, {{ $sectionArg }}, {{ $commentArg }})"
                              title="{{ __('Ouvrir') }}"
                          @endif>
-                        <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
-                            {{ mb_strtoupper(mb_substr($activity->user?->name ?? '?', 0, 1)) }}
-                        </span>
+                        <x-user-avatar :user="$activity->user" class="mt-0.5" />
                         <div class="min-w-0 flex-1">
                             <p class="text-sm text-neutral-700 dark:text-neutral-200">
                                 <span class="font-semibold">{{ $activity->user?->name ?? __('un membre') }}</span>
@@ -1463,6 +1442,23 @@
                     <p x-show="tab === 'comments'" x-cloak class="py-8 text-center text-sm text-neutral-400 dark:text-neutral-500">{{ __('Aucun commentaire pour le moment.') }}</p>
                 @endif
             </div>
+
+            {{-- Retention footer: outside the scroll area so it stays visible; admins only --}}
+            @can('update', $board)
+                <div class="border-t border-neutral-200 bg-neutral-50 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900/60">
+                    <label class="mb-1 block text-xs font-medium uppercase tracking-wide text-neutral-500">{{ __('Purge automatique des activités anciennes') }}</label>
+                    @php $retentionOptions = [
+                        ['value' => '', 'label' => __('Tout conserver')],
+                        ['value' => '30', 'label' => __('30 jours')],
+                        ['value' => '90', 'label' => __('90 jours')],
+                        ['value' => '180', 'label' => __('6 mois')],
+                        ['value' => '365', 'label' => __('1 an')],
+                    ]; @endphp
+                    <x-select direction="up" :options="$retentionOptions" :value="$board->activity_retention_days"
+                              @select-change="$wire.saveActivityRetention($event.detail)" />
+                    <p class="mt-1 text-[11px] text-neutral-400">{{ __('Les activités plus anciennes sont supprimées chaque jour.') }}</p>
+                </div>
+            @endcan
         </aside>
     </div>
     @endif

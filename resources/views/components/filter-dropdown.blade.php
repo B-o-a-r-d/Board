@@ -21,12 +21,12 @@
     <button
         type="button"
         @click="open = ! open"
-        class="inline-flex w-full items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm shadow-sm transition sm:w-auto {{ $isActive ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300' : 'border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300' }}"
+        class="inline-flex w-full items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm shadow-sm transition {{ $isActive ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300' : 'border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300' }}"
     >
         @if ($icon)
             <x-dynamic-component :component="'phosphor-'.$icon" class="h-4 w-4 shrink-0 opacity-70" />
         @endif
-        <span class="flex-1 truncate text-left sm:max-w-[9rem]">{{ $activeLabel ?? $placeholder }}</span>
+        <span class="flex-1 truncate text-left">{{ $activeLabel ?? $placeholder }}</span>
         @if ($multiple && $count > 0)
             <span class="shrink-0 rounded-full bg-indigo-600 px-1.5 text-xs font-semibold text-white">{{ $count }}</span>
         @endif

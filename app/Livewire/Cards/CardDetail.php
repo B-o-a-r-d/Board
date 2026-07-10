@@ -154,6 +154,31 @@ class CardDetail extends Component
         $this->touched('card.updated');
     }
 
+    /**
+     * Implicit save: the title persists on blur (no save button). A transient
+     * empty/too-long value while typing is ignored rather than flashing an error.
+     */
+    public function updatedTitle(string $value): void
+    {
+        $value = trim($value);
+
+        if ($value === '' || mb_strlen($value) > 255) {
+            return;
+        }
+
+        $card = $this->guardedCard();
+        $card->update(['title' => $value]);
+        $this->touched('card.updated');
+    }
+
+    /** The activity feed is lazy-loaded on first open (it can be long). */
+    public bool $showActivity = false;
+
+    public function toggleActivity(): void
+    {
+        $this->showActivity = ! $this->showActivity;
+    }
+
     public function saveDates(): void
     {
         $card = $this->guardedCard();
@@ -266,6 +291,11 @@ class CardDetail extends Component
         $card->update(['completed_at' => $card->completed_at ? null : now()]);
 
         $this->logActivity($card, $card->completed_at ? 'card.completed' : 'card.uncompleted');
+
+        // Let automations react (e.g. "when a card is completed → move to Done").
+        if ($card->completed_at) {
+            app(AutomationEngine::class)->fire('card.completed', $card);
+        }
 
         $this->touched('card.completed');
     }
@@ -970,7 +1000,7 @@ class CardDetail extends Component
     {
         $card = $this->cardId
             ? $this->board->cards()
-                ->with(['members', 'watchers', 'labels', 'checklists.items.assignee', 'attachments.uploader', 'comments.user', 'comments.reactions', 'activities.user', 'customFieldValues'])
+                ->with(['members', 'watchers', 'labels', 'checklists.items.assignee', 'attachments.uploader', 'comments.user', 'comments.reactions', 'customFieldValues'])
                 ->find($this->cardId)
             : null;
 
@@ -1017,6 +1047,10 @@ class CardDetail extends Component
                 ->filter(fn ($b) => Auth::user()->can('contribute', $b))
                 ->values() : collect(),
             'cardMirrors' => $card ? $card->mirrors()->with(['list', 'board'])->get() : collect(),
+            // Lazy: only fetch the activity feed once the user opens it.
+            'activities' => ($card && $this->showActivity)
+                ? $card->activities()->with('user')->latest()->limit(30)->get()
+                : collect(),
         ]);
     }
 }

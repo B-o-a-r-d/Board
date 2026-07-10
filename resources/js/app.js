@@ -8,6 +8,7 @@
 
 import './echo';
 import './context-menu';
+import './select-menu';
 import './markdown-editor';
 import './comment-editor';
 import './card-sortable';

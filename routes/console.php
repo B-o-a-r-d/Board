@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('cards:notify-due')->hourly();
 Schedule::command('automations:run-scheduled')->hourly();
+Schedule::command('activities:prune')->daily();

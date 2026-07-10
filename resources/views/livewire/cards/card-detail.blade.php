@@ -21,7 +21,9 @@
     @card-focus.window="handleCardFocus($event.detail)"
 >
     @if ($showModal && $card)
-        <x-modal max-width="3xl" on-close="$wire.close()" wire:key="card-modal-{{ $card->id }}">
+        <x-modal max-width="6xl" on-close="$wire.close()" wire:key="card-modal-{{ $card->id }}">
+            <div x-data="{ metaOpen: JSON.parse(localStorage.getItem('card-meta-open') ?? 'true') }"
+                 x-init="$watch('metaOpen', v => localStorage.setItem('card-meta-open', JSON.stringify(v)))">
                 {{-- Cover --}}
                 @if ($card->cover_path)
                     <img src="{{ $card->coverUrl() }}" alt="" class="h-40 w-full rounded-t-2xl object-cover">
@@ -29,24 +31,52 @@
                     <div class="h-20 w-full rounded-t-2xl" style="background-color: {{ $card->cover_color }}"></div>
                 @endif
 
-                <button type="button" wire:click="close" class="absolute right-3 top-3 rounded-full bg-white/80 p-1.5 text-neutral-600 shadow hover:bg-white dark:bg-neutral-800/80 dark:text-neutral-300"><x-phosphor-x class="h-5 w-5" /></button>
+                {{-- Header row: quick actions on the left, Actions toggle + close on the right, one line --}}
+                @php $isWatching = $card->watchers->contains(fn ($w) => $w->id === auth()->id()); @endphp
+                <div class="flex flex-wrap items-center gap-1.5 border-b border-neutral-100 px-4 pb-3 pt-4 sm:px-6 dark:border-neutral-800">
+                    @if ($canContribute)
+                        <button type="button" wire:click="toggleComplete" title="{{ $card->completed_at ? __('Terminée') : __('Marquer terminée') }}"
+                                class="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium transition {{ $card->completed_at ? 'bg-green-600 text-white hover:bg-green-500' : 'border border-neutral-300 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800' }}">
+                            <x-phosphor-check-circle class="h-4 w-4" /> <span class="hidden sm:inline">{{ $card->completed_at ? __('Terminée') : __('Terminer') }}</span>
+                        </button>
+                        <button type="button" wire:click="toggleWatch" title="{{ $isWatching ? __('Suivi') : __('Suivre') }}"
+                                class="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium transition {{ $isWatching ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'border border-neutral-300 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800' }}">
+                            <x-dynamic-component :component="$isWatching ? 'phosphor-eye' : 'phosphor-eye-slash'" class="h-4 w-4" />
+                            <span class="hidden sm:inline">{{ $isWatching ? __('Suivi') : __('Suivre') }}</span>
+                            @if ($card->watchers->isNotEmpty())<span class="rounded-full bg-black/10 px-1.5 text-[10px] font-semibold dark:bg-white/15">{{ $card->watchers->count() }}</span>@endif
+                        </button>
+                        @can('admin')
+                            <button type="button" wire:click="saveAsTemplate" title="{{ __('Enregistrer comme modèle') }}"
+                                    class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-neutral-300 px-2.5 text-sm font-medium transition hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">
+                                <x-phosphor-stack class="h-4 w-4" /> <span class="hidden sm:inline">{{ __('Modèle') }}</span>
+                            </button>
+                        @endcan
+                    @endif
+                    <div class="ml-auto flex items-center gap-1.5">
+                        <button type="button" @click="metaOpen = ! metaOpen" title="{{ __('Replier / déplier les actions') }}"
+                                class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-neutral-200 px-2.5 text-sm font-medium text-neutral-500 transition hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                                :class="metaOpen && 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200'">
+                            <x-phosphor-sliders-horizontal class="h-4 w-4" />
+                            <span class="hidden sm:inline">{{ __('Actions') }}</span>
+                        </button>
+                        <button type="button" wire:click="close" class="rounded-full p-1.5 text-neutral-500 transition hover:bg-neutral-100 dark:hover:bg-neutral-800"><x-phosphor-x class="h-5 w-5" /></button>
+                    </div>
+                </div>
 
-                <div class="mt-6 grid gap-6 p-4 sm:grid-cols-3 sm:p-6">
-                    {{-- Main column --}}
-                    <div class="space-y-6 sm:col-span-2">
+                <div class="grid gap-6 p-4 sm:p-6 lg:grid-cols-12">
+                    {{-- Content column --}}
+                    <div class="order-1 space-y-6" :class="metaOpen ? 'lg:col-span-5' : 'lg:col-span-6'">
                         @if ($canContribute)
-                        <form wire:submit="saveDetails" class="flex items-start gap-2">
-                            <div class="flex-1">
-                                <input
-                                    type="text"
-                                    wire:model="title"
-                                    wire:keydown.enter.prevent="saveDetails"
-                                    class="w-full rounded-lg border border-transparent bg-transparent px-2 py-1 text-lg font-semibold hover:bg-neutral-100 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:hover:bg-neutral-800 dark:focus:bg-neutral-800"
-                                >
-                                @error('title') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
-                            </div>
-                            <button type="submit" title="{{ __('Enregistrer') }}" class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white hover:bg-indigo-500"><x-phosphor-floppy-disk-duotone class="h-4 w-4" /></button>
-                        </form>
+                        {{-- Implicit save: title persists on blur / Enter, no save button --}}
+                        <div>
+                            <input
+                                type="text"
+                                wire:model.blur="title"
+                                @keydown.enter.prevent="$event.target.blur()"
+                                class="w-full rounded-lg border border-transparent bg-transparent px-2 py-1 text-lg font-semibold hover:bg-neutral-100 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:hover:bg-neutral-800 dark:focus:bg-neutral-800"
+                            >
+                            @error('title') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                        </div>
                         @else
                             <h2 class="px-2 py-1 text-lg font-semibold">{{ $card->title }}</h2>
                         @endif
@@ -64,7 +94,7 @@
                                 @if (filled($card->description))
                                     {!! Str::markdown($card->description, ['html_input' => 'strip', 'allow_unsafe_links' => false]) !!}
                                 @else
-                                    <span class="text-neutral-400">{{ __("Ajoutez une description… (cliquez pour éditer)") }}</span>
+                                    <span class="text-neutral-400">{{ __("Ajoutez une description…") }}</span>
                                 @endif
                             </div>
 
@@ -123,11 +153,21 @@
                                     $done = $checklist->items->where('is_completed', true)->count();
                                     $pct = $total > 0 ? (int) round($done / $total * 100) : 0;
                                 @endphp
-                                <div wire:key="checklist-{{ $checklist->id }}" class="rounded-lg border border-neutral-200 p-3 dark:border-neutral-700">
-                                    <div class="mb-2 flex items-center justify-between">
-                                        <span class="text-sm font-medium">{{ $checklist->title }}</span>
-                                        @if ($canContribute)<button type="button" wire:click="deleteChecklist({{ $checklist->id }})" class="text-xs text-neutral-400 hover:text-red-500">{{ __('Supprimer') }}</button>@endif
+                                <div
+                                    wire:key="checklist-{{ $checklist->id }}"
+                                    x-data="{ collapsed: JSON.parse(localStorage.getItem('checklist-collapsed-{{ $checklist->id }}') ?? 'false') }"
+                                    class="rounded-lg border border-neutral-200 p-3 dark:border-neutral-700"
+                                >
+                                    <div class="flex items-center justify-between gap-2">
+                                        <button type="button" @click="collapsed = ! collapsed; localStorage.setItem('checklist-collapsed-{{ $checklist->id }}', collapsed)" class="flex min-w-0 flex-1 items-center gap-1.5 text-left" title="{{ __('Replier / déplier') }}">
+                                            <span class="shrink-0 text-neutral-400 transition-transform" :class="collapsed || 'rotate-90'"><x-phosphor-caret-right class="h-3.5 w-3.5" /></span>
+                                            <span class="truncate text-sm font-medium">{{ $checklist->title }}</span>
+                                            <span class="shrink-0 rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">{{ $done }}/{{ $total }}</span>
+                                        </button>
+                                        @if ($canContribute)<button type="button" wire:click="deleteChecklist({{ $checklist->id }})" class="shrink-0 text-xs text-neutral-400 hover:text-red-500">{{ __('Supprimer') }}</button>@endif
                                     </div>
+
+                                    <div x-show="! collapsed" x-cloak class="mt-2">
                                     <div class="mb-2 flex items-center gap-2">
                                         <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
                                             <div class="h-full rounded-full bg-green-500" style="width: {{ $pct }}%"></div>
@@ -203,6 +243,7 @@
                                         <input type="text" wire:model="newChecklistItem.{{ $checklist->id }}" placeholder="{{ __('+ Ajouter un élément') }}" class="w-full rounded border border-neutral-200 bg-white px-2 py-1 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
                                     </form>
                                     @endif
+                                    </div>
                                 </div>
                             @endforeach
 
@@ -397,6 +438,14 @@
                                 @if ($canContribute)<x-dropzone model="upload" action="saveAttachment" accept="image/*,video/*" />@endif
                             </div>
                         </div>
+                    </div>
+
+                    {{-- Comments & activity (middle panel) --}}
+                    <div class="order-2 space-y-6 lg:border-l lg:border-neutral-100 lg:pl-6 lg:dark:border-neutral-800" :class="metaOpen ? 'lg:col-span-4' : 'lg:col-span-6'">
+                        <h3 class="flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+                            <x-phosphor-chat-circle-dots class="h-5 w-5 text-neutral-400" />
+                            {{ __('Commentaires et activité') }}
+                        </h3>
 
                         {{-- Comments (real-time) --}}
                         @php
@@ -539,15 +588,16 @@
                             </div>
                         </div>
 
-                        {{-- Activity feed (collapsed by default) --}}
-                        <div x-data="{ open: false }" class="space-y-2">
-                            <button type="button" @click="open = ! open" class="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-neutral-500">
-                                <x-phosphor-caret-right class="h-3.5 w-3.5 transition-transform" ::class="open && 'rotate-90'" />
+                        {{-- Activity feed (lazy-loaded on open) --}}
+                        <div class="space-y-2">
+                            <button type="button" wire:click="toggleActivity" class="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-neutral-500">
+                                <x-phosphor-caret-right class="h-3.5 w-3.5 transition-transform {{ $showActivity ? 'rotate-90' : '' }}" />
                                 {{ __('Activité') }}
-                                @if ($card->activities->isNotEmpty())<span class="rounded-full bg-neutral-200 px-1.5 text-[10px] font-semibold text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300">{{ $card->activities->count() }}</span>@endif
+                                <span wire:loading wire:target="toggleActivity"><x-phosphor-circle-notch class="h-3.5 w-3.5 animate-spin text-neutral-400" /></span>
                             </button>
-                            <div x-show="open" x-cloak class="space-y-2">
-                            @forelse ($card->activities->take(12) as $activity)
+                            @if ($showActivity)
+                            <div class="space-y-2">
+                            @forelse ($activities as $activity)
                                 @php
                                     $props = $activity->properties ?? [];
                                     if ($activity->type === 'card.moved' && ! empty($props['to_list'])) {
@@ -561,6 +611,7 @@
                                     }
                                 @endphp
                                 <div wire:key="activity-{{ $activity->id }}" class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+                                    <x-user-avatar :user="$activity->user" size="xs" />
                                     <span class="font-medium text-neutral-700 dark:text-neutral-300">{{ $activity->user?->name ?? __('Quelqu\'un') }}</span>
                                     <span>{{ $label }}</span>
                                     @if (Str::startsWith((string) $activity->source, 'mcp:'))
@@ -572,34 +623,12 @@
                                 <p class="text-xs text-neutral-400">{{ __('Aucune activité pour le moment.') }}</p>
                             @endforelse
                             </div>
+                            @endif
                         </div>
                     </div>
 
-                    {{-- Sidebar --}}
-                    <div class="space-y-5">
-                        @php $isWatching = $card->watchers->contains(fn ($w) => $w->id === auth()->id()); @endphp
-                        @if ($canContribute)
-                        <div class="flex items-center gap-2">
-                            <button type="button" wire:click="toggleComplete" title="{{ $card->completed_at ? __('Terminée') : __('Marquer terminée') }}"
-                                    class="flex h-9 flex-1 items-center justify-center rounded-lg transition {{ $card->completed_at ? 'bg-green-600 text-white hover:bg-green-500' : 'border border-neutral-300 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800' }}">
-                                <x-phosphor-check-circle class="h-5 w-5" />
-                            </button>
-                            <button type="button" wire:click="toggleWatch" title="{{ $isWatching ? __('Suivi') : __('Suivre') }}"
-                                    class="relative flex h-9 flex-1 items-center justify-center rounded-lg transition {{ $isWatching ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'border border-neutral-300 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800' }}">
-                                <x-dynamic-component :component="$isWatching ? 'phosphor-eye' : 'phosphor-eye-slash'" class="h-5 w-5" />
-                                @if ($card->watchers->isNotEmpty())
-                                    <span class="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-neutral-700 px-1 text-[10px] font-semibold text-white dark:bg-neutral-200 dark:text-neutral-900">{{ $card->watchers->count() }}</span>
-                                @endif
-                            </button>
-                            @can('admin')
-                                <button type="button" wire:click="saveAsTemplate" title="{{ __('Enregistrer comme modèle') }}"
-                                        class="flex h-9 flex-1 items-center justify-center rounded-lg border border-neutral-300 transition hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">
-                                    <x-phosphor-stack class="h-5 w-5" />
-                                </button>
-                            @endcan
-                        </div>
-                        @endif
-
+                    {{-- Actions (dates, members, labels, custom fields) — hidden when collapsed; quick actions live in the header --}}
+                    <div x-show="metaOpen" x-cloak class="order-3 space-y-5 lg:col-span-3 lg:border-l lg:border-neutral-100 lg:pl-6 lg:dark:border-neutral-800">
                         {{-- Manual automation buttons --}}
                         @if ($canContribute && $cardButtons->isNotEmpty())
                             <div class="space-y-1.5">
@@ -769,13 +798,12 @@
                                             @else
                                                 <label class="mb-0.5 block text-xs text-neutral-500">{{ $field->name }}</label>
                                                 @if ($field->type === \App\Enums\CustomFieldType::Select)
-                                                    <select wire:change="saveCustomField({{ $field->id }}, $event.target.value)"
-                                                            class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
-                                                        <option value="">{{ __('—') }}</option>
-                                                        @foreach ($field->options ?? [] as $opt)
-                                                            <option value="{{ $opt }}" @selected($val === $opt)>{{ $opt }}</option>
-                                                        @endforeach
-                                                    </select>
+                                                    <x-select
+                                                        :options="$field->options ?? []"
+                                                        :value="$val"
+                                                        clearable
+                                                        @select-change="$wire.saveCustomField({{ $field->id }}, $event.detail)"
+                                                    />
                                                 @elseif ($field->type === \App\Enums\CustomFieldType::Number)
                                                     <input type="number" value="{{ $val }}" wire:change="saveCustomField({{ $field->id }}, $event.target.value)"
                                                            class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
@@ -840,6 +868,7 @@
                         @endif
                     </div>
                 </div>
+            </div>
         </x-modal>
     @endif
 </div>

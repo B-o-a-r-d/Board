@@ -29,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
             foreach ([
                 Triggers\CardCreatedTrigger::class,
                 Triggers\CardMovedToListTrigger::class,
+                Triggers\CardCompletedTrigger::class,
                 Triggers\CardDueSoonTrigger::class,
                 Triggers\ManualTrigger::class,
             ] as $trigger) {
