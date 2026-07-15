@@ -83,6 +83,9 @@ window.initCardSortable = function (el, wire) {
         ghostClass: 'opacity-40',
         onStart: () => {
             dragging = true;
+            // Let a column's infinite-scroll loader stand down mid-drag, so it
+            // never morphs the list (appending a page) while a card is in hand.
+            window.boardCardDragging = true;
         },
         onEnd: (evt) => {
             const cardId = Number(evt.item.dataset.cardId);
@@ -92,6 +95,7 @@ window.initCardSortable = function (el, wire) {
             // had its chance to fire (and be swallowed).
             setTimeout(() => {
                 dragging = false;
+                window.boardCardDragging = false;
             }, 0);
 
             if (!cardId || !toListId) {
