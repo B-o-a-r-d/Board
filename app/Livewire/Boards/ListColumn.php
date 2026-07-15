@@ -31,10 +31,13 @@ class ListColumn extends Component
     public array $newCardTitle = [];
 
     /** How many cards this column currently renders (grown by {@see loadMore}). */
-    public int $visibleCards = self::PAGE_SIZE;
+    public int $visibleCards = self::INITIAL_CARDS;
 
-    /** Cards rendered per page; a heavy list only paints this many up front. */
-    private const PAGE_SIZE = 50;
+    /** First paint stays short so even a heavy list appears instantly. */
+    private const INITIAL_CARDS = 12;
+
+    /** Each scroll / "load more" reveals another chunk. */
+    private const PAGE_SIZE = 25;
 
     /** Card filters owned by the parent Show; re-render this column when they change. */
     #[Reactive]

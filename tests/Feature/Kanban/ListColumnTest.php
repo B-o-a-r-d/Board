@@ -68,12 +68,12 @@ test('moveCardToList moves the card and asks the target column to refresh', func
     expect($card->fresh()->board_list_id)->toBe($target->id);
 });
 
-test('a heavy list paints one page then loadMore reveals the rest', function () {
+test('a heavy list paints a short first page then loadMore reveals the rest', function () {
     ['board' => $board, 'owner' => $owner] = makeCardContext();
     $list = BoardList::factory()->create(['board_id' => $board->id]);
 
-    // 55 cards, page size 50 → 5 remain after the first page.
-    for ($i = 0; $i < 55; $i++) {
+    // 20 cards; first page is 12 → 8 remain after the first paint.
+    for ($i = 0; $i < 20; $i++) {
         Card::factory()->create([
             'board_id' => $board->id,
             'board_list_id' => $list->id,
@@ -84,12 +84,12 @@ test('a heavy list paints one page then loadMore reveals the rest', function () 
 
     $component = Livewire::actingAs($owner)->test(ListColumn::class, ['board' => $board, 'list' => $list])
         ->assertSee('Carte no 0')
-        ->assertSee('Carte no 49')
-        ->assertDontSee('Carte no 54')
+        ->assertSee('Carte no 11')
+        ->assertDontSee('Carte no 12')
         ->assertSee(__('Charger plus'));
 
     $component->call('loadMore')
-        ->assertSee('Carte no 54')
+        ->assertSee('Carte no 19')
         ->assertDontSee(__('Charger plus'));
 });
 
