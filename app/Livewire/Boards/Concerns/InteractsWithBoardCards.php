@@ -35,7 +35,7 @@ trait InteractsWithBoardCards
 
         $type = $card->completed_at ? 'card.completed' : 'card.uncompleted';
         $this->logActivity($type, $card->id, ['card_title' => $card->title]);
-        $this->broadcastActivity($type);
+        $this->broadcastActivity($type, [$card->board_list_id]);
 
         if ($card->completed_at && app(AutomationEngine::class)->fire('card.completed', $card->fresh()) > 0) {
             // An automation may have moved the card elsewhere — re-sync all columns.
@@ -66,7 +66,7 @@ trait InteractsWithBoardCards
         app(AutomationEngine::class)->fire('card.created', $card, ['list_id' => $list->id]);
 
         $this->newCardTitle[$listId] = '';
-        $this->broadcastActivity('card.created');
+        $this->broadcastActivity('card.created', [$list->id]);
 
         // Open the new card's detail modal so the user can fill it in right away.
         $this->dispatch('open-card', cardId: $card->id);
@@ -101,7 +101,7 @@ trait InteractsWithBoardCards
 
         $this->logActivity('card.created', $card->id, ['card_title' => $card->title, 'list' => $list->name, 'from_template' => true]);
         app(AutomationEngine::class)->fire('card.created', $card, ['list_id' => $list->id]);
-        $this->broadcastActivity('card.created');
+        $this->broadcastActivity('card.created', [$list->id]);
         $this->dispatch('toast', message: __('Carte créée depuis le modèle'), type: 'success');
     }
 
@@ -113,7 +113,7 @@ trait InteractsWithBoardCards
         $card->update(['archived_at' => now()]);
         $this->logActivity('card.archived', $cardId, ['card_title' => $card->title, 'list' => $card->list?->name]);
         app(AutomationEngine::class)->fire('card.archived', $card);
-        $this->broadcastActivity('card.archived');
+        $this->broadcastActivity('card.archived', [$card->board_list_id]);
     }
 
     public function duplicateCard(int $cardId): void
@@ -138,7 +138,7 @@ trait InteractsWithBoardCards
 
         $this->logActivity('card.duplicated', $copy->id, ['from' => $card->id]);
         app(AutomationEngine::class)->fire('card.created', $copy, ['list_id' => $copy->board_list_id]);
-        $this->broadcastActivity('card.duplicated');
+        $this->broadcastActivity('card.duplicated', [$copy->board_list_id]);
         $this->dispatch('toast', message: __('Carte dupliquée'), type: 'success');
     }
 
@@ -168,7 +168,7 @@ trait InteractsWithBoardCards
             ]);
         }
 
-        $this->broadcastActivity('card.moved');
+        $this->broadcastActivity('card.moved', array_values(array_unique([$sourceListId, $targetList->id])));
 
         // Optimistic UI: SortableJS already placed the card — even across columns —
         // so skip the actor's re-render. Only when an automation mutated the card
@@ -206,7 +206,7 @@ trait InteractsWithBoardCards
             'from_list_id' => $sourceListId,
         ]);
 
-        $this->broadcastActivity('card.moved');
+        $this->broadcastActivity('card.moved', [$sourceListId, $targetList->id]);
 
         // The target column needs to show the card; this (source) column re-renders.
         $this->dispatch('cards:refresh', listId: $targetList->id);
@@ -248,9 +248,14 @@ trait InteractsWithBoardCards
         }
     }
 
-    private function broadcastActivity(string $action): void
+    /**
+     * @param  array<int, int>  $listIds  lists whose cards changed, so remote
+     *                                    ListColumns can refresh only when affected
+     *                                    (empty = board-level → every column refreshes).
+     */
+    private function broadcastActivity(string $action, array $listIds = []): void
     {
-        broadcast(new BoardActivity($this->board->id, $action, Auth::id()))->toOthers();
+        broadcast(new BoardActivity($this->board->id, $action, Auth::id(), $listIds))->toOthers();
     }
 
     /**

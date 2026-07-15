@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\Permission;
+use App\Livewire\Boards\ListColumn;
 use App\Livewire\Boards\Show;
 use App\Livewire\Cards\CardDetail;
 use App\Models\Board;
@@ -155,9 +156,15 @@ test('the board view renders read-only for an observer', function () {
 
 test('the board view shows edit affordances to a member', function () {
     ['board' => $board, 'member' => $member] = makeCardContext();
+    $list = $board->lists()->firstOrFail();
 
+    // Board-level affordance (add a list) is on Show…
     Livewire::actingAs($member)->test(Show::class, ['board' => $board])
         ->assertDontSee('Lecture seule')
+        ->assertSee('+ Ajouter une liste');
+
+    // …the per-card add affordance is in the list column.
+    Livewire::actingAs($member)->test(ListColumn::class, ['board' => $board, 'list' => $list, 'canContribute' => true])
         ->assertSee('+ Ajouter une carte');
 });
 

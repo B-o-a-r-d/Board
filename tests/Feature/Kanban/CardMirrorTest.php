@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\Role;
+use App\Livewire\Boards\ListColumn;
 use App\Livewire\Boards\Show;
 use App\Livewire\Cards\CardDetail;
 use App\Models\Board;
@@ -27,7 +28,8 @@ test('a mirrored card renders on its target list', function () {
     $target = BoardList::factory()->create(['board_id' => $board->id]);
     $mirror = CardMirror::create(['card_id' => $card->id, 'board_list_id' => $target->id, 'board_id' => $board->id, 'created_by' => $owner->id, 'position' => 0]);
 
-    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+    // Mirrors are rendered by the target list's column component.
+    Livewire::actingAs($owner)->test(ListColumn::class, ['board' => $board, 'list' => $target])
         ->assertSeeHtml('mirror-'.$mirror->id)
         ->assertSee($card->title);
 });

@@ -57,12 +57,27 @@ class ListColumn extends Component
     public function getListeners(): array
     {
         return [
-            // Another user changed the board → re-sync this column.
-            "echo-private:board.{$this->board->id},.board.activity" => '$refresh',
+            // Another user changed the board → refresh only if this list is affected.
+            "echo-private:board.{$this->board->id},.board.activity" => 'onRemoteActivity',
             // A cross-column action (card left/entered a list, or a list-menu bulk
             // action on Show) asks the affected columns to refresh.
             'cards:refresh' => 'refreshIfAffected',
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $event  the BoardActivity payload
+     */
+    public function onRemoteActivity(array $event = []): void
+    {
+        $listIds = $event['listIds'] ?? [];
+
+        // Empty listIds = a board-level change → refresh. Otherwise refresh only
+        // when this column's list is among the ones that changed. (Falls back to a
+        // full refresh if the payload is ever absent — no worse than before.)
+        if (is_array($listIds) && $listIds !== [] && ! in_array($this->list->id, $listIds, true)) {
+            $this->skipRender();
+        }
     }
 
     public function refreshIfAffected(?int $listId = null): void
@@ -71,6 +86,12 @@ class ListColumn extends Component
         if ($listId !== null && $listId !== $this->list->id) {
             $this->skipRender();
         }
+    }
+
+    /** Skeleton shown while the column lazy-loads its cards (progressive paint). */
+    public function placeholder(): View
+    {
+        return view('livewire.boards.list-column-placeholder');
     }
 
     public function render(): View

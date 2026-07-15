@@ -12,21 +12,24 @@ test('archiving a list hides it with its cards, restoring brings them back', fun
     $a = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id, 'title' => 'Carte Alpha']);
     Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id, 'title' => 'Carte Beta']);
 
+    // The list (and its column) is visible; its cards render inside the column.
     $component = Livewire::actingAs($owner)
         ->test(Show::class, ['board' => $board])
-        ->assertSee('Sprint')
-        ->assertSee('Carte Alpha');
+        ->assertSee('Sprint');
+    Livewire::actingAs($owner)->test(ListColumn::class, ['board' => $board, 'list' => $list])
+        ->assertSee('Carte Alpha')
+        ->assertSee('Carte Beta');
 
-    $component->call('archiveList', $list->id)
-        ->assertDontSee('Sprint')
-        ->assertDontSee('Carte Alpha');
+    // Archiving the list removes it (and its column) from the board.
+    $component->call('archiveList', $list->id)->assertDontSee('Sprint');
 
     // The list is archived but its cards are untouched (just hidden with the list).
     expect($list->fresh()->archived_at)->not->toBeNull()
         ->and($a->fresh()->archived_at)->toBeNull();
 
-    $component->call('restoreList', $list->id)
-        ->assertSee('Sprint')
+    // Restoring brings the list back, cards intact.
+    $component->call('restoreList', $list->id)->assertSee('Sprint');
+    Livewire::actingAs($owner)->test(ListColumn::class, ['board' => $board, 'list' => $list->fresh()])
         ->assertSee('Carte Alpha')
         ->assertSee('Carte Beta');
 });
