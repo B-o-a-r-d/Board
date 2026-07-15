@@ -30,6 +30,12 @@ class ListColumn extends Component
     /** @var array<int, string> New-card title, keyed by list id (shared trait shape). */
     public array $newCardTitle = [];
 
+    /** How many cards this column currently renders (grown by {@see loadMore}). */
+    public int $visibleCards = self::PAGE_SIZE;
+
+    /** Cards rendered per page; a heavy list only paints this many up front. */
+    private const PAGE_SIZE = 50;
+
     /** Card filters owned by the parent Show; re-render this column when they change. */
     #[Reactive]
     public string $search = '';
@@ -94,18 +100,32 @@ class ListColumn extends Component
         return view('livewire.boards.list-column-placeholder');
     }
 
+    /** Reveal the next page of cards (infinite scroll / "load more" on heavy lists). */
+    public function loadMore(): void
+    {
+        $this->visibleCards += self::PAGE_SIZE;
+    }
+
     public function render(): View
     {
-        $cards = $this->list->cards()
-            ->whereNull('archived_at')
+        // A heavy list only paints its first page; the rest loads on scroll so a
+        // 300-card column never renders 300 partials at once.
+        $query = $this->list->cards()->whereNull('archived_at');
+        $this->applyCardFilters($query);
+
+        $total = (clone $query)->count();
+
+        $cards = $query
             ->orderBy('position')
             ->withCount('attachments')
-            ->with(['members', 'labels', 'checklists.items', 'customFieldValues']);
-
-        $this->applyCardFilters($cards);
+            ->with(['members', 'labels', 'checklists.items', 'customFieldValues'])
+            ->limit($this->visibleCards)
+            ->get();
 
         return view('livewire.boards.list-column', [
-            'cards' => $cards->get(),
+            'cards' => $cards,
+            'hasMore' => $total > $cards->count(),
+            'remaining' => max(0, $total - $cards->count()),
             'mirrors' => $this->list->mirrors()->with([
                 'card' => fn ($q) => $q->whereNull('archived_at')->withCount('attachments'),
                 'card.members', 'card.labels', 'card.checklists.items', 'card.board:id,name,public_id',
