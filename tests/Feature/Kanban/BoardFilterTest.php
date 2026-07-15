@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Boards\ListColumn;
 use App\Livewire\Boards\Show;
 use App\Models\Board;
 use App\Models\BoardList;
@@ -21,26 +22,26 @@ function boardWithTwoCards(): array
     return compact('board', 'owner', 'list', 'a', 'b');
 }
 
+// Card visibility under filters is rendered by the per-list ListColumn (which
+// receives the filters as reactive props from Show), so it is asserted there.
 test('text search filters cards (case-insensitive)', function () {
-    ['board' => $board, 'owner' => $owner] = boardWithTwoCards();
+    ['board' => $board, 'owner' => $owner, 'list' => $list] = boardWithTwoCards();
 
-    Livewire::actingAs($owner)
-        ->test(Show::class, ['board' => $board])
+    Livewire::actingAs($owner)->test(ListColumn::class, ['board' => $board, 'list' => $list])
         ->assertSee('Corriger le login')
-        ->assertSee('Refonte page accueil')
-        ->set('search', 'LOGIN')
+        ->assertSee('Refonte page accueil');
+
+    Livewire::actingAs($owner)->test(ListColumn::class, ['board' => $board, 'list' => $list, 'search' => 'LOGIN'])
         ->assertSee('Corriger le login')
         ->assertDontSee('Refonte page accueil');
 });
 
 test('label filter shows only cards with that label', function () {
-    ['board' => $board, 'owner' => $owner, 'a' => $a, 'b' => $b] = boardWithTwoCards();
+    ['board' => $board, 'owner' => $owner, 'list' => $list, 'a' => $a, 'b' => $b] = boardWithTwoCards();
     $label = Label::factory()->create(['board_id' => $board->id]);
     $a->labels()->attach($label);
 
-    Livewire::actingAs($owner)
-        ->test(Show::class, ['board' => $board])
-        ->call('toggleLabel', $label->id)
+    Livewire::actingAs($owner)->test(ListColumn::class, ['board' => $board, 'list' => $list, 'filterLabels' => [$label->id]])
         ->assertSee($a->title)
         ->assertDontSee($b->title);
 });
@@ -49,36 +50,38 @@ test('member filter shows only cards assigned to that member', function () {
     ['board' => $board, 'owner' => $owner, 'member' => $member] = makeCardContext();
     $list = BoardList::factory()->create(['board_id' => $board->id]);
     $mine = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id, 'title' => 'Ma carte assignée']);
-    $other = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id, 'title' => 'Carte des autres']);
+    Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id, 'title' => 'Carte des autres']);
     $mine->members()->attach($member->id);
 
-    Livewire::actingAs($owner)
-        ->test(Show::class, ['board' => $board])
-        ->call('toggleMember', $member->id)
+    Livewire::actingAs($owner)->test(ListColumn::class, ['board' => $board, 'list' => $list, 'filterMembers' => [$member->id]])
         ->assertSee('Ma carte assignée')
         ->assertDontSee('Carte des autres');
 });
 
 test('overdue filter shows only past-due incomplete cards', function () {
-    ['board' => $board, 'owner' => $owner, 'a' => $a, 'b' => $b] = boardWithTwoCards();
+    ['board' => $board, 'owner' => $owner, 'list' => $list, 'a' => $a, 'b' => $b] = boardWithTwoCards();
     $a->update(['due_at' => now()->subDay()]);
 
-    Livewire::actingAs($owner)
-        ->test(Show::class, ['board' => $board])
-        ->set('filterDue', 'overdue')
+    Livewire::actingAs($owner)->test(ListColumn::class, ['board' => $board, 'list' => $list, 'filterDue' => 'overdue'])
         ->assertSee($a->title)
         ->assertDontSee($b->title);
 });
 
 test('reset filters restores all cards', function () {
-    ['board' => $board, 'owner' => $owner, 'b' => $b] = boardWithTwoCards();
+    ['board' => $board, 'owner' => $owner, 'list' => $list, 'b' => $b] = boardWithTwoCards();
 
-    Livewire::actingAs($owner)
-        ->test(Show::class, ['board' => $board])
+    // Filtered out of the column…
+    Livewire::actingAs($owner)->test(ListColumn::class, ['board' => $board, 'list' => $list, 'search' => 'login'])
+        ->assertDontSee($b->title);
+
+    // …resetFilters clears the state on Show…
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
         ->set('search', 'login')
-        ->assertDontSee($b->title)
         ->call('resetFilters')
-        ->assertSet('search', '')
+        ->assertSet('search', '');
+
+    // …and with no filter the card shows again.
+    Livewire::actingAs($owner)->test(ListColumn::class, ['board' => $board, 'list' => $list])
         ->assertSee($b->title);
 });
 
@@ -96,15 +99,13 @@ test('toggleLabel adds then removes an id and applyFilter sets the due filter', 
 });
 
 test('the label filter matches cards having ANY selected label', function () {
-    ['board' => $board, 'owner' => $owner, 'a' => $a, 'b' => $b] = boardWithTwoCards();
+    ['board' => $board, 'owner' => $owner, 'list' => $list, 'a' => $a, 'b' => $b] = boardWithTwoCards();
     $l1 = Label::factory()->create(['board_id' => $board->id]);
     $l2 = Label::factory()->create(['board_id' => $board->id]);
     $a->labels()->attach($l1);
     $b->labels()->attach($l2);
 
-    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
-        ->call('toggleLabel', $l1->id)
-        ->call('toggleLabel', $l2->id)
+    Livewire::actingAs($owner)->test(ListColumn::class, ['board' => $board, 'list' => $list, 'filterLabels' => [$l1->id, $l2->id]])
         ->assertSee($a->title)
         ->assertSee($b->title);
 });
@@ -116,9 +117,13 @@ test('the "sans membre" filter shows only unassigned cards', function () {
     Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id, 'title' => 'Carte libre']);
     $assigned->members()->attach($member->id);
 
+    // Filter state toggles on Show…
     Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
         ->call('toggleUnassigned')
-        ->assertSet('filterUnassigned', true)
+        ->assertSet('filterUnassigned', true);
+
+    // …and the column shows only unassigned cards.
+    Livewire::actingAs($owner)->test(ListColumn::class, ['board' => $board, 'list' => $list, 'filterUnassigned' => true])
         ->assertSee('Carte libre')
         ->assertDontSee('Carte assignée');
 });

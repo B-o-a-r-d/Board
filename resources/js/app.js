@@ -12,6 +12,7 @@ import './select-menu';
 import './markdown-editor';
 import './comment-editor';
 import './card-sortable';
+import './selection';
 import './timeline';
 import './hover-card';
 import './public-presence';

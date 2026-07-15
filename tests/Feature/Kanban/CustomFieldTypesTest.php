@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Boards\ListColumn;
 use App\Livewire\Boards\Show;
 use App\Livewire\Cards\CardDetail;
 use App\Models\BoardList;
@@ -165,8 +166,7 @@ test('custom field values render as badges on the board card face', function () 
     $field = makeField(['board_id' => $board->id, 'name' => 'Priorité', 'type' => 'select', 'options' => ['Basse', 'Haute']]);
     $card->customFieldValues()->create(['custom_field_id' => $field->id, 'value' => 'Haute']);
 
-    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
-        ->call('loadCards')
+    Livewire::actingAs($owner)->test(ListColumn::class, ['board' => $board, 'list' => $card->list])
         ->assertSee('Priorité')
         ->assertSee('Haute');
 });
@@ -262,8 +262,7 @@ test('a card-scoped field value does not leak onto other cards on the board', fu
     // A stray value on the other card must not render since the field doesn't apply.
     $other->customFieldValues()->create(['custom_field_id' => $field->id, 'value' => 'Leaked']);
 
-    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
-        ->call('loadCards')
+    Livewire::actingAs($owner)->test(ListColumn::class, ['board' => $board, 'list' => $card->list])
         ->assertSee('Secret')
         ->assertDontSee('Leaked');
 });

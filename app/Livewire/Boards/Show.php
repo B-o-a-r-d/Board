@@ -7,7 +7,7 @@ use App\Automations\Actions\SortListAction;
 use App\Automations\AutomationEngine;
 use App\Enums\CustomFieldType;
 use App\Enums\Role;
-use App\Events\BoardActivity;
+use App\Livewire\Boards\Concerns\InteractsWithBoardCards;
 use App\Models\Activity;
 use App\Models\Board;
 use App\Models\BoardList;
@@ -24,7 +24,6 @@ use Board\PluginSdk\PluginRegistry;
 use Board\PluginSdk\Support\PluginSettings;
 use Board\PluginSdk\Support\SafeUrl;
 use Illuminate\Contracts\View\View;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -39,7 +38,7 @@ use Livewire\WithFileUploads;
 #[Layout('components.layouts.app')]
 class Show extends Component
 {
-    use WithFileUploads;
+    use InteractsWithBoardCards, WithFileUploads;
 
     public Board $board;
 
@@ -464,14 +463,6 @@ class Show extends Component
         $this->broadcastActivity('board.members');
     }
 
-    /**
-     * Whether classic-list cards have been loaded. Starts false so the board
-     * paints instantly with a skeleton, then `wire:init="loadCards"` flips it.
-     * Eager in tests (no JS to fire wire:init) so rendered assertions still see
-     * cards; the deferred path is covered by a dedicated test.
-     */
-    public bool $cardsReady = false;
-
     public function mount(Board $board): void
     {
         $this->authorize('view', $board);
@@ -490,22 +481,6 @@ class Show extends Component
         if ($this->timelineStart === '') {
             $this->timelineStart = now()->startOfWeek(Carbon::MONDAY)->format('Y-m-d');
         }
-
-        $this->cardsReady = app()->runningUnitTests();
-    }
-
-    public function loadCards(): void
-    {
-        $this->cardsReady = true;
-    }
-
-    /**
-     * Guard a content mutation: contributors only. Read-only roles (Observer)
-     * can `view` but not `contribute`, so this 403s them.
-     */
-    private function authorizeContribution(): void
-    {
-        $this->authorize('contribute', $this->board);
     }
 
     /** Remove a mirror placement from this board (the source card is untouched). */
@@ -518,23 +493,6 @@ class Show extends Component
     }
 
     /** One-click complete/uncomplete from the card's hover toolbar on the board. */
-    public function toggleCardComplete(int $cardId): void
-    {
-        $this->authorizeContribution();
-
-        $card = $this->board->cards()->findOrFail($cardId);
-        $card->update(['completed_at' => $card->completed_at ? null : now()]);
-
-        $type = $card->completed_at ? 'card.completed' : 'card.uncompleted';
-        $this->logActivity($type, $card->id, ['card_title' => $card->title]);
-        $this->broadcastActivity($type);
-
-        // Let automations react (e.g. "when a card is completed → move to Done").
-        if ($card->completed_at) {
-            app(AutomationEngine::class)->fire('card.completed', $card->fresh());
-        }
-    }
-
     public function setView(string $view): void
     {
         $this->view = in_array($view, ['board', 'calendar', 'timeline', 'table', 'dashboard'], true) ? $view : 'board';
@@ -1278,18 +1236,6 @@ class Show extends Component
         }
     }
 
-    /**
-     * A phantom card carrying the board + list context, so board-scope
-     * automation actions can run against a list without a real card.
-     */
-    private function phantomListCard(int $listId): Card
-    {
-        $card = new Card(['board_id' => $this->board->id, 'board_list_id' => $listId]);
-        $card->setRelation('board', $this->board);
-
-        return $card;
-    }
-
     public function restoreList(int $listId): void
     {
         $this->authorizeContribution();
@@ -1362,80 +1308,6 @@ class Show extends Component
         $this->skipRender();
     }
 
-    public function addCard(int $listId): void
-    {
-        $this->authorizeContribution();
-
-        $title = trim($this->newCardTitle[$listId] ?? '');
-
-        if ($title === '') {
-            return;
-        }
-
-        $list = $this->listForBoard($listId);
-
-        $card = $list->cards()->create([
-            'board_id' => $this->board->id,
-            'created_by' => Auth::id(),
-            'title' => $title,
-            'position' => (int) $list->cards()->max('position') + 1,
-        ]);
-
-        $this->logActivity('card.created', $card->id, ['card_title' => $card->title, 'list' => $list->name]);
-
-        app(AutomationEngine::class)->fire('card.created', $card, ['list_id' => $list->id]);
-
-        $this->newCardTitle[$listId] = '';
-        $this->broadcastActivity('card.created');
-
-        // Open the new card's detail modal so the user can fill it in right away.
-        $this->dispatch('open-card', cardId: $card->id);
-    }
-
-    public function addCardFromTemplate(int $listId, int $templateId): void
-    {
-        $this->authorizeContribution();
-
-        $list = $this->listForBoard($listId);
-        $template = CardTemplate::findOrFail($templateId);
-
-        $card = $list->cards()->create([
-            'board_id' => $this->board->id,
-            'created_by' => Auth::id(),
-            'title' => $template->title,
-            'description' => $template->description,
-            'cover_color' => $template->cover_color,
-            'position' => (int) $list->cards()->max('position') + 1,
-        ]);
-
-        foreach ($template->checklists ?? [] as $checklistIndex => $checklist) {
-            $newChecklist = $card->checklists()->create([
-                'title' => $checklist['title'] ?? 'Checklist',
-                'position' => $checklistIndex,
-            ]);
-
-            foreach ($checklist['items'] ?? [] as $itemIndex => $content) {
-                $newChecklist->items()->create(['content' => $content, 'position' => $itemIndex]);
-            }
-        }
-
-        $this->logActivity('card.created', $card->id, ['card_title' => $card->title, 'list' => $list->name, 'from_template' => true]);
-        app(AutomationEngine::class)->fire('card.created', $card, ['list_id' => $list->id]);
-        $this->broadcastActivity('card.created');
-        $this->dispatch('toast', message: __('Carte créée depuis le modèle'), type: 'success');
-    }
-
-    public function archiveCard(int $cardId): void
-    {
-        $this->authorizeContribution();
-
-        $card = $this->cardForBoard($cardId);
-        $card->update(['archived_at' => now()]);
-        $this->logActivity('card.archived', $cardId, ['card_title' => $card->title, 'list' => $card->list?->name]);
-        app(AutomationEngine::class)->fire('card.archived', $card);
-        $this->broadcastActivity('card.archived');
-    }
-
     public function restoreCard(int $cardId): void
     {
         $this->authorizeContribution();
@@ -1462,105 +1334,6 @@ class Show extends Component
 
         $card->delete();
         $this->broadcastActivity('card.deleted');
-    }
-
-    public function duplicateCard(int $cardId): void
-    {
-        $this->authorizeContribution();
-
-        $card = $this->board->cards()->with(['labels', 'members'])->findOrFail($cardId);
-
-        $copy = $card->list->cards()->create([
-            'board_id' => $this->board->id,
-            'created_by' => Auth::id(),
-            'title' => $card->title.' (copie)',
-            'description' => $card->description,
-            'cover_path' => $card->cover_path,
-            'cover_color' => $card->cover_color,
-            'due_at' => $card->due_at,
-            'position' => (int) $card->list->cards()->max('position') + 1,
-        ]);
-
-        $copy->labels()->attach($card->labels->pluck('id'));
-        $copy->members()->attach($card->members->pluck('id'));
-
-        $this->logActivity('card.duplicated', $copy->id, ['from' => $card->id]);
-        // "Added to board/list" also means copied (Butler semantics).
-        app(AutomationEngine::class)->fire('card.created', $copy, ['list_id' => $copy->board_list_id]);
-        $this->broadcastActivity('card.duplicated');
-        $this->dispatch('toast', message: __('Carte dupliquée'), type: 'success');
-    }
-
-    public function moveCard(int $id, int $position, int $listId): void
-    {
-        $this->authorizeContribution();
-
-        $card = $this->cardForBoard($id);
-        $targetList = $this->listForBoard($listId);
-        $sourceListId = $card->board_list_id;
-        $sourceListName = $card->list?->name;
-
-        $card->board_list_id = $targetList->id;
-        $card->save();
-
-        $this->resequence($targetList->id, $id, $position);
-
-        $ranAutomations = 0;
-
-        if ($sourceListId !== $targetList->id) {
-            $this->resequence($sourceListId);
-            $this->logActivity('card.moved', $card->id, ['card_title' => $card->title, 'from_list' => $sourceListName, 'to_list' => $targetList->name]);
-
-            $ranAutomations = app(AutomationEngine::class)->fire('card.moved', $card->fresh(), [
-                'to_list_id' => $targetList->id,
-                'from_list_id' => $sourceListId,
-            ]);
-        }
-
-        $this->broadcastActivity('card.moved');
-
-        // Optimistic UI: the card is already in place client-side, so skip the
-        // acting user's re-render to avoid a morph flicker (others re-render
-        // from the broadcast). But if an automation mutated the card, re-render
-        // so the actor sees the result.
-        if ($ranAutomations === 0) {
-            $this->skipRender();
-        }
-    }
-
-    /**
-     * Move a card to the end of another list without drag & drop — the reliable
-     * path on touch devices, exposed via the card's "Déplacer vers…" menu. Unlike
-     * moveCard this always re-renders so the actor sees the card jump columns.
-     */
-    public function moveCardToList(int $cardId, int $listId): void
-    {
-        $this->authorizeContribution();
-
-        $card = $this->cardForBoard($cardId);
-        $targetList = $this->listForBoard($listId);
-        $sourceListId = $card->board_list_id;
-        $sourceListName = $card->list?->name;
-
-        if ($sourceListId === $targetList->id) {
-            return;
-        }
-
-        $card->board_list_id = $targetList->id;
-        $card->position = (int) $targetList->cards()->max('position') + 1;
-        $card->save();
-
-        $this->resequence($targetList->id);
-        $this->resequence($sourceListId);
-
-        $this->logActivity('card.moved', $card->id, ['card_title' => $card->title, 'from_list' => $sourceListName, 'to_list' => $targetList->name]);
-
-        app(AutomationEngine::class)->fire('card.moved', $card->fresh(), [
-            'to_list_id' => $targetList->id,
-            'from_list_id' => $sourceListId,
-        ]);
-
-        $this->broadcastActivity('card.moved');
     }
 
     /**
@@ -1645,57 +1418,6 @@ class Show extends Component
         $this->broadcastActivity('card.labels');
     }
 
-    /**
-     * Renumber a list's cards, optionally inserting a moved card at a position.
-     */
-    private function resequence(int $listId, ?int $movedId = null, ?int $position = null): void
-    {
-        $ids = Card::query()
-            ->where('board_list_id', $listId)
-            ->when($movedId !== null, fn ($query) => $query->where('id', '!=', $movedId))
-            ->orderBy('position')
-            ->pluck('id')
-            ->all();
-
-        if ($movedId !== null && $position !== null) {
-            $position = max(0, min($position, count($ids)));
-            array_splice($ids, $position, 0, [$movedId]);
-        }
-
-        foreach ($ids as $index => $cardId) {
-            Card::whereKey($cardId)->update(['position' => $index]);
-        }
-    }
-
-    private function listForBoard(int $listId): BoardList
-    {
-        return $this->board->lists()->findOrFail($listId);
-    }
-
-    private function cardForBoard(int $cardId): Card
-    {
-        return $this->board->cards()->findOrFail($cardId);
-    }
-
-    private function broadcastActivity(string $action): void
-    {
-        broadcast(new BoardActivity($this->board->id, $action, Auth::id()))->toOthers();
-    }
-
-    /**
-     * @param  array<string, mixed>  $properties
-     */
-    private function logActivity(string $type, ?int $cardId = null, array $properties = []): void
-    {
-        Activity::create([
-            'board_id' => $this->board->id,
-            'card_id' => $cardId,
-            'user_id' => Auth::id(),
-            'type' => $type,
-            'properties' => $properties,
-        ]);
-    }
-
     public function render(): View
     {
         $lists = $this->view === 'board'
@@ -1706,24 +1428,9 @@ class Show extends Component
                     $query->whereNull('archived_at');
                     $this->applyCardFilters($query);
                 }])
-                // Cards themselves are deferred until loadCards() (skeleton first).
-                ->when($this->cardsReady, fn ($q) => $q->with([
-                    'cards' => function ($query) {
-                        $query->whereNull('archived_at')->orderBy('position')->withCount('attachments');
-                        $this->applyCardFilters($query);
-                    },
-                    'cards.members',
-                    'cards.labels',
-                    'cards.checklists.items',
-                    'cards.customFieldValues',
-                    // Cards mirrored INTO this board's lists (same underlying cards).
-                    'mirrors' => fn ($q) => $q->orderBy('position'),
-                    'mirrors.card' => fn ($q) => $q->whereNull('archived_at')->withCount('attachments'),
-                    'mirrors.card.members',
-                    'mirrors.card.labels',
-                    'mirrors.card.checklists.items',
-                    'mirrors.card.board:id,name,public_id',
-                ]))
+                // Cards + mirrors are rendered by each list's own <livewire:board.list-column>,
+                // so the board view only needs the lists and their filtered counts —
+                // no more loading every card into Show on each of its re-renders.
                 ->orderBy('position')
                 ->get()
             // The table view needs the lists (name + move target) but not the
@@ -2028,38 +1735,5 @@ class Show extends Component
             'weekDays' => $weekDays,
             'weeks' => array_chunk($days, 7),
         ];
-    }
-
-    /**
-     * Apply the board's card filters (text, label, member, due state).
-     *
-     * @param  HasMany<Card, BoardList>  $query
-     */
-    private function applyCardFilters($query): void
-    {
-        if ($this->search !== '') {
-            $term = '%'.mb_strtolower(trim($this->search)).'%';
-            $query->where(function ($scoped) use ($term) {
-                $scoped->whereRaw('LOWER(title) LIKE ?', [$term])
-                    ->orWhereRaw('LOWER(description) LIKE ?', [$term]);
-            });
-        }
-
-        if ($this->filterLabels !== []) {
-            $query->whereHas('labels', fn ($labels) => $labels->whereIn('labels.id', $this->filterLabels));
-        }
-
-        if ($this->filterUnassigned) {
-            $query->whereDoesntHave('members');
-        } elseif ($this->filterMembers !== []) {
-            $query->whereHas('members', fn ($members) => $members->whereIn('users.id', $this->filterMembers));
-        }
-
-        match ($this->filterDue) {
-            'overdue' => $query->whereNotNull('due_at')->whereNull('completed_at')->where('due_at', '<', now()),
-            'due' => $query->whereNotNull('due_at'),
-            'none' => $query->whereNull('due_at'),
-            default => null,
-        };
     }
 }

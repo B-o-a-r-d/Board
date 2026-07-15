@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Boards\ListColumn;
 use App\Livewire\Boards\Show;
 use App\Models\BoardList;
 use App\Models\Card;
@@ -35,14 +36,18 @@ test('archiving a card hides it, restoring brings it back', function () {
     $list = BoardList::factory()->create(['board_id' => $board->id]);
     $card = Card::factory()->create(['board_list_id' => $list->id, 'board_id' => $board->id, 'title' => 'Carte Zeta']);
 
-    $component = Livewire::actingAs($owner)
-        ->test(Show::class, ['board' => $board])
-        ->assertSee('Carte Zeta');
-
-    $component->call('archiveCard', $card->id)->assertDontSee('Carte Zeta');
+    // The card lives in its list column; archiving it there hides it.
+    Livewire::actingAs($owner)->test(ListColumn::class, ['board' => $board, 'list' => $list])
+        ->assertSee('Carte Zeta')
+        ->call('archiveCard', $card->id)
+        ->assertDontSee('Carte Zeta');
     expect($card->fresh()->archived_at)->not->toBeNull();
 
-    $component->call('restoreCard', $card->id)->assertSee('Carte Zeta');
+    // Restoring (trash panel action on Show) brings it back to the column.
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])->call('restoreCard', $card->id);
+    expect($card->fresh()->archived_at)->toBeNull();
+    Livewire::actingAs($owner)->test(ListColumn::class, ['board' => $board, 'list' => $list])
+        ->assertSee('Carte Zeta');
 });
 
 test('the trash panel lists archived items and can delete them permanently', function () {

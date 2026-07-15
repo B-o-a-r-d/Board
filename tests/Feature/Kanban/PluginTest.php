@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\Role;
+use App\Livewire\Boards\ListColumn;
 use App\Livewire\Boards\PluginList;
 use App\Livewire\Boards\Show;
 use App\Mcp\Servers\BoardServer;
@@ -47,21 +48,15 @@ function makePluginBoard(): array
     return compact('board', 'owner', 'member');
 }
 
-test('classic list cards are lazy-loaded behind an animated skeleton', function () {
+test('classic list cards render in their own list-column component', function () {
     ['board' => $board, 'owner' => $owner] = makePluginBoard();
     $list = BoardList::factory()->create(['board_id' => $board->id]);
-    Card::factory()->create(['board_id' => $board->id, 'board_list_id' => $list->id, 'title' => 'Ma carte lazy']);
+    Card::factory()->create(['board_id' => $board->id, 'board_list_id' => $list->id, 'title' => 'Ma carte']);
 
-    $component = Livewire::actingAs($owner)->test(Show::class, ['board' => $board]);
-
-    // Force the pre-load state the browser sees before wire:init fires.
-    $component->set('cardsReady', false)
-        ->assertSee('animate-pulse', false)
-        ->assertDontSee('Ma carte lazy');
-
-    $component->call('loadCards')
-        ->assertSet('cardsReady', true)
-        ->assertSee('Ma carte lazy');
+    // Cards live in a per-list ListColumn (extracted from Show so a card action
+    // re-renders only its column). A plugin-sourced list keeps its own child.
+    Livewire::actingAs($owner)->test(ListColumn::class, ['board' => $board, 'list' => $list])
+        ->assertSee('Ma carte');
 });
 
 test('the connector plugin auto-registers into the registry via its provider', function () {

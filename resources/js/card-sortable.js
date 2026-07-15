@@ -72,11 +72,13 @@ window.initCardSortable = function (el, wire) {
         delayOnTouchOnly: true,
         touchStartThreshold: 5,
         // Fallback drag avoids the native HTML5 drag image the browser would
-        // otherwise build from any <img> inside the card. Keep the clone off
-        // <body> so it stays inside the board's Alpine scope — otherwise Alpine
-        // re-inits the cloned card out of scope (selected/selectMode undefined).
+        // otherwise build from any <img> inside the card. Append the clone to
+        // <body> so the drag preview follows the pointer everywhere — inside the
+        // list the clone is clipped by the column's overflow + backdrop-filter
+        // (which makes it the containing block for the fixed-positioned clone).
         forceFallback: true,
-        fallbackOnBody: false,
+        fallbackOnBody: true,
+        fallbackClass: 'board-drag-clone',
         animation: 150,
         ghostClass: 'opacity-40',
         onStart: () => {

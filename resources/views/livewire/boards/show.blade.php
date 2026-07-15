@@ -1,4 +1,4 @@
-<div x-data="{ selected: [], helpOpen: false, selectMode: false, toggleCard(id) { this.selected.includes(id) ? this.selected = this.selected.filter(i => i !== id) : this.selected.push(id); } }"
+<div x-data="{ helpOpen: false }"
      @keydown.window="
         if ($event.metaKey || $event.ctrlKey || $event.altKey) return;
         if ($event.target.matches('input, textarea, select, [contenteditable]')) return;
@@ -10,7 +10,6 @@
         else if ($event.key === '?') { helpOpen = true; }
      "
      @open-shortcuts.window="helpOpen = true"
-     wire:init="loadCards"
      class="-mb-8 flex h-[calc(100dvh-6rem)] flex-col">
     @php $boardBg = $board->backgroundStyle(); @endphp
     @if ($boardBg)
@@ -189,9 +188,9 @@
                     </button>
 
                     @if ($canContribute)
-                    <button type="button" @click="selectMode = ! selectMode; if (! selectMode) selected = []"
+                    <button type="button" @click="$store.selection.toggleMode()"
                             class="w-8 {{ $topBtn }}"
-                            :class="selectMode && '!border-indigo-400 !bg-indigo-50 !text-indigo-600 dark:!border-indigo-500/40 dark:!bg-indigo-500/15 dark:!text-indigo-300'"
+                            :class="$store.selection.mode && '!border-indigo-400 !bg-indigo-50 !text-indigo-600 dark:!border-indigo-500/40 dark:!bg-indigo-500/15 dark:!text-indigo-300'"
                             title="{{ __('Sélectionner des cartes') }}">
                         <x-phosphor-check-square class="h-4 w-4"/>
                     </button>
@@ -540,251 +539,19 @@
                 </x-context-menu>
 
                 @if (! $list->isPluginList())
-                {{-- Cards --}}
-                @if ($cardsReady)
-                <ul
-                    x-ref="cards"
-                    @if ($canContribute) x-init="window.initCardSortable($el, $wire)" @endif
-                    data-list-id="{{ $list->id }}"
-                    class="flex min-h-2 flex-col gap-2 overflow-y-auto px-2 @unless ($canContribute) pb-3 @endunless"
-                >
-                    @foreach ($list->cards as $card)
-                        @php
-                            $items = $card->checklists->flatMap->items;
-                            $itemsTotal = $items->count();
-                            $itemsDone = $items->where('is_completed', true)->count();
-                            $overdue = $card->due_at && ! $card->completed_at && $card->due_at->isPast();
-                        @endphp
-                        <li
-                            wire:key="card-{{ $card->id }}"
-                            data-card
-                            data-card-id="{{ $card->id }}"
-                            class="group relative shrink-0 cursor-grab overflow-hidden rounded-lg border bg-white text-sm shadow-sm dark:bg-neutral-800"
-                            :class="selected.includes({{ $card->id }}) ? 'border-indigo-500 dark:border-indigo-500' : 'border-neutral-200 dark:border-neutral-700'"
-                            x-on:click.capture="selectMode && (toggleCard({{ $card->id }}), $event.stopPropagation(), $event.preventDefault())"
-                        >
-                            {{-- Selection overlay (visual only; the whole card is clickable in select mode). --}}
-                            <div x-show="selectMode" x-cloak wire:sort:ignore
-                                 class="pointer-events-none absolute inset-0 z-20 transition"
-                                 :class="selected.includes({{ $card->id }}) ? 'bg-indigo-500/10' : ''">
-                                <span class="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-md border-2 shadow"
-                                      :class="selected.includes({{ $card->id }}) ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-neutral-400 bg-white dark:border-neutral-500 dark:bg-neutral-900'">
-                                    <svg x-show="selected.includes({{ $card->id }})" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-8 8a1 1 0 01-1.4 0l-4-4a1 1 0 011.4-1.4L8 12.6l7.3-7.3a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
-                                </span>
-                            </div>
-
-                            <x-context-menu class="block">
-                                <x-slot:trigger>
-                                    @if ($card->cover_path)
-                                        <img src="{{ $card->coverUrl() }}" alt="" draggable="false"
-                                             wire:click="$dispatch('open-card', { cardId: {{ $card->id }} })"
-                                             class="h-24 w-full object-cover">
-                                    @elseif ($card->cover_color)
-                                        <div class="h-9 w-full"
-                                             wire:click="$dispatch('open-card', { cardId: {{ $card->id }} })"
-                                             style="background-color: {{ $card->cover_color }}"></div>
-                                    @endif
-
-                                    {{-- Clicking anywhere on the card body opens it (drag suppresses the click). --}}
-                                    <div class="relative p-2.5" wire:click="$dispatch('open-card', { cardId: {{ $card->id }} })">
-                                        @if ($card->labels->isNotEmpty())
-                                            <div class="mb-1.5 flex flex-wrap gap-1">
-                                                @foreach ($card->labels as $label)
-                                                    <span class="h-1.5 w-8 rounded-full"
-                                                          style="background-color: {{ $label->color }}"
-                                                          title="{{ $label->name }}"></span>
-                                                @endforeach
-                                            </div>
-                                        @endif
-
-                                        {{-- Hover toolbar (top-right): one-click "mark done" + options --}}
-                                        <div class="absolute right-1.5 top-1.5 z-10 flex items-center gap-1">
-                                            <button type="button" wire:sort:ignore
-                                                    @click.stop="openAt($event.clientX, $event.clientY)"
-                                                    class="flex h-5 w-5 items-center justify-center rounded text-neutral-400 opacity-0 transition hover:bg-neutral-200 hover:text-neutral-700 group-hover:opacity-100 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
-                                                    title="{{ __('Options de la carte (clic droit aussi)') }}">
-                                                <x-phosphor-dots-three class="h-4 w-4"/>
-                                            </button>
-                                            @if ($canContribute)
-                                                <button type="button" wire:sort:ignore
-                                                        wire:click.stop="toggleCardComplete({{ $card->id }})"
-                                                        title="{{ $card->completed_at ? __('Marquer non terminée') : __('Marquer terminée') }}"
-                                                        aria-label="{{ $card->completed_at ? __('Marquer non terminée') : __('Marquer terminée') }}"
-                                                        class="flex h-5 w-5 items-center justify-center rounded-full border shadow-sm transition {{ $card->completed_at ? 'border-green-500 bg-green-500 text-white' : 'border-neutral-300 bg-white text-neutral-300 opacity-0 hover:border-green-500 hover:text-green-500 group-hover:opacity-100 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-500' }}">
-                                                    <x-phosphor-check class="h-3 w-3"/>
-                                                </button>
-                                            @endif
-                                        </div>
-
-                                        <span class="block break-words text-left font-medium {{ $card->completed_at ? 'pr-8 text-neutral-500 line-through decoration-neutral-400' : '' }}">{{ $card->title }}</span>
-
-                                        {{-- Badges --}}
-                                        @if ($card->due_at || $itemsTotal > 0 || $card->attachments_count > 0)
-                                            <div
-                                                class="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
-                                                @if ($card->due_at)
-                                                    <span
-                                                        class="rounded px-1.5 py-0.5 {{ $overdue ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400' : 'bg-neutral-100 dark:bg-neutral-700/50' }}">
-                                                        {{ $card->due_at->translatedFormat('d M') }}
-                                                    </span>
-                                                @endif
-                                                @if ($itemsTotal > 0)
-                                                    <span
-                                                        class="{{ $itemsDone === $itemsTotal ? 'text-green-600 dark:text-green-400' : '' }}"><x-phosphor-check
-                                                            class="inline-flex self-center h-4 w-4"/> {{ $itemsDone }}/{{ $itemsTotal }}</span>
-                                                @endif
-                                                @if ($card->attachments_count > 0)
-                                                    <span class="inline-flex items-center gap-0.5"><x-phosphor-paperclip
-                                                            class="h-3.5 w-3.5"/> {{ $card->attachments_count }}</span>
-                                                @endif
-                                            </div>
-                                        @endif
-
-                                        {{-- Custom field values --}}
-                                        @if ($customFields->isNotEmpty())
-                                            @php
-                                                $cfValues = $card->customFieldValues->keyBy('custom_field_id');
-                                                $cfShown = $customFields->filter(fn ($f) => $f->appliesToCard($card) && filled(optional($cfValues->get($f->id))->value));
-                                            @endphp
-                                            @if ($cfShown->isNotEmpty())
-                                                <div class="mt-2 flex flex-wrap gap-1">
-                                                    @foreach ($cfShown as $field)
-                                                        @php $val = $cfValues->get($field->id)->value; @endphp
-                                                        <span class="inline-flex items-center gap-1 rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] text-neutral-600 dark:bg-neutral-700/50 dark:text-neutral-300">
-                                                            <span class="font-medium">{{ $field->name }}:</span>
-                                                            @switch($field->type)
-                                                                @case(\App\Enums\CustomFieldType::Checkbox)
-                                                                    <x-phosphor-check class="h-3 w-3 text-green-600 dark:text-green-400"/>
-                                                                    @break
-                                                                @case(\App\Enums\CustomFieldType::Date)
-                                                                    {{ \Illuminate\Support\Carbon::parse($val)->translatedFormat('d M Y') }}
-                                                                    @break
-                                                                @case(\App\Enums\CustomFieldType::MultiSelect)
-                                                                    {{ Str::limit(implode(', ', (array) $field->decode($val)), 30) }}
-                                                                    @break
-                                                                @case(\App\Enums\CustomFieldType::Member)
-                                                                    {{ $members->firstWhere('id', (int) $val)?->name ?? '—' }}
-                                                                    @break
-                                                                @case(\App\Enums\CustomFieldType::Money)
-                                                                    {{ rtrim(rtrim(number_format((float) $val, 2, ',', ' '), '0'), ',') }} {{ $field->currency() }}
-                                                                    @break
-                                                                @case(\App\Enums\CustomFieldType::Rating)
-                                                                    <span class="inline-flex items-center gap-0.5"><x-phosphor-star-fill class="h-3 w-3 text-amber-400"/>{{ (int) $val }}</span>
-                                                                    @break
-                                                                @case(\App\Enums\CustomFieldType::Progress)
-                                                                    <span class="inline-flex items-center gap-1"><span class="h-1 w-8 overflow-hidden rounded-full bg-neutral-300 dark:bg-neutral-600"><span class="block h-full rounded-full bg-indigo-500" style="width: {{ (int) $val }}%"></span></span>{{ (int) $val }}%</span>
-                                                                    @break
-                                                                @case(\App\Enums\CustomFieldType::Url)
-                                                                    <span class="inline-flex items-center gap-0.5"><x-phosphor-link class="h-3 w-3"/>{{ Str::limit((string) parse_url($val, PHP_URL_HOST) ?: $val, 24) }}</span>
-                                                                    @break
-                                                                @default
-                                                                    {{ Str::limit($val, 30) }}
-                                                            @endswitch
-                                                        </span>
-                                                    @endforeach
-                                                </div>
-                                            @endif
-                                        @endif
-
-                                        @if ($card->members->isNotEmpty())
-                                            <div class="mt-2 flex -space-x-1.5">
-                                                @foreach ($card->members as $member)
-                                                    <x-user-avatar :user="$member" size="xs" class="ring-2 ring-white dark:ring-neutral-800" />
-                                                @endforeach
-                                            </div>
-                                        @endif
-                                    </div>
-                                </x-slot:trigger>
-                                <x-slot:menu>
-                                    <x-context-menu.item icon="arrow-square-out"
-                                                         wire:click="$dispatch('open-card', { cardId: {{ $card->id }} })">{{ __('Ouvrir') }}</x-context-menu.item>
-                                    <x-context-menu.item icon="copy"
-                                                         wire:click="duplicateCard({{ $card->id }})">{{ __('Dupliquer') }}</x-context-menu.item>
-                                    <x-context-menu.item icon="link"
-                                                         @click="navigator.clipboard?.writeText('{{ route('boards.show', ['board' => $board, 'card' => $card->public_id]) }}'); window.toast('{{ __('Lien copié') }}', { type: 'success' })">{{ __('Copier le lien') }}</x-context-menu.item>
-                                    <x-context-menu.item icon="hash"
-                                                         @click="navigator.clipboard?.writeText('{{ $card->public_id }}'); window.toast('{{ __('ID copié') }}', { type: 'success' })">{{ __("Copier l'ID") }}</x-context-menu.item>
-                                    @if ($lists->count() > 1)
-                                        <x-context-menu.separator/>
-                                        <div class="px-2 py-1.5">
-                                            <p class="mb-1 flex items-center gap-1 text-xs text-neutral-500">
-                                                <x-phosphor-arrows-left-right
-                                                    class="h-3.5 w-3.5"/> {{ __('Déplacer vers') }}</p>
-                                            <div class="flex max-h-48 flex-col overflow-y-auto">
-                                                @foreach ($lists as $targetList)
-                                                    @if ($targetList->id !== $list->id)
-                                                        <button type="button"
-                                                                wire:click="moveCardToList({{ $card->id }}, {{ $targetList->id }})"
-                                                                class="truncate rounded px-2 py-1 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800">{{ $targetList->name }}</button>
-                                                    @endif
-                                                @endforeach
-                                            </div>
-                                        </div>
-                                    @endif
-                                    <x-context-menu.separator/>
-                                    <x-context-menu.item icon="archive" variant="danger"
-                                                         wire:click="archiveCard({{ $card->id }})">{{ __('Archiver') }}</x-context-menu.item>
-                                </x-slot:menu>
-                            </x-context-menu>
-                        </li>
-                    @endforeach
-                </ul>
-                @else
-                    {{-- Cards skeleton (shown until wire:init loads them) --}}
-                    <ul class="flex flex-col gap-2 overflow-hidden px-2">
-                        @foreach (range(1, min(3, max(1, (int) $list->cards_count))) as $i)
-                            <li class="rounded-lg border border-neutral-200 bg-white px-3 py-2.5 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
-                                <div class="h-3.5 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" style="width: {{ [80, 60, 72][($i - 1) % 3] }}%"></div>
-                                <div class="mt-2 flex gap-2">
-                                    <div class="h-2.5 w-10 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700"></div>
-                                    <div class="h-2.5 w-8 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700"></div>
-                                </div>
-                            </li>
-                        @endforeach
-                    </ul>
-                @endif
-
-                {{-- Mirrored cards: the same underlying cards shown in this list --}}
-                @if ($cardsReady && $list->mirrors->isNotEmpty())
-                    <div class="space-y-2 px-2 pt-1">
-                        @foreach ($list->mirrors as $mirror)
-                            @include('livewire.boards.partials.mirror-card')
-                        @endforeach
-                    </div>
-                @endif
-
-                {{-- Add card --}}
-                @if ($canContribute)
-                <div class="flex items-center gap-1 p-2">
-                    <form wire:submit="addCard({{ $list->id }})" class="min-w-0 flex-1">
-                        <input
-                            type="text"
-                            wire:model="newCardTitle.{{ $list->id }}"
-                            placeholder="{{ __('+ Ajouter une carte') }}"
-                            class="w-full rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-sm placeholder-neutral-500 hover:bg-white focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:hover:bg-neutral-800 dark:focus:bg-neutral-800"
-                        >
-                    </form>
-
-                    @if ($cardTemplates->isNotEmpty())
-                        <x-context-menu class="shrink-0">
-                            <x-slot:trigger>
-                                <button type="button" @click="openAt($event.clientX, $event.clientY)"
-                                        class="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-300 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
-                                        title="{{ __('Ajouter depuis un modèle') }}">
-                                    <x-phosphor-stack class="h-4 w-4"/>
-                                </button>
-                            </x-slot:trigger>
-                            <x-slot:menu>
-                                <p class="px-2 py-1 text-xs font-medium uppercase tracking-wide text-neutral-400">{{ __('Depuis un modèle') }}</p>
-                                @foreach ($cardTemplates as $template)
-                                    <x-context-menu.item icon="cards"
-                                                         wire:click="addCardFromTemplate({{ $list->id }}, {{ $template->id }})">{{ $template->name }}</x-context-menu.item>
-                                @endforeach
-                            </x-slot:menu>
-                        </x-context-menu>
-                    @endif
-                </div>
-                @endif
+                    {{-- Cards + add-card live in their own component so a card mutation
+                         re-renders only this column, not the whole board. --}}
+                    <livewire:boards.list-column
+                        :list="$list"
+                        :board="$board"
+                        :search="$search"
+                        :filterLabels="$filterLabels"
+                        :filterMembers="$filterMembers"
+                        :filterUnassigned="$filterUnassigned"
+                        :filterDue="$filterDue"
+                        :canContribute="$canContribute"
+                        wire:key="list-column-{{ $list->id }}"
+                    />
                 @else
                     {{-- Plugin-sourced list: rendered by a lazy child (skeleton until loaded). --}}
                     <livewire:boards.plugin-list :list="$list" wire:key="plugin-list-{{ $list->id }}"/>
@@ -808,15 +575,15 @@
     </div>
 
     {{-- Bulk actions bar (shown when cards are multi-selected) --}}
-    <div x-show="selected.length > 0" x-cloak
+    <div x-show="$store.selection.ids.length > 0" x-cloak
          class="fixed inset-x-0 bottom-4 z-40 mx-auto flex w-max max-w-[calc(100vw-1.5rem)] flex-wrap items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 shadow-xl dark:border-neutral-700 dark:bg-neutral-900">
-        <span class="text-sm font-medium" x-text="selected.length + ' {{ __('sélectionnée(s)') }}'"></span>
+        <span class="text-sm font-medium" x-text="$store.selection.ids.length + ' {{ __('sélectionnée(s)') }}'"></span>
 
         <div x-data="{ o: false }" @click.outside="o = false" class="relative">
             <button type="button" @click="o = ! o" class="flex items-center gap-1 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"><x-phosphor-arrows-left-right class="h-4 w-4"/> {{ __('Déplacer') }}</button>
             <div x-show="o" x-cloak class="absolute bottom-full left-0 mb-1 max-h-56 w-48 overflow-y-auto rounded-lg border border-neutral-200 bg-white p-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
                 @foreach ($lists as $bulkList)
-                    <button type="button" @click="$wire.bulkMove(selected, {{ $bulkList->id }}); selected = []; o = false" class="block w-full truncate rounded px-2 py-1.5 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800">{{ $bulkList->name }}</button>
+                    <button type="button" @click="$wire.bulkMove($store.selection.ids, {{ $bulkList->id }}); $store.selection.clear(); o = false" class="block w-full truncate rounded px-2 py-1.5 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800">{{ $bulkList->name }}</button>
                 @endforeach
             </div>
         </div>
@@ -826,7 +593,7 @@
                 <button type="button" @click="o = ! o" class="flex items-center gap-1 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"><x-phosphor-tag class="h-4 w-4"/> {{ __('Label') }}</button>
                 <div x-show="o" x-cloak class="absolute bottom-full left-0 mb-1 max-h-56 w-52 overflow-y-auto rounded-lg border border-neutral-200 bg-white p-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
                     @foreach ($labels as $bulkLabel)
-                        <button type="button" @click="$wire.bulkAddLabel(selected, {{ $bulkLabel->id }}); selected = []; o = false" class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800">
+                        <button type="button" @click="$wire.bulkAddLabel($store.selection.ids, {{ $bulkLabel->id }}); $store.selection.clear(); o = false" class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800">
                             <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background-color: {{ $bulkLabel->color }}"></span>
                             <span class="truncate">{{ $bulkLabel->name ?? __('Sans nom') }}</span>
                         </button>
@@ -835,9 +602,9 @@
             </div>
         @endif
 
-        <button type="button" @click="$wire.bulkArchive(selected); selected = []" class="flex items-center gap-1 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:border-neutral-700 dark:text-red-400 dark:hover:bg-red-500/10"><x-phosphor-archive class="h-4 w-4"/> {{ __('Archiver') }}</button>
+        <button type="button" @click="$wire.bulkArchive($store.selection.ids); $store.selection.clear()" class="flex items-center gap-1 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:border-neutral-700 dark:text-red-400 dark:hover:bg-red-500/10"><x-phosphor-archive class="h-4 w-4"/> {{ __('Archiver') }}</button>
 
-        <button type="button" @click="selected = []; selectMode = false" class="rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200" title="{{ __('Désélectionner') }}"><x-phosphor-x class="h-4 w-4"/></button>
+        <button type="button" @click="$store.selection.reset()" class="rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200" title="{{ __('Désélectionner') }}"><x-phosphor-x class="h-4 w-4"/></button>
     </div>
     @elseif ($view === 'calendar')
         @include('livewire.boards.partials.calendar')
