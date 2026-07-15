@@ -33,6 +33,13 @@ services:
       REVERB_HOST: reverb
       REVERB_PORT: "8080"
       REVERB_SCHEME: http
+      # Session/cache/queue on Redis (board-redis, project-private — no name
+      # collision on the shared network). The database session driver serializes
+      # concurrent requests that share a session (Postgres row lock), which stacks
+      # up under Livewire request bursts; Redis removes that and is faster.
+      SESSION_DRIVER: redis
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
     volumes:
       - storage-data:/var/www/html/storage
     depends_on:
@@ -113,10 +120,13 @@ services:
     env_file: .env
     environment:
       CONTAINER_ROLE: queue
-      # Publish broadcasts internally (see board-app).
+      # Publish broadcasts internally + Redis session/cache/queue (see board-app).
       REVERB_HOST: reverb
       REVERB_PORT: "8080"
       REVERB_SCHEME: http
+      SESSION_DRIVER: redis
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
     command: ["php", "artisan", "queue:work", "--tries=3", "--timeout=90", "--sleep=1"]
     depends_on:
       - board-app
@@ -130,10 +140,13 @@ services:
     env_file: .env
     environment:
       CONTAINER_ROLE: scheduler
-      # Publish broadcasts internally (see board-app).
+      # Publish broadcasts internally + Redis session/cache/queue (see board-app).
       REVERB_HOST: reverb
       REVERB_PORT: "8080"
       REVERB_SCHEME: http
+      SESSION_DRIVER: redis
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
     command: ["php", "artisan", "schedule:work"]
     depends_on:
       - board-app

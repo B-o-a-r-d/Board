@@ -109,6 +109,9 @@ RUN if [ "$INSTALL_MARKETPLACE" = "true" ]; then \
 # PHP + opcache configuration
 COPY .docker/php/php.ini /usr/local/etc/php/conf.d/zz-app.ini
 
+# PHP-FPM pool tuning (raises the default 5-worker cap; see www.conf).
+COPY .docker/php/www.conf /usr/local/etc/php-fpm.d/www.conf
+
 # Entry point handles migrations, caching and boot
 COPY .docker/php/entrypoint.sh /usr/local/bin/entrypoint
 RUN chmod +x /usr/local/bin/entrypoint
