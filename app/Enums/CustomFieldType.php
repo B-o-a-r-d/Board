@@ -74,4 +74,19 @@ enum CustomFieldType: string
     {
         return $this === self::MultiSelect;
     }
+
+    /**
+     * A Url-field value is only safe to store and to render into an href when it
+     * is a well-formed http(s) URL. This is the single guard against a stored
+     * `javascript:`/`data:` scheme becoming one-click XSS when a viewer clicks
+     * the link — enforced on every write path and again at render.
+     */
+    public static function isSafeUrl(?string $value): bool
+    {
+        $value = trim((string) $value);
+
+        return $value !== ''
+            && filter_var($value, FILTER_VALIDATE_URL) !== false
+            && in_array(strtolower((string) parse_url($value, PHP_URL_SCHEME)), ['http', 'https'], true);
+    }
 }

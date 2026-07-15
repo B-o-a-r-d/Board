@@ -36,6 +36,14 @@ class SetCustomFieldAction implements AutomationAction
 
         $value = $config['value'] ?? null;
 
+        // A Url field only accepts a safe http(s) value; anything else (e.g. a
+        // javascript: scheme) is dropped so it can't become stored XSS.
+        if ($field->type === CustomFieldType::Url
+            && is_string($value) && trim($value) !== ''
+            && ! CustomFieldType::isSafeUrl($value)) {
+            return;
+        }
+
         $stored = match ($field->type) {
             CustomFieldType::Checkbox => filter_var($value, FILTER_VALIDATE_BOOL) ? '1' : null,
             CustomFieldType::Select => in_array($value, $field->optionList(), true) ? $value : null,

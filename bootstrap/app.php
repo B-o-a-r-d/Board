@@ -18,10 +18,19 @@ return Application::configure(basePath: dirname(__DIR__))
             SetLocale::class,
         ]);
 
+        // Only trust reverse proxies we actually sit behind — trusting '*' lets
+        // any client spoof X-Forwarded-For and defeat the IP-based login throttle.
+        // Default to private ranges (covers a Docker/Traefik network and local
+        // direct access); override with a CIDR list via TRUSTED_PROXIES.
+        $trustedProxies = env('TRUSTED_PROXIES');
+
         $middleware->trustProxies(
-            at: '*',
+            at: match (true) {
+                $trustedProxies === '*' => '*',
+                is_string($trustedProxies) && trim($trustedProxies) !== '' => array_map(trim(...), explode(',', $trustedProxies)),
+                default => ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '127.0.0.1', '::1'],
+            },
             headers: Request::HEADER_X_FORWARDED_FOR
-            | Request::HEADER_X_FORWARDED_HOST
             | Request::HEADER_X_FORWARDED_PORT
             | Request::HEADER_X_FORWARDED_PROTO
             | Request::HEADER_X_FORWARDED_AWS_ELB,

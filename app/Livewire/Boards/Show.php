@@ -723,6 +723,14 @@ class Show extends Component
         $card = $this->cardForBoard($cardId);
         $field = $this->board->customFields()->findOrFail($fieldId);
 
+        // Refuse an unsafe URL scheme (javascript:/data:) rather than store a
+        // value that would become one-click XSS when rendered into an href.
+        if ($field->type === CustomFieldType::Url
+            && is_string($value) && trim($value) !== ''
+            && ! CustomFieldType::isSafeUrl($value)) {
+            return;
+        }
+
         $stored = match ($field->type) {
             CustomFieldType::Checkbox => $value ? '1' : null,
             CustomFieldType::Select => in_array($value, $field->options ?? [], true) ? $value : null,

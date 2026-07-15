@@ -50,7 +50,7 @@
             @elseif ($field->type === CustomFieldType::Url)
                 <div class="flex items-center gap-1.5">
                     <input type="url" value="{{ $val }}" placeholder="https://…" wire:change="saveCustomField({{ $field->id }}, $event.target.value)" class="{{ $inputClasses }}">
-                    @if ($val)
+                    @if (CustomFieldType::isSafeUrl($val))
                         <a href="{{ $val }}" target="_blank" rel="noopener noreferrer" title="{{ __('Ouvrir le lien') }}"
                            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-neutral-300 text-neutral-500 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">
                             <x-phosphor-arrow-square-out class="h-4 w-4"/>
@@ -103,7 +103,11 @@
             @if ($val === null || $val === '')
                 <p class="text-sm text-neutral-400">—</p>
             @elseif ($field->type === CustomFieldType::Url)
-                <a href="{{ $val }}" target="_blank" rel="noopener noreferrer" class="inline-flex max-w-full items-center gap-1 truncate text-sm text-indigo-600 hover:underline dark:text-indigo-400"><x-phosphor-link class="h-3.5 w-3.5 shrink-0"/><span class="truncate">{{ $val }}</span></a>
+                @if (CustomFieldType::isSafeUrl($val))
+                    <a href="{{ $val }}" target="_blank" rel="noopener noreferrer" class="inline-flex max-w-full items-center gap-1 truncate text-sm text-indigo-600 hover:underline dark:text-indigo-400"><x-phosphor-link class="h-3.5 w-3.5 shrink-0"/><span class="truncate">{{ $val }}</span></a>
+                @else
+                    <span class="inline-flex max-w-full items-center gap-1 truncate text-sm text-neutral-500"><x-phosphor-link-break class="h-3.5 w-3.5 shrink-0"/><span class="truncate">{{ $val }}</span></span>
+                @endif
             @elseif ($field->type === CustomFieldType::Email)
                 <a href="mailto:{{ $val }}" class="inline-flex max-w-full items-center gap-1 truncate text-sm text-indigo-600 hover:underline dark:text-indigo-400"><x-phosphor-envelope-simple class="h-3.5 w-3.5 shrink-0"/><span class="truncate">{{ $val }}</span></a>
             @elseif ($field->type === CustomFieldType::MultiSelect)

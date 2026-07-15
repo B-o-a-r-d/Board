@@ -279,7 +279,7 @@ class CardDetail extends Component
             && is_string($value) && trim($value) !== '') {
             $trimmed = trim($value);
             $invalid = $field->type === CustomFieldType::Url
-                ? (filter_var($trimmed, FILTER_VALIDATE_URL) === false || ! in_array(strtolower((string) parse_url($trimmed, PHP_URL_SCHEME)), ['http', 'https'], true))
+                ? ! CustomFieldType::isSafeUrl($trimmed)
                 : filter_var($trimmed, FILTER_VALIDATE_EMAIL) === false;
 
             if ($invalid) {
@@ -1062,7 +1062,9 @@ class CardDetail extends Component
      */
     public function mirrorCard(): void
     {
-        $card = $this->board->cards()->findOrFail($this->cardId);
+        // Write authorization on the SOURCE board — a read-only viewer must not
+        // be able to surface this card into another board it can contribute to.
+        $card = $this->guardedCard();
 
         $targetList = BoardList::with('board')
             ->whereNull('archived_at')
@@ -1098,6 +1100,10 @@ class CardDetail extends Component
 
     public function removeMirror(int $mirrorId): void
     {
+        // Write authorization on the SOURCE board (the authoritative card), not
+        // only the target board the mirror was placed on.
+        abort_unless($this->board->userCan(Auth::user(), Permission::CardManage), 403);
+
         $mirror = CardMirror::where('card_id', $this->cardId)->with('board')->findOrFail($mirrorId);
 
         abort_unless(Auth::user()->can('contribute', $mirror->board), 403);
