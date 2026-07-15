@@ -144,16 +144,16 @@
         },
         {
             "name": "board/plugin-sdk",
-            "version": "v0.2.5",
+            "version": "v0.2.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/B-o-a-r-d/Board-Plugin-SDK.git",
-                "reference": "e53a53e375e5995b5770d6ccd59076044a7eb344"
+                "reference": "83090959fb93c49b55191f03fc82a68ba81df6c7"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/B-o-a-r-d/Board-Plugin-SDK/zipball/e53a53e375e5995b5770d6ccd59076044a7eb344",
-                "reference": "e53a53e375e5995b5770d6ccd59076044a7eb344",
+                "url": "https://api.github.com/repos/B-o-a-r-d/Board-Plugin-SDK/zipball/83090959fb93c49b55191f03fc82a68ba81df6c7",
+                "reference": "83090959fb93c49b55191f03fc82a68ba81df6c7",
                 "shasum": ""
             },
             "require": {
@@ -185,10 +185,10 @@
                 "sdk"
             ],
             "support": {
-                "source": "https://github.com/B-o-a-r-d/Board-Plugin-SDK/tree/v0.2.5",
+                "source": "https://github.com/B-o-a-r-d/Board-Plugin-SDK/tree/v0.2.6",
                 "issues": "https://github.com/B-o-a-r-d/Board-Plugin-SDK/issues"
             },
-            "time": "2026-07-10T16:58:06+00:00"
+            "time": "2026-07-15T13:01:19+00:00"
         },
         {
             "name": "brick/math",
