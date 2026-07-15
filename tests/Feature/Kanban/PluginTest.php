@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\Role;
+use App\Livewire\Boards\ActivityLog;
 use App\Livewire\Boards\ListColumn;
 use App\Livewire\Boards\PluginList;
 use App\Livewire\Boards\Show;
@@ -89,8 +90,8 @@ test('the slide-over shows a plugin tab only when that plugin has activity', fun
     ]);
 
     // No acme activity yet → no acme tab.
-    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
-        ->set('showActivity', true)
+    Livewire::actingAs($owner)->test(ActivityLog::class, ['board' => $board])
+        ->set('open', true)
         ->assertViewHas('activityTabs', fn ($tabs) => collect($tabs)->doesntContain(fn ($t) => $t['plugin_key'] === 'acme'));
 
     Activity::create([
@@ -98,8 +99,8 @@ test('the slide-over shows a plugin tab only when that plugin has activity', fun
         'properties' => ['ref_type' => 'item', 'title' => 'x'],
     ]);
 
-    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
-        ->set('showActivity', true)
+    Livewire::actingAs($owner)->test(ActivityLog::class, ['board' => $board])
+        ->set('open', true)
         ->assertViewHas('activityTabs', fn ($tabs) => collect($tabs)->contains(fn ($t) => $t['plugin_key'] === 'acme'));
 });
 

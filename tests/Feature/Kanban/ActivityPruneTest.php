@@ -1,7 +1,7 @@
 <?php
 
 use App\Enums\Role;
-use App\Livewire\Boards\Show;
+use App\Livewire\Boards\ActivityLog;
 use App\Models\Activity;
 use App\Models\Board;
 use App\Models\User;
@@ -41,12 +41,12 @@ test('the activity panel shows the retention footer to board admins only', funct
     $board->workspace->members()->attach($member, ['role' => Role::Member->value]);
     $board->members()->attach($member, ['role' => Role::Member->value]);
 
-    Livewire\Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
-        ->call('toggleActivity')
+    Livewire\Livewire::actingAs($owner)->test(ActivityLog::class, ['board' => $board])
+        ->set('open', true)
         ->assertSee(__('Purge automatique des activités anciennes'));
 
-    Livewire\Livewire::actingAs($member)->test(Show::class, ['board' => $board])
-        ->call('toggleActivity')
+    Livewire\Livewire::actingAs($member)->test(ActivityLog::class, ['board' => $board])
+        ->set('open', true)
         ->assertDontSee(__('Purge automatique des activités anciennes'));
 });
 
@@ -56,7 +56,7 @@ test('only a board admin can change the activity retention', function () {
     $board->workspace->members()->attach($member, ['role' => Role::Member->value]);
     $board->members()->attach($member, ['role' => Role::Member->value]);
 
-    Livewire\Livewire::actingAs($member)->test(Show::class, ['board' => $board])
+    Livewire\Livewire::actingAs($member)->test(ActivityLog::class, ['board' => $board])
         ->call('saveActivityRetention', '30')
         ->assertForbidden();
 

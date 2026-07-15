@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\Role;
+use App\Livewire\Boards\ActivityLog;
 use App\Livewire\Boards\Show;
 use App\Livewire\Cards\CardDetail;
 use App\Models\Activity;
@@ -165,9 +166,9 @@ test('focusActivity closes the slide-over and opens the target card', function (
     $list = BoardList::factory()->create(['board_id' => $board->id]);
     $card = Card::factory()->create(['board_id' => $board->id, 'board_list_id' => $list->id]);
 
-    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
-        ->set('showActivity', true)
+    Livewire::actingAs($owner)->test(ActivityLog::class, ['board' => $board])
+        ->set('open', true)
         ->call('focusActivity', $card->id, 'attachments', null)
-        ->assertSet('showActivity', false)
+        ->assertSet('open', false)
         ->assertDispatched('open-card', cardId: $card->id, section: 'attachments', comment: null);
 });
