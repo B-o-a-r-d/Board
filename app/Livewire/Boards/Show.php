@@ -8,7 +8,6 @@ use App\Automations\AutomationEngine;
 use App\Enums\CustomFieldType;
 use App\Enums\Role;
 use App\Livewire\Boards\Concerns\InteractsWithBoardCards;
-use App\Models\Activity;
 use App\Models\Board;
 use App\Models\BoardList;
 use App\Models\Card;
@@ -18,7 +17,6 @@ use App\Models\CustomField;
 use App\Models\User;
 use App\Notifications\CardNotification;
 use App\Plugins\PluginCardFieldSync;
-use Board\PluginSdk\Contracts\DefinesActivities;
 use Board\PluginSdk\Contracts\ProvidesListSource;
 use Board\PluginSdk\PluginRegistry;
 use Board\PluginSdk\Support\PluginSettings;
@@ -92,27 +90,6 @@ class Show extends Component
         $this->authorize('view', $this->board);
 
         $this->showMembers = ! $this->showMembers;
-    }
-
-    public bool $showActivity = false;
-
-    public function toggleActivity(): void
-    {
-        $this->authorize('view', $this->board);
-
-        $this->showActivity = ! $this->showActivity;
-    }
-
-    /**
-     * Jump from an activity row to its subject: close the slide-over and open
-     * the target card, optionally focusing a comment or a named section.
-     */
-    public function focusActivity(int $cardId, ?string $section = null, ?int $comment = null): void
-    {
-        $this->authorize('view', $this->board);
-
-        $this->showActivity = false;
-        $this->dispatch('open-card', cardId: $cardId, section: $section, comment: $comment);
     }
 
     public bool $showCustomFields = false;
@@ -1027,17 +1004,6 @@ class Show extends Component
         $this->dispatch('toast', message: __('Fond du board mis à jour'), type: 'success');
     }
 
-    /** Board admins set how long the activity log is kept (pruned daily). */
-    public function saveActivityRetention(?string $days): void
-    {
-        $this->authorize('update', $this->board);
-
-        $value = ($days === null || $days === '') ? null : max(0, (int) $days);
-        $this->board->update(['activity_retention_days' => $value ?: null]);
-
-        $this->dispatch('toast', message: __('Rétention du journal mise à jour'), type: 'success');
-    }
-
     public function toggleTemplate(): void
     {
         abort_unless(Auth::user()->isAdmin(), 403);
@@ -1067,10 +1033,22 @@ class Show extends Component
     }
 
     /**
-     * Both remote broadcasts and local card edits simply trigger a re-render,
-     * which re-queries fresh data.
+     * A remote broadcast (or a local card edit via `board-refresh`) re-renders the
+     * board chrome. On the kanban view, card changes are already handled by each
+     * {@see ListColumn} (scoped by `listIds`), so Show skips its own re-render for
+     * those and only reacts to board-level changes (lists added/renamed/archived,
+     * board renamed…). Other views render cards directly, so they always refresh.
+     *
+     * @param  array<string, mixed>  $event  the BoardActivity payload (empty for local refresh)
      */
-    public function onBoardActivity(): void {}
+    public function onBoardActivity(array $event = []): void
+    {
+        $listIds = $event['listIds'] ?? [];
+
+        if ($this->view === 'board' && is_array($listIds) && $listIds !== []) {
+            $this->skipRender();
+        }
+    }
 
     public function addList(): void
     {
@@ -1441,18 +1419,6 @@ class Show extends Component
 
         $boardMembers = $this->board->members()->orderBy('name')->get();
 
-        // Dedicated slide-over tabs for plugins that have logged activity here.
-        $activityTabs = [];
-
-        if ($this->showActivity) {
-            foreach (app(PluginRegistry::class)->all() as $key => $plugin) {
-                if ($plugin instanceof DefinesActivities
-                    && $this->board->activities()->whereIn('type', $plugin->activityTypes())->exists()) {
-                    $activityTabs[] = ['plugin_key' => $key, 'label' => $plugin->activityTab()['label']];
-                }
-            }
-        }
-
         return view('livewire.boards.show', [
             'lists' => $lists,
             'calendar' => $this->view === 'calendar' ? $this->buildCalendar() : null,
@@ -1471,10 +1437,6 @@ class Show extends Component
             'archivedCards' => $this->showTrash ? $this->board->cards()->whereNotNull('archived_at')->with('list')->latest('archived_at')->get() : collect(),
             'cardTemplates' => CardTemplate::orderBy('name')->get(),
             'views' => $this->board->views()->where('user_id', Auth::id())->latest()->get(),
-            'activities' => $this->showActivity
-                ? $this->board->activities()->with(['user', 'card'])->latest()->limit(60)->get()
-                : collect(),
-            'activityTabs' => $activityTabs,
             // Fields visible on cards (user fields + fields of active plugins)…
             'customFields' => $this->board->customFields()->visibleOn($this->board)->orderBy('position')->get(),
             // …and every field for the admin modal (plugin-managed ones included).
