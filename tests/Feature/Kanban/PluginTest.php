@@ -327,6 +327,45 @@ test('a plugin list lazy-loads more items on demand', function () {
         ->assertSee('Item number 30');
 });
 
+test('a plugin list refetches only on a plugin refresh, not on card activity', function () {
+    // One fake whose payload we flip mid-test (a second Http::fake would not
+    // override the first stub for the same URL pattern).
+    $feed = (object) ['items' => [
+        ['id' => 'A1', 'title' => 'Item Alpha', 'author' => 'Dev', 'url' => 'https://acme.test/items/A1', 'created_at' => '2026-07-07T10:00:00Z'],
+    ]];
+    Http::fake(['api.acme.test/items*' => fn () => Http::response($feed->items)]);
+
+    ['board' => $board, 'owner' => $owner] = makePluginBoard();
+    $instance = $board->plugins()->create([
+        'plugin_key' => 'acme', 'name' => 'Acme', 'config' => ['token' => 't'], 'is_active' => true,
+    ]);
+    $list = BoardList::factory()->create([
+        'board_id' => $board->id,
+        'source_plugin_id' => $instance->id,
+        'source_mode' => 'items',
+        'source_config' => ['resource' => 'team/project'],
+    ]);
+
+    $component = Livewire::withoutLazyLoading()->actingAs($owner)
+        ->test(PluginList::class, ['list' => $list])
+        ->assertSee('Item Alpha');
+
+    // The upstream changes and the cache goes cold…
+    $feed->items = [
+        ['id' => 'B1', 'title' => 'Item Beta', 'author' => 'Dev', 'url' => 'https://acme.test/items/B1', 'created_at' => '2026-07-07T10:00:00Z'],
+    ];
+    Cache::flush();
+
+    // …an ordinary card broadcast must NOT refetch (skipRender): old render stays.
+    $component->call('onBoardActivity', ['action' => 'card.created'])
+        ->assertSee('Item Alpha')
+        ->assertDontSee('Item Beta');
+
+    // …a plugin refresh re-renders and picks up the fresh items.
+    $component->call('onBoardActivity', ['action' => 'plugin.refreshed'])
+        ->assertSee('Item Beta');
+});
+
 test('the oauth callback stores an encrypted token', function () {
     Http::fake([
         'acme.test/oauth/token' => Http::response(['access_token' => 'acme_from_oauth']),
