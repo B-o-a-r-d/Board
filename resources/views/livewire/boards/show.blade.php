@@ -550,6 +550,7 @@
                         :filterUnassigned="$filterUnassigned"
                         :filterDue="$filterDue"
                         :canContribute="$canContribute"
+                        lazy
                         wire:key="list-column-{{ $list->id }}"
                     />
                 @else

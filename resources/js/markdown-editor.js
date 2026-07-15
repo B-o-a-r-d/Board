@@ -1,7 +1,3 @@
-import { Editor } from '@tiptap/core'
-import StarterKit from '@tiptap/starter-kit'
-import { Markdown } from 'tiptap-markdown'
-
 /**
  * Alpine component powering a TipTap WYSIWYG editor with markdown I/O.
  *
@@ -12,11 +8,32 @@ import { Markdown } from 'tiptap-markdown'
  * editor. Saving serialises the document back to markdown and hands it to
  * Livewire via $wire.saveDescription().
  *
+ * TipTap/ProseMirror (~200 KB) is dynamically imported the first time an editor
+ * is actually built — it is NOT in the main bundle, so the board list page never
+ * pays for it. See {@link loadTiptap}.
+ *
  * IMPORTANT: the TipTap instance is kept in a closure variable — NOT on the
  * reactive object. If it lived on `this`, Alpine's reactive Proxy would wrap
  * it and ProseMirror's identity checks (transaction start-state vs view state)
  * would fail with "Applying a mismatched transaction".
  */
+
+let tiptap = null
+
+/** Load TipTap once, on demand, as a separate chunk. */
+async function loadTiptap() {
+    if (!tiptap) {
+        const [core, starter, md] = await Promise.all([
+            import('@tiptap/core'),
+            import('@tiptap/starter-kit'),
+            import('tiptap-markdown'),
+        ])
+        tiptap = { Editor: core.Editor, StarterKit: starter.default, Markdown: md.Markdown }
+    }
+
+    return tiptap
+}
+
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('markdownEditor', (initial = '') => {
         let editor = null
@@ -25,7 +42,7 @@ document.addEventListener('alpine:init', () => {
             editing: false,
             source: initial || '',
 
-            buildEditor() {
+            async buildEditor() {
                 // The mount node is x-ignore so Alpine's mutation observer
                 // leaves TipTap's contenteditable alone.
                 const mount = this.$root.querySelector('.js-editor-mount')
@@ -33,6 +50,8 @@ document.addEventListener('alpine:init', () => {
                 if (!mount) {
                     return
                 }
+
+                const { Editor, StarterKit, Markdown } = await loadTiptap()
 
                 if (editor) {
                     editor.destroy()
@@ -65,11 +84,11 @@ document.addEventListener('alpine:init', () => {
 
             edit() {
                 this.editing = true
-                this.$nextTick(() => {
+                this.$nextTick(async () => {
                     if (!editor || editor.isDestroyed) {
-                        this.buildEditor()
+                        await this.buildEditor()
                     }
-                    editor.commands.focus('end')
+                    editor?.commands.focus('end')
                 })
             },
 

@@ -12,10 +12,15 @@ class BoardActivity implements ShouldBroadcastNow, ShouldRescue
 {
     use Dispatchable, InteractsWithSockets;
 
+    /**
+     * @param  array<int, int>  $listIds  lists whose cards changed (empty = board-level);
+     *                                    lets a ListColumn refresh only when affected.
+     */
     public function __construct(
         public int $boardId,
         public string $action,
         public ?int $actorId = null,
+        public array $listIds = [],
     ) {}
 
     /**
@@ -32,13 +37,14 @@ class BoardActivity implements ShouldBroadcastNow, ShouldRescue
     }
 
     /**
-     * @return array{action: string, actorId: int|null}
+     * @return array{action: string, actorId: int|null, listIds: array<int, int>}
      */
     public function broadcastWith(): array
     {
         return [
             'action' => $this->action,
             'actorId' => $this->actorId,
+            'listIds' => $this->listIds,
         ];
     }
 }

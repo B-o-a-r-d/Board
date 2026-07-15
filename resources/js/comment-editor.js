@@ -1,8 +1,3 @@
-import { Editor } from '@tiptap/core'
-import StarterKit from '@tiptap/starter-kit'
-import { Markdown } from 'tiptap-markdown'
-import Mention from '@tiptap/extension-mention'
-
 /**
  * Alpine component powering the comment composer: a TipTap editor with markdown
  * I/O and an @mention autocomplete (board members, with avatars), plus the
@@ -11,9 +6,36 @@ import Mention from '@tiptap/extension-mention'
  * Mentions serialise to "@<slug>" in the markdown body, which the server matches
  * back to a member (see CardDetail::mentionedUsers/renderCommentBody).
  *
+ * TipTap/ProseMirror is dynamically imported the first time a composer is built
+ * (i.e. when a card modal opens) — it is NOT in the main bundle, so the board
+ * list page never pays for it. See {@link loadTiptap}.
+ *
  * As in markdown-editor.js, the TipTap instance lives in a closure variable —
  * never on the reactive Alpine object — to avoid ProseMirror identity issues.
  */
+
+let tiptap = null
+
+/** Load TipTap (+ Mention) once, on demand, as separate chunks. */
+async function loadTiptap() {
+    if (!tiptap) {
+        const [core, starter, md, mention] = await Promise.all([
+            import('@tiptap/core'),
+            import('@tiptap/starter-kit'),
+            import('tiptap-markdown'),
+            import('@tiptap/extension-mention'),
+        ])
+        tiptap = {
+            Editor: core.Editor,
+            StarterKit: starter.default,
+            Markdown: md.Markdown,
+            Mention: mention.default,
+        }
+    }
+
+    return tiptap
+}
+
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('commentEditor', (config = {}) => {
         let editor = null
@@ -63,10 +85,12 @@ document.addEventListener('alpine:init', () => {
                 this.channel?.whisper('typing', { id: this.userId, name: this.userName, cardId: this.cardId })
             },
 
-            build() {
+            async build() {
                 const mount = this.$root.querySelector('.js-comment-mount')
 
                 if (!mount) return
+
+                const { Editor, StarterKit, Markdown, Mention } = await loadTiptap()
 
                 if (editor) {
                     editor.destroy()
