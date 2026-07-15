@@ -8,9 +8,14 @@
     $overdue = $card->due_at && ! $card->completed_at && $card->due_at->isPast();
 @endphp
 <li
-    wire:key="card-{{ $card->id }}"
+    wire:key="card-{{ $card->id }}-{{ (int) (bool) $card->completed_at }}"
     data-card
     data-card-id="{{ $card->id }}"
+    {{-- `done` powers the optimistic "mark complete" toggle: the checkbox and
+         strike-through flip instantly client-side, then the server syncs with
+         skipRender. Seeded from server truth (no FOUC); the completion state is
+         part of wire:key so a remote change replaces the <li> and re-seeds `done`. --}}
+    x-data="{ done: {{ $card->completed_at ? 'true' : 'false' }} }"
     {{-- Default border colour is baked into the base class so it is correct
          before Alpine runs (no FOUC); :class only overrides it when selected. --}}
     class="group relative shrink-0 cursor-grab overflow-hidden rounded-lg border border-neutral-200 bg-white text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-800"
@@ -61,17 +66,25 @@
                         <x-phosphor-dots-three class="h-4 w-4"/>
                     </button>
                     @if ($canContribute)
+                        {{-- Optimistic: flip `done` instantly, the server syncs (skipRender).
+                             Static class = server truth (no FOUC); object :class reconciles
+                             the two states as `done` changes. --}}
                         <button type="button" wire:sort:ignore
-                                wire:click.stop="toggleCardComplete({{ $card->id }})"
-                                title="{{ $card->completed_at ? __('Marquer non terminée') : __('Marquer terminée') }}"
-                                aria-label="{{ $card->completed_at ? __('Marquer non terminée') : __('Marquer terminée') }}"
-                                class="flex h-5 w-5 items-center justify-center rounded-full border shadow-sm transition {{ $card->completed_at ? 'border-green-500 bg-green-500 text-white' : 'border-neutral-300 bg-white text-neutral-300 opacity-0 hover:border-green-500 hover:text-green-500 group-hover:opacity-100 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-500' }}">
+                                @click.stop="done = ! done; $wire.toggleCardComplete({{ $card->id }})"
+                                :title="done ? '{{ __('Marquer non terminée') }}' : '{{ __('Marquer terminée') }}'"
+                                :aria-label="done ? '{{ __('Marquer non terminée') }}' : '{{ __('Marquer terminée') }}'"
+                                class="flex h-5 w-5 items-center justify-center rounded-full border shadow-sm transition {{ $card->completed_at ? 'border-green-500 bg-green-500 text-white' : 'border-neutral-300 bg-white text-neutral-300 opacity-0 hover:border-green-500 hover:text-green-500 group-hover:opacity-100 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-500' }}"
+                                :class="{
+                                    'border-green-500 bg-green-500 text-white': done,
+                                    'border-neutral-300 bg-white text-neutral-300 opacity-0 hover:border-green-500 hover:text-green-500 group-hover:opacity-100 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-500': ! done,
+                                }">
                             <x-phosphor-check class="h-3 w-3"/>
                         </button>
                     @endif
                 </div>
 
-                <span class="block break-words text-left font-medium {{ $card->completed_at ? 'pr-8 text-neutral-500 line-through decoration-neutral-400' : '' }}">{{ $card->title }}</span>
+                <span class="block break-words text-left font-medium {{ $card->completed_at ? 'pr-8 text-neutral-500 line-through decoration-neutral-400' : '' }}"
+                      :class="{ 'pr-8 text-neutral-500 line-through decoration-neutral-400': done }">{{ $card->title }}</span>
 
                 {{-- Badges --}}
                 @if ($card->due_at || $itemsTotal > 0 || $card->attachments_count > 0)

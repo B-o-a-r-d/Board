@@ -31,6 +31,8 @@ use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
+use function Illuminate\Support\defer;
+
 class CardDetail extends Component
 {
     use WithFileUploads;
@@ -1232,7 +1234,12 @@ class CardDetail extends Component
 
     private function touched(string $action): void
     {
-        broadcast(new BoardActivity($this->board->id, $action, Auth::id()))->toOthers();
+        $boardId = $this->board->id;
+        $actorId = Auth::id();
+
+        // Defer the Reverb broadcast so the modal action returns without waiting on
+        // the realtime round-trip (see InteractsWithBoardCards::broadcastActivity).
+        defer(fn () => broadcast(new BoardActivity($boardId, $action, $actorId))->toOthers());
         $this->dispatch('board-refresh');
     }
 

@@ -13,6 +13,8 @@ use App\Models\CardTemplate;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
+use function Illuminate\Support\defer;
+
 /**
  * Card mutations + their shared helpers, used by both the board grid columns
  * ({@see ListColumn}) and the parent board component
@@ -37,9 +39,16 @@ trait InteractsWithBoardCards
         $this->logActivity($type, $card->id, ['card_title' => $card->title]);
         $this->broadcastActivity($type, [$card->board_list_id]);
 
-        if ($card->completed_at && app(AutomationEngine::class)->fire('card.completed', $card->fresh()) > 0) {
-            // An automation may have moved the card elsewhere — re-sync all columns.
+        // Optimistic UI already flipped the checkbox client-side, so the actor's
+        // request skips its own re-render — unless a completion automation ran and
+        // may have moved/changed the card, in which case every column re-syncs.
+        $ranAutomation = $card->completed_at
+            && app(AutomationEngine::class)->fire('card.completed', $card->fresh()) > 0;
+
+        if ($ranAutomation) {
             $this->dispatch('cards:refresh');
+        } else {
+            $this->skipRender();
         }
     }
 
@@ -255,7 +264,13 @@ trait InteractsWithBoardCards
      */
     private function broadcastActivity(string $action, array $listIds = []): void
     {
-        broadcast(new BoardActivity($this->board->id, $action, Auth::id(), $listIds))->toOthers();
+        $boardId = $this->board->id;
+        $actorId = Auth::id();
+
+        // Defer the Reverb broadcast until after the response is flushed, so the
+        // acting user's request returns without waiting on the realtime round-trip.
+        // Other clients still receive it immediately (same process, post-response).
+        defer(fn () => broadcast(new BoardActivity($boardId, $action, $actorId, $listIds))->toOthers());
     }
 
     /**
