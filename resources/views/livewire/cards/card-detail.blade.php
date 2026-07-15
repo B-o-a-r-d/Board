@@ -1,5 +1,6 @@
 <div
     x-data="{
+        opening: false,
         handleCardFocus(raw) {
             const detail = raw?.params?.[0] ?? raw ?? {};
             if (detail.comment) {
@@ -19,7 +20,32 @@
         }
     }"
     @card-focus.window="handleCardFocus($event.detail)"
+    {{-- Instant open: show the skeleton the moment a card is clicked, before the
+         openCard round-trip renders the real modal (which then hides it). --}}
+    @open-card.window="opening = true"
+    @card-modal-closed.window="opening = false"
 >
+    <div x-show="opening && ! $wire.showModal" x-cloak
+         class="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto p-4 sm:p-8">
+        <div class="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm"></div>
+        <div class="relative w-full max-w-6xl rounded-2xl border border-neutral-200 bg-white p-6 shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
+            <div class="flex flex-col gap-6 sm:flex-row">
+                <div class="flex-1 space-y-4">
+                    <div class="h-6 w-2/3 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700"></div>
+                    <div class="h-4 w-1/3 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800"></div>
+                    <div class="h-24 w-full animate-pulse rounded bg-neutral-100 dark:bg-neutral-800"></div>
+                    <div class="h-4 w-1/2 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800"></div>
+                    <div class="h-16 w-full animate-pulse rounded bg-neutral-100 dark:bg-neutral-800"></div>
+                </div>
+                <div class="hidden w-56 space-y-3 sm:block">
+                    @foreach (range(1, 4) as $s)
+                        <div class="h-8 w-full animate-pulse rounded bg-neutral-100 dark:bg-neutral-800"></div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </div>
+
     @if ($showModal && $card)
         @php
             $isWatching = $card->watchers->contains(fn ($w) => $w->id === auth()->id());

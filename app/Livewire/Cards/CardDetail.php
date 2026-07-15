@@ -138,6 +138,9 @@ class CardDetail extends Component
         $this->showModal = false;
         $this->cardId = null;
         $this->reset('title', 'description', 'startDate', 'startTime', 'dueDate', 'dueTime', 'newChecklistTitle', 'newChecklistItem', 'upload', 'editingCommentId', 'editingCommentBody');
+
+        // Let the instant-open skeleton (Alpine) stand down once the modal is gone.
+        $this->dispatch('card-modal-closed');
     }
 
     public function saveDetails(): void

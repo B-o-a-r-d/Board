@@ -20,6 +20,19 @@ test('opening a card loads its data into the modal', function () {
         ->assertSet('title', 'Ma carte');
 });
 
+test('closing the card resets the modal and tells the instant-open skeleton to stand down', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+
+    Livewire::actingAs($owner)
+        ->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->assertSet('showModal', true)
+        ->call('close')
+        ->assertSet('showModal', false)
+        ->assertSet('cardId', null)
+        ->assertDispatched('card-modal-closed');
+});
+
 test('outsiders cannot open a card', function () {
     ['board' => $board, 'outsider' => $outsider, 'card' => $card] = makeCardContext();
 
