@@ -95,6 +95,34 @@ test('a daily scheduled rule creates its card once per day, attributed to the ru
     expect(Card::where('title', 'Standup')->count())->toBe(2);
 });
 
+test('a creatorless scheduled rule runs userless and never inherits the previous rule identity', function () {
+    Carbon::setTestNow('2026-07-13 09:05');
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+
+    // Rule A runs first (lower id) under its creator, authenticating the process.
+    scheduledRule([
+        'board_id' => $board->id,
+        'created_by' => $owner->id,
+        'trigger_type' => 'scheduled',
+        'trigger_config' => ['freq' => 'daily', 'at' => '09:00'],
+        'actions' => [['type' => 'create_card', 'config' => ['title' => 'From A', 'list_id' => $card->board_list_id]]],
+    ]);
+
+    // Rule B has no creator: it must run userless, not carry over rule A's owner.
+    scheduledRule([
+        'board_id' => $board->id,
+        'created_by' => null,
+        'trigger_type' => 'scheduled',
+        'trigger_config' => ['freq' => 'daily', 'at' => '09:00'],
+        'actions' => [['type' => 'create_card', 'config' => ['title' => 'From B', 'list_id' => $card->board_list_id]]],
+    ]);
+
+    $this->artisan('automations:run-scheduled')->assertSuccessful();
+
+    expect(Card::where('title', 'From A')->first()->created_by)->toBe($owner->id)
+        ->and(Card::where('title', 'From B')->first()->created_by)->toBeNull();
+});
+
 // --- automations:run-scheduled — due-date (±N days) rules -----------------------------
 
 test('a "3 days before due" rule fires once when the instant crosses', function () {

@@ -7,4 +7,4 @@ use Laravel\Mcp\Facades\Mcp;
 // used by the REST API. The per-tool master switch (Setting 'mcp_enabled') and
 // per-user board authorization are enforced inside the server's tools.
 Mcp::web('/mcp/board', BoardServer::class)
-    ->middleware('auth:sanctum');
+    ->middleware(['auth:sanctum', 'throttle:mcp']);

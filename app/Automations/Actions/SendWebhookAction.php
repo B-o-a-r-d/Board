@@ -31,9 +31,12 @@ class SendWebhookAction implements AutomationAction
     {
         $url = trim((string) ($config['url'] ?? ''));
 
-        // SSRF guard: http(s) only, no internal/reserved hosts, and redirects are
-        // disabled below so a public URL can't bounce the request inside.
-        if ($url === '' || ! SafeUrl::isSafe($url)) {
+        // SSRF guard: http(s) only, no internal/reserved hosts. safeConnection()
+        // returns the exact IP it vetted so we can pin the socket to it below —
+        // closing the DNS-rebinding window between this check and the connect.
+        $connection = SafeUrl::safeConnection($url);
+
+        if ($url === '' || $connection === null) {
             throw new \RuntimeException('Webhook URL refused (unsafe or internal host).');
         }
 
@@ -54,7 +57,12 @@ class SendWebhookAction implements AutomationAction
 
         Http::timeout(5)
             ->connectTimeout(3)
-            ->withOptions(['allow_redirects' => false])
+            ->withOptions([
+                // No redirects (a 3xx could bounce us inside) and the connection
+                // pinned to the vetted IP (defeats DNS rebinding).
+                'allow_redirects' => false,
+                'curl' => [CURLOPT_RESOLVE => ["{$connection['host']}:{$connection['port']}:{$connection['ip']}"]],
+            ])
             ->withHeaders(array_filter([
                 'Content-Type' => 'application/json',
                 'X-Board-Signature' => $secret !== '' ? 'sha256='.hash_hmac('sha256', $body, $secret) : null,

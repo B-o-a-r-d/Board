@@ -51,17 +51,17 @@ class BoardExportService
                 $attachments = $card->attachments->map(fn ($a) => $a->name.' ('.$a->url.')')->implode(' ; ');
 
                 $rows->push([
-                    'Liste' => $list->name,
-                    'Titre' => (string) $card->title,
-                    'Description' => (string) $card->description,
-                    'Labels' => $card->labels->map(fn ($l) => $l->name ?? $l->color)->implode(', '),
-                    'Membres' => $card->members->pluck('name')->implode(', '),
+                    'Liste' => $this->neutralize($list->name),
+                    'Titre' => $this->neutralize((string) $card->title),
+                    'Description' => $this->neutralize((string) $card->description),
+                    'Labels' => $this->neutralize($card->labels->map(fn ($l) => $l->name ?? $l->color)->implode(', ')),
+                    'Membres' => $this->neutralize($card->members->pluck('name')->implode(', ')),
                     'Échéance' => optional($card->due_at)->format('Y-m-d H:i'),
                     'Terminée' => $card->completed_at ? 'Oui' : 'Non',
-                    'Couverture' => $card->cover_color ?: ($card->coverUrl() ?? ''),
-                    'Checklists' => $checklists,
-                    'Commentaires' => $comments,
-                    'Pièces jointes' => $attachments,
+                    'Couverture' => $this->neutralize($card->cover_color ?: ($card->coverUrl() ?? '')),
+                    'Checklists' => $this->neutralize($checklists),
+                    'Commentaires' => $this->neutralize($comments),
+                    'Pièces jointes' => $this->neutralize($attachments),
                     'Position' => $card->position,
                     'Créée le' => optional($card->created_at)->format('Y-m-d H:i'),
                     'Modifiée le' => optional($card->updated_at)->format('Y-m-d H:i'),
@@ -70,6 +70,17 @@ class BoardExportService
         }
 
         return $rows;
+    }
+
+    /**
+     * Defuse CSV/XLSX formula injection: a spreadsheet treats a cell starting
+     * with = + - @ (or a tab/CR) as a formula, so a crafted card title like
+     * `=HYPERLINK(...)` would execute when the export is opened. Prefixing a
+     * single quote forces the cell to be read as literal text.
+     */
+    private function neutralize(string $value): string
+    {
+        return preg_match('/^[=+\-@\t\r]/', $value) === 1 ? "'".$value : $value;
     }
 
     /**

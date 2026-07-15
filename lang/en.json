@@ -925,5 +925,6 @@
     "Échec": "Failure",
     "Règle supprimée": "Deleted rule",
     "{1}:count action|[2,*]:count actions": ":count action|:count actions",
-    "Aucune exécution enregistrée pour l’instant.": "No runs recorded yet."
+    "Aucune exécution enregistrée pour l’instant.": "No runs recorded yet.",
+    "Trop de tentatives. Réessayez dans un instant.": "Too many attempts. Please try again shortly."
 }

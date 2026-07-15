@@ -7,7 +7,7 @@ use App\Http\Controllers\Api\V1\LabelController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('/user', fn (Request $request) => $request->user());
 
     Route::prefix('v1')->name('api.v1.')->group(function () {

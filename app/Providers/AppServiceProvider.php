@@ -14,8 +14,11 @@ use Board\PluginSdk\Contracts\ProvidesAutomationActions;
 use Board\PluginSdk\PluginRegistry;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -155,6 +158,12 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Gate::define('admin', fn (User $user): bool => $user->isAdmin());
+
+        // Authenticated API and MCP endpoints are unbounded by default in Laravel
+        // 11+; throttle them per token (fall back to IP) so a leaked token can't
+        // hammer the app. MCP is chattier (agent tool loops), hence a higher cap.
+        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(60)->by($request->user()?->id ?: $request->ip()));
+        RateLimiter::for('mcp', fn (Request $request) => Limit::perMinute(120)->by($request->user()?->id ?: $request->ip()));
 
         $this->translateAuthMails();
     }

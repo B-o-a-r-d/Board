@@ -81,8 +81,7 @@ class RunScheduledAutomations extends Command
                     return;
                 }
 
-                $this->actAsCreator($automation);
-                $ran += $engine->runScheduledRule($automation);
+                $ran += $this->asCreator($automation, fn (): int => $engine->runScheduledRule($automation));
             });
 
         return $ran;
@@ -124,25 +123,48 @@ class RunScheduledAutomations extends Command
                     return;
                 }
 
-                $this->actAsCreator($automation);
+                $ran += $this->asCreator($automation, function () use ($engine, $automation, $cards): int {
+                    $n = 0;
 
-                foreach ($cards as $card) {
-                    $ran += $engine->runForCard($automation, $card);
-                }
+                    foreach ($cards as $card) {
+                        $n += $engine->runForCard($automation, $card);
+                    }
+
+                    return $n;
+                });
             });
 
         return $ran;
     }
 
     /**
-     * Butler semantics: scheduled work is attributed to the rule's creator —
+     * Run one rule under its creator's identity, then restore the previous
+     * identity. Butler semantics: scheduled work is attributed to the creator —
      * created cards, comments and notifications carry their identity, and the
-     * "by me" actor scope resolves against them.
+     * "by me" actor scope resolves against them. A rule with no creator runs
+     * userless, and crucially never inherits the previous rule's identity: the
+     * loop processes rules from many creators in one process.
+     *
+     * @param  \Closure(): int  $callback
      */
-    private function actAsCreator(Automation $automation): void
+    private function asCreator(Automation $automation, \Closure $callback): int
     {
+        $previous = Auth::user();
+
         if ($automation->creator !== null) {
             Auth::setUser($automation->creator);
+        } else {
+            Auth::forgetUser();
+        }
+
+        try {
+            return $callback();
+        } finally {
+            if ($previous !== null) {
+                Auth::setUser($previous);
+            } else {
+                Auth::forgetUser();
+            }
         }
     }
 }
