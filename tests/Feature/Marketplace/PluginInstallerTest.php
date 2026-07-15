@@ -10,7 +10,10 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 
 afterEach(function () {
-    File::deleteDirectory(storage_path('app/plugins'));
+    // Only the fixtures this suite creates — never the whole plugins dir, which
+    // on a dev machine can hold real locally-installed Power-Ups.
+    File::deleteDirectory(storage_path('app/plugins/demo'));
+    File::deleteDirectory(storage_path('app/plugins/stale'));
 });
 
 /**

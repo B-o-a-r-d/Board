@@ -23,7 +23,10 @@ function installedAcmePackage(array $overrides = []): PluginPackage
 }
 
 afterEach(function () {
-    File::deleteDirectory(storage_path('app/plugins'));
+    // Only the fixtures this suite creates — never the whole plugins dir, which
+    // on a dev machine can hold real locally-installed Power-Ups.
+    File::deleteDirectory(storage_path('app/plugins/acme'));
+    File::deleteDirectory(storage_path('app/plugins/demo'));
 });
 
 function catalogMarkdown(): string
