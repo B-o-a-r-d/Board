@@ -27,8 +27,8 @@ test('registration is blocked without an invitation when invite-only is on', fun
     $this->post('/register', [
         'name' => 'Bot',
         'email' => 'bot@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
+        'password' => 'a-strong-passphrase',
+        'password_confirmation' => 'a-strong-passphrase',
     ])->assertSessionHasErrors('email');
 
     expect(User::where('email', 'bot@example.com')->exists())->toBeFalse();
@@ -49,8 +49,8 @@ test('an invited user can register and joins the workspace verified', function (
     $this->withSession(['invitation_token' => $invitation->token])->post('/register', [
         'name' => 'Joiner',
         'email' => 'joiner@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
+        'password' => 'a-strong-passphrase',
+        'password_confirmation' => 'a-strong-passphrase',
     ]);
 
     $user = User::where('email', 'joiner@example.com')->first();
@@ -75,8 +75,8 @@ test('an invitee must register with the invited address', function () {
     $this->withSession(['invitation_token' => $invitation->token])->post('/register', [
         'name' => 'X',
         'email' => 'wrong@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
+        'password' => 'a-strong-passphrase',
+        'password_confirmation' => 'a-strong-passphrase',
     ])->assertSessionHasErrors('email');
 
     expect(User::where('email', 'wrong@example.com')->exists())->toBeFalse();
@@ -96,8 +96,8 @@ test('public registration still works when invite-only is off', function () {
     $this->post('/register', [
         'name' => 'Free',
         'email' => 'free@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
+        'password' => 'a-strong-passphrase',
+        'password_confirmation' => 'a-strong-passphrase',
     ]);
 
     expect(User::where('email', 'free@example.com')->exists())->toBeTrue();

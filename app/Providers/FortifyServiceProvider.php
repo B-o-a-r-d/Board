@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Fortify;
 
@@ -30,6 +31,15 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Minimum 12 characters, and rejected if the password appears in a known
+        // breach (HaveIBeenPwned). The breach check makes a network call, so it is
+        // limited to production to keep local dev and the test suite offline.
+        Password::defaults(function () {
+            $rule = Password::min(12);
+
+            return $this->app->isProduction() ? $rule->uncompromised() : $rule;
+        });
+
         Fortify::createUsersUsing(CreateNewUser::class);
         Fortify::updateUserProfileInformationUsing(UpdateUserProfileInformation::class);
         Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);

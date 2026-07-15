@@ -6,6 +6,10 @@
         'indigo' => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300',
         'neutral' => 'bg-neutral-200 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300',
     ];
+
+    // Plugin list items come from external APIs; only link out to http(s) URLs so
+    // a crafted item can't slip a javascript:/data: scheme into the href.
+    $isHttpUrl = fn (?string $url): bool => is_string($url) && preg_match('#^https?://#i', $url) === 1;
 @endphp
 <div class="flex min-h-0 flex-1 flex-col">
     <div class="flex items-center justify-between gap-2 px-3 pb-1.5 text-xs text-neutral-500 dark:text-neutral-400">
@@ -26,7 +30,7 @@
     <ul class="flex min-h-2 flex-col gap-2 overflow-y-auto px-2 pb-2">
         @forelse ($items as $item)
             <li wire:key="pi-{{ $item->externalRef }}">
-                <a @if ($item->url) href="{{ $item->url }}" target="_blank" rel="noopener noreferrer" @endif
+                <a @if ($isHttpUrl($item->url)) href="{{ $item->url }}" target="_blank" rel="noopener noreferrer" @endif
                    class="flex flex-col gap-1 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm shadow-sm transition hover:border-indigo-300 dark:border-neutral-700 dark:bg-neutral-800 dark:hover:border-indigo-500/50">
                     <div class="flex items-start gap-2">
                         @if ($item->icon)

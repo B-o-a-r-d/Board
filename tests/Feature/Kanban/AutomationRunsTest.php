@@ -9,6 +9,7 @@ use App\Models\Automation;
 use App\Models\AutomationRun;
 use App\Models\Card;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 
 /** Phase 8: execution journal + auto-quarantine after repeated failures. */
@@ -84,6 +85,31 @@ test('a failing pipeline records a failed run with the error and counts consecut
         ->and($run->actions_failed)->toBe(1)
         ->and($run->error)->toContain('kaboom')
         ->and($rule->fresh()->consecutive_failures)->toBe(1);
+});
+
+test('a failed webhook run journals the status and host, not the remote response body', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+
+    // Public IP literal passes the SSRF gate; the fake returns a 500 whose body
+    // holds sensitive content that must NOT end up in the (admin-visible) journal.
+    Http::fake(['8.8.8.8/*' => Http::response('SECRET_INTERNAL_TOKEN=abc123', 500)]);
+
+    Automation::create([
+        'board_id' => $board->id,
+        'created_by' => $owner->id,
+        'name' => 'Webhook',
+        'trigger_type' => 'card.completed',
+        'action_type' => 'noop',
+        'is_active' => true,
+        'actions' => [['type' => 'send_webhook', 'config' => ['url' => 'https://8.8.8.8/hook']]],
+    ]);
+
+    app(AutomationEngine::class)->fire('card.completed', $card);
+
+    $run = AutomationRun::where('board_id', $board->id)->first();
+    expect($run->status)->toBe('failed')
+        ->and($run->error)->toContain('HTTP 500')
+        ->and($run->error)->not->toContain('SECRET_INTERNAL_TOKEN');
 });
 
 test('a rule is auto-disabled after MAX_CONSECUTIVE_FAILURES and logs a board activity', function () {

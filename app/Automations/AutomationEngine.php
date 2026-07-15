@@ -7,6 +7,7 @@ use App\Models\Activity;
 use App\Models\Automation;
 use App\Models\AutomationRun;
 use App\Models\Card;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
@@ -179,7 +180,7 @@ class AutomationEngine
             } catch (\Throwable $e) {
                 report($e);
                 $failed++;
-                $errors[] = "{$step['type']}: {$e->getMessage()}";
+                $errors[] = "{$step['type']}: ".$this->safeErrorMessage($e);
             }
         }
 
@@ -210,6 +211,23 @@ class AutomationEngine
         }
 
         return $executed;
+    }
+
+    /**
+     * Error text safe to persist in the (admin-visible) run journal. A
+     * RequestException carries a slice of the remote response body in its
+     * message, so for those we keep only the status and host — the full
+     * exception still reaches the application log via report().
+     */
+    private function safeErrorMessage(\Throwable $e): string
+    {
+        if ($e instanceof RequestException) {
+            $host = $e->response->effectiveUri()?->getHost() ?? 'remote';
+
+            return "HTTP {$e->response->status()} depuis {$host}";
+        }
+
+        return $e->getMessage();
     }
 
     /**
