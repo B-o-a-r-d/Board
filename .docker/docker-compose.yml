@@ -25,6 +25,14 @@ services:
     env_file: .env
     environment:
       CONTAINER_ROLE: app
+      # Publish broadcast events to Reverb over the internal Docker network
+      # rather than the public host: a public TLS round-trip per event adds
+      # ~130 ms to EVERY Livewire action. The browser still connects to the
+      # public VITE_REVERB_HOST baked in at build time; only server-side
+      # publishing (config/broadcasting.php) uses these.
+      REVERB_HOST: reverb
+      REVERB_PORT: "8080"
+      REVERB_SCHEME: http
     volumes:
       - storage-data:/var/www/html/storage
     depends_on:
@@ -105,6 +113,10 @@ services:
     env_file: .env
     environment:
       CONTAINER_ROLE: queue
+      # Publish broadcasts internally (see board-app).
+      REVERB_HOST: reverb
+      REVERB_PORT: "8080"
+      REVERB_SCHEME: http
     command: ["php", "artisan", "queue:work", "--tries=3", "--timeout=90", "--sleep=1"]
     depends_on:
       - board-app
@@ -118,6 +130,10 @@ services:
     env_file: .env
     environment:
       CONTAINER_ROLE: scheduler
+      # Publish broadcasts internally (see board-app).
+      REVERB_HOST: reverb
+      REVERB_PORT: "8080"
+      REVERB_SCHEME: http
     command: ["php", "artisan", "schedule:work"]
     depends_on:
       - board-app
