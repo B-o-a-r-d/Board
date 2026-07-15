@@ -47,10 +47,24 @@ class PluginList extends Component
      */
     public function getListeners(): array
     {
-        // Re-read the (cache-warmed) items when anyone broadcasts board activity.
         return [
-            "echo-private:board.{$this->list->board_id},.board.activity" => '$refresh',
+            "echo-private:board.{$this->list->board_id},.board.activity" => 'onBoardActivity',
         ];
+    }
+
+    /**
+     * Only a plugin refresh (manual / webhook / schedule) changes this list's
+     * items. Ordinary card activity must NOT re-render here — otherwise every
+     * card action would refetch the external API on every connected client
+     * (a request storm that starves PHP-FPM workers).
+     *
+     * @param  array<string, mixed>  $event  the BoardActivity payload
+     */
+    public function onBoardActivity(array $event = []): void
+    {
+        if (($event['action'] ?? null) !== 'plugin.refreshed') {
+            $this->skipRender();
+        }
     }
 
     /**
@@ -73,10 +87,13 @@ class PluginList extends Component
 
     public function render(): View
     {
-        $items = app(PluginEngine::class)->listItems($this->list, $this->limit);
+        $engine = app(PluginEngine::class);
+        $items = $engine->listItems($this->list, $this->limit);
 
         return view('livewire.boards.plugin-list', [
             'items' => $items,
+            // Cache still cold → a background warm is in flight; poll until ready.
+            'warming' => $engine->isWarming($this->list, $this->limit),
             // A full page suggests there may be more to fetch.
             'hasMore' => $items->count() >= $this->limit,
             'plugin' => app(PluginRegistry::class)->get(optional($this->list->sourcePlugin)->plugin_key),

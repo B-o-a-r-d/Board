@@ -2,6 +2,7 @@
 
 namespace App\Plugins;
 
+use App\Jobs\WarmPluginList;
 use App\Models\BoardList;
 use Board\PluginSdk\Contracts\ProvidesListSource;
 use Board\PluginSdk\PluginListItem;
@@ -41,11 +42,15 @@ class PluginEngine
         $cached = Cache::get($key);
 
         if (! is_array($cached)) {
-            $cached = $this->fetch($list, $limit)->map->toArray()->all();
-            Cache::put($key, $cached, now()->addMinutes(self::TTL_MINUTES));
+            // Warm off the web request so a slow plugin API never blocks the page
+            // (nor starves PHP-FPM workers). The sync queue (tests) warms inline, so
+            // items are ready on the re-read below; a real queue warms in the
+            // background and {@see PluginList} polls until the cache is warm.
+            $this->queueWarm($list, $limit);
+            $cached = Cache::get($key);
         }
 
-        return collect($cached)->map(fn (array $row): PluginListItem => new PluginListItem(
+        return collect(is_array($cached) ? $cached : [])->map(fn (array $row): PluginListItem => new PluginListItem(
             externalRef: (string) ($row['external_ref'] ?? ''),
             title: (string) ($row['title'] ?? ''),
             subtitle: $row['subtitle'] ?? null,
@@ -58,15 +63,50 @@ class PluginEngine
     }
 
     /**
-     * Drop every cached page for this list and re-warm the current one.
+     * True while a plugin list's page has no cached value yet — i.e. a warm is
+     * (or should be) in flight, so the component shows a skeleton and polls.
+     */
+    public function isWarming(BoardList $list, int $limit = self::DEFAULT_LIMIT): bool
+    {
+        return $list->isPluginList() && ! is_array(Cache::get($this->cacheKey($list, $limit)));
+    }
+
+    /**
+     * Fetch a page from the plugin and cache it. Runs in the queue (via
+     * {@see WarmPluginList}) for the automatic first load, or inline on an
+     * explicit user refresh.
+     */
+    public function warm(BoardList $list, int $limit = self::DEFAULT_LIMIT): void
+    {
+        $items = $this->fetch($list, $limit)->map->toArray()->all();
+
+        Cache::put($this->cacheKey($list, $limit), $items, now()->addMinutes(self::TTL_MINUTES));
+        Cache::forget($this->warmingKey($list, $limit));
+    }
+
+    /**
+     * Drop every cached page for this list and re-warm the current one inline
+     * (an explicit user action expects fresh data in the same round-trip).
      */
     public function refresh(BoardList $list, int $limit = self::DEFAULT_LIMIT): void
     {
         for ($page = self::DEFAULT_LIMIT; $page <= 600; $page += self::DEFAULT_LIMIT) {
             Cache::forget($this->cacheKey($list, $page));
+            Cache::forget($this->warmingKey($list, $page));
         }
 
-        $this->listItems($list, $limit);
+        $this->warm($list, $limit);
+    }
+
+    /**
+     * Queue a background warm, deduped so only one runs per (list, page) at a
+     * time. The lock self-expires, so a failed warm re-queues on the next render.
+     */
+    private function queueWarm(BoardList $list, int $limit): void
+    {
+        if (Cache::add($this->warmingKey($list, $limit), true, now()->addSeconds(30))) {
+            WarmPluginList::dispatch($list->id, $limit);
+        }
     }
 
     /**
@@ -102,5 +142,10 @@ class PluginEngine
     private function cacheKey(BoardList $list, int $limit): string
     {
         return "plugin-list:{$list->id}:{$limit}";
+    }
+
+    private function warmingKey(BoardList $list, int $limit): string
+    {
+        return $this->cacheKey($list, $limit).':warming';
     }
 }

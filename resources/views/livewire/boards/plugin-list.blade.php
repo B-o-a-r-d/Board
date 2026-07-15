@@ -11,7 +11,7 @@
     // a crafted item can't slip a javascript:/data: scheme into the href.
     $isHttpUrl = fn (?string $url): bool => is_string($url) && preg_match('#^https?://#i', $url) === 1;
 @endphp
-<div class="flex min-h-0 flex-1 flex-col">
+<div class="flex min-h-0 flex-1 flex-col" @if ($warming ?? false) wire:poll.2500ms @endif>
     <div class="flex items-center justify-between gap-2 px-3 pb-1.5 text-xs text-neutral-500 dark:text-neutral-400">
         <span class="inline-flex min-w-0 items-center gap-1 truncate">
             <x-dynamic-component :component="'phosphor-'.($plugin?->icon() ?? 'puzzle-piece')" class="h-3.5 w-3.5 shrink-0"/>
@@ -28,6 +28,15 @@
     </div>
 
     <ul class="flex min-h-2 flex-col gap-2 overflow-y-auto px-2 pb-2">
+        @if ($warming ?? false)
+            {{-- Items are being fetched off the request (queue) — skeleton while polling. --}}
+            @foreach (range(1, 3) as $s)
+                <li wire:key="pl-warm-{{ $s }}" class="rounded-lg border border-neutral-200 bg-white px-3 py-2.5 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
+                    <div class="h-3.5 w-3/4 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700"></div>
+                    <div class="mt-2 h-2.5 w-1/2 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800"></div>
+                </li>
+            @endforeach
+        @else
         @forelse ($items as $item)
             <li wire:key="pi-{{ $item->externalRef }}">
                 <a @if ($isHttpUrl($item->url)) href="{{ $item->url }}" target="_blank" rel="noopener noreferrer" @endif
@@ -76,6 +85,7 @@
                     @endforeach
                 </div>
             </li>
+        @endif
         @endif
     </ul>
 </div>
