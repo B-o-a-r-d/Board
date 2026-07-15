@@ -5,10 +5,12 @@ namespace App\Providers;
 use App\Automations\Actions;
 use App\Automations\AutomationRegistry;
 use App\Automations\Conditions;
+use App\Automations\PluginAutomationAction;
 use App\Automations\Triggers;
 use App\Models\User;
 use App\Plugins\PluginContext;
 use Board\PluginSdk\Contracts\PluginContext as PluginContextContract;
+use Board\PluginSdk\Contracts\ProvidesAutomationActions;
 use Board\PluginSdk\PluginRegistry;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -100,6 +102,35 @@ class AppServiceProvider extends ServiceProvider
                 Actions\SendWebhookAction::class,
             ] as $action) {
                 $registry->registerAction(new $action);
+            }
+
+            // Power-Ups contribute their own actions (ProvidesAutomationActions):
+            // registered under "plugin:<plugin>:<action>", sandboxed at run time.
+            foreach ($this->app->make(PluginRegistry::class)->all() as $plugin) {
+                if (! $plugin instanceof ProvidesAutomationActions) {
+                    continue;
+                }
+
+                try {
+                    foreach ($plugin->automationActions() as $declaration) {
+                        $key = mb_substr(trim((string) ($declaration['key'] ?? '')), 0, 60);
+                        $label = trim((string) ($declaration['label'] ?? ''));
+
+                        if ($key === '' || $label === '') {
+                            continue;
+                        }
+
+                        $adapter = new PluginAutomationAction(
+                            $plugin,
+                            $key,
+                            $label,
+                            array_values(array_filter((array) ($declaration['configFields'] ?? []), 'is_array')),
+                        );
+                        $registry->registerAction($adapter, $adapter->qualifiedKey());
+                    }
+                } catch (\Throwable $e) {
+                    report($e); // a broken plugin never blocks the core registry
+                }
             }
 
             return $registry;

@@ -162,7 +162,8 @@ class SentenceRenderer
             ]),
             'notify_members' => __('notifier les membres de la carte'),
             'send_webhook' => __('envoyer un webhook'),
-            default => $type,
+            // Plugin-contributed actions render their declared label.
+            default => app(AutomationRegistry::class)->action($type)?->label() ?? $type,
         };
     }
 

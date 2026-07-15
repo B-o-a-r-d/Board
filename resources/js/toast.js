@@ -15,6 +15,8 @@ window.toast = function (message, options = {}) {
                 description: options.description ?? '',
                 position: options.position ?? 'bottom-right',
                 html: options.html ?? '',
+                duration: options.duration ?? null,
+                actions: Array.isArray(options.actions) ? options.actions : [],
             },
         })
     )

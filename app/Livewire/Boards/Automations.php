@@ -3,11 +3,13 @@
 namespace App\Livewire\Boards;
 
 use App\Automations\AutomationRegistry;
+use App\Automations\PluginAutomationAction;
 use App\Automations\SentenceRenderer;
 use App\Events\BoardActivity;
 use App\Models\Automation;
 use App\Models\AutomationRun;
 use App\Models\Board;
+use Board\PluginSdk\PluginRegistry;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -434,9 +436,34 @@ class Automations extends Component
      */
     public function allowedActionKeys(): array
     {
-        return in_array($this->section, ['scheduled', 'board_buttons'], true)
-            ? self::SCHEDULED_ACTIONS
-            : array_merge(...array_values(self::ACTION_CATEGORIES));
+        if (in_array($this->section, ['scheduled', 'board_buttons'], true)) {
+            return self::SCHEDULED_ACTIONS;
+        }
+
+        return array_merge(
+            array_merge(...array_values(self::ACTION_CATEGORIES)),
+            array_keys($this->availablePluginActions()),
+        );
+    }
+
+    /**
+     * Plugin-contributed actions available on THIS board (the Power-Up must be
+     * installed and active), keyed by qualified key and grouped for the view.
+     *
+     * @return array<string, PluginAutomationAction>
+     */
+    public function availablePluginActions(): array
+    {
+        $activeKeys = $this->board->plugins()->where('is_active', true)->pluck('plugin_key')->all();
+
+        if ($activeKeys === []) {
+            return [];
+        }
+
+        return collect(app(AutomationRegistry::class)->actions())
+            ->filter(fn ($action) => $action instanceof PluginAutomationAction
+                && in_array($action->pluginKey(), $activeKeys, true))
+            ->all();
     }
 
     private function sectionFor(string $triggerType): string
@@ -500,8 +527,16 @@ class Automations extends Component
                 ->get()
             : collect();
 
+        $pluginActionGroups = collect($this->availablePluginActions())
+            ->groupBy(fn (PluginAutomationAction $action) => $action->pluginKey(), preserveKeys: true)
+            ->map(fn ($actions, $pluginKey) => [
+                'label' => app(PluginRegistry::class)->get($pluginKey)?->label() ?? $pluginKey,
+                'actions' => $actions,
+            ]);
+
         return view('livewire.boards.automations', [
             'runs' => $runs,
+            'pluginActionGroups' => $pluginActionGroups,
             'items' => $items,
             'registryTriggers' => $registry->triggers(),
             'registryActions' => $registry->actions(),

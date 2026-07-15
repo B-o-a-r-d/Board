@@ -356,6 +356,14 @@
                                                 {{ $categoryLabels[$catKey]['label'] }}
                                             </button>
                                         @endforeach
+                                        {{-- Power-Up categories (the Jira/Slack equivalents) --}}
+                                        @foreach ($pluginActionGroups as $pluginKey => $group)
+                                            <button type="button" @click="cat = 'plugin-{{ $pluginKey }}'"
+                                                    class="flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs transition"
+                                                    :class="cat === 'plugin-{{ $pluginKey }}' ? 'border-indigo-400 bg-indigo-50 text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300' : 'border-neutral-200 text-neutral-500 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800'">
+                                                <x-phosphor-puzzle-piece class="h-3.5 w-3.5"/> {{ $group['label'] }}
+                                            </button>
+                                        @endforeach
                                     </div>
                                     @foreach (\App\Livewire\Boards\Automations::ACTION_CATEGORIES as $catKey => $keys)
                                         <div x-show="cat === '{{ $catKey }}'" class="space-y-1.5">
@@ -363,6 +371,17 @@
                                                 <button type="button" wire:click="addAction('{{ $key }}')"
                                                         class="{{ $rowBtn }} border-neutral-200 bg-white hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800">
                                                     <span>{{ __($registryActions[$key]?->label() ?? $key) }}</span>
+                                                    <x-phosphor-plus-circle class="h-4 w-4 shrink-0 text-indigo-400"/>
+                                                </button>
+                                            @endforeach
+                                        </div>
+                                    @endforeach
+                                    @foreach ($pluginActionGroups as $pluginKey => $group)
+                                        <div x-show="cat === 'plugin-{{ $pluginKey }}'" class="space-y-1.5">
+                                            @foreach ($group['actions'] as $qualifiedKey => $pluginAction)
+                                                <button type="button" wire:click="addAction('{{ $qualifiedKey }}')" wire:key="pa-{{ $qualifiedKey }}"
+                                                        class="{{ $rowBtn }} border-neutral-200 bg-white hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800">
+                                                    <span>{{ $pluginAction->label() }}</span>
                                                     <x-phosphor-plus-circle class="h-4 w-4 shrink-0 text-indigo-400"/>
                                                 </button>
                                             @endforeach

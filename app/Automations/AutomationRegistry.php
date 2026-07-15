@@ -33,9 +33,14 @@ class AutomationRegistry
         $this->conditions[$condition::key()] = $condition;
     }
 
-    public function registerAction(AutomationAction $action): void
+    /**
+     * Core actions register under their static key; plugin-contributed actions
+     * pass an explicit qualified key ("plugin:<plugin>:<action>") since one
+     * adapter class wraps many dynamic actions.
+     */
+    public function registerAction(AutomationAction $action, ?string $key = null): void
     {
-        $this->actions[$action::key()] = $action;
+        $this->actions[$key ?? $action::key()] = $action;
     }
 
     /** @return array<string, AutomationTrigger> */

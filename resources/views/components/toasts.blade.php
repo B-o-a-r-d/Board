@@ -139,7 +139,9 @@
                 message: event.detail.message,
                 description: event.detail.description,
                 type: event.detail.type,
-                html: event.detail.html
+                html: event.detail.html,
+                duration: event.detail.duration,
+                actions: event.detail.actions ?? []
             });
         "
         @mouseenter="toastsHovered = true"
@@ -186,7 +188,7 @@
                             if (toasts.length == 1) { $el.firstElementChild.classList.remove('translate-y-0'); $el.firstElementChild.classList.add('-translate-y-full'); }
                             setTimeout(function () { deleteToastWithId(toast.id); }, 300);
                         }, 5);
-                    }, 4500);
+                    }, toast.duration || 4500);
                 "
                 @mouseover="toastHovered = true"
                 @mouseout="toastHovered = false"
@@ -215,6 +217,20 @@
                                 <p class="text-[13px] font-medium leading-none text-neutral-800 dark:text-neutral-100" x-text="toast.message"></p>
                             </div>
                             <p x-show="toast.description" :class="{ 'pl-5': toast.type != 'default' }" class="mt-1.5 text-xs leading-none text-neutral-500 dark:text-neutral-400" x-text="toast.description"></p>
+                            <div x-show="toast.actions && toast.actions.length" :class="{ 'pl-5': toast.type != 'default' }" class="flex flex-wrap gap-2 mt-2.5">
+                                <template x-for="action in (toast.actions ?? [])" :key="action.url">
+                                    <a
+                                        :href="action.url"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        @click="burnToast(toast.id)"
+                                        class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium transition-colors bg-white border rounded-md text-neutral-700 border-neutral-200 hover:bg-neutral-100 dark:bg-neutral-700 dark:text-neutral-200 dark:border-neutral-600 dark:hover:bg-neutral-600"
+                                    >
+                                        <span x-text="action.label"></span>
+                                        <svg class="w-3 h-3" viewBox="0 0 256 256" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M200,64V168a8,8,0,0,1-16,0V83.31L69.66,197.66a8,8,0,0,1-11.32-11.32L172.69,72H88a8,8,0,0,1,0-16H192A8,8,0,0,1,200,64Z"/></svg>
+                                    </a>
+                                </template>
+                            </div>
                         </div>
                     </template>
                     <template x-if="toast.html">
@@ -233,3 +249,15 @@
         </template>
     </ul>
 </template>
+
+@auth
+    {{-- Server-pushed toasts (plugin automation outcomes) — same private channel
+         as the notifications bell, delivered even when the run happened in a
+         queue worker or the scheduler. --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            window.Echo?.private('App.Models.User.{{ auth()->id() }}')
+                .listen('.user.toast', (payload) => window.toast(payload.message ?? '', payload));
+        });
+    </script>
+@endauth

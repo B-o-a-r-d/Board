@@ -4,12 +4,14 @@ namespace Tests\Fixtures\Connector;
 
 use Board\PluginSdk\Contracts\DefinesActivities;
 use Board\PluginSdk\Contracts\Plugin;
+use Board\PluginSdk\Contracts\ProvidesAutomationActions;
 use Board\PluginSdk\Contracts\ProvidesCardFields;
 use Board\PluginSdk\Contracts\ProvidesListSource;
 use Board\PluginSdk\Contracts\ProvidesMcpTools;
 use Board\PluginSdk\Contracts\ProvidesOAuth;
 use Board\PluginSdk\Contracts\ProvidesSettings;
 use Board\PluginSdk\PluginListItem;
+use Board\PluginSdk\PluginToast;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
@@ -22,7 +24,7 @@ use Illuminate\Support\Facades\Http;
  *
  * All I/O targets the fake `acme.test` host so tests can `Http::fake()` it.
  */
-class AcmePlugin implements DefinesActivities, Plugin, ProvidesCardFields, ProvidesListSource, ProvidesMcpTools, ProvidesOAuth, ProvidesSettings
+class AcmePlugin implements DefinesActivities, Plugin, ProvidesAutomationActions, ProvidesCardFields, ProvidesListSource, ProvidesMcpTools, ProvidesOAuth, ProvidesSettings
 {
     public const AUTHORIZE_URL = 'https://acme.test/oauth/authorize';
 
@@ -186,6 +188,51 @@ class AcmePlugin implements DefinesActivities, Plugin, ProvidesCardFields, Provi
             ['key' => 'acme_status', 'name' => 'Acme status', 'type' => 'select', 'options' => ['Open', 'In progress', 'Done'], 'placement' => 'content'],
             ['key' => 'acme_ref', 'name' => 'Acme reference', 'type' => 'url'],
         ];
+    }
+
+    // --- ProvidesAutomationActions ---------------------------------------------
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function automationActions(): array
+    {
+        return [[
+            'key' => 'create_item',
+            'label' => 'Créer un item Acme',
+            'configFields' => [
+                ['key' => 'resource', 'label' => 'Resource', 'type' => 'text'],
+            ],
+        ]];
+    }
+
+    public function runAutomationAction(array $config, string $key, array $card, array $actionConfig): ?PluginToast
+    {
+        if ($key !== 'create_item') {
+            return null;
+        }
+
+        $item = $this->client($config)
+            ->post(self::API.'/items', [
+                'resource' => (string) ($actionConfig['resource'] ?? ''),
+                'title' => (string) ($card['title'] ?? ''),
+                'card_id' => $card['id'] ?? null,
+            ])
+            ->throw()
+            ->json();
+
+        $url = (string) (is_array($item) ? ($item['url'] ?? '') : '');
+
+        return new PluginToast(
+            message: 'Item Acme créé',
+            description: (string) ($actionConfig['resource'] ?? ''),
+            duration: 6000,
+            actions: $url === '' ? [] : [
+                ['label' => 'Ouvrir', 'url' => $url],
+                // Dropped by the host: only http(s) links reach the browser.
+                ['label' => 'Evil', 'url' => 'javascript:alert(1)'],
+            ],
+        );
     }
 
     // --- ProvidesMcpTools -----------------------------------------------------
