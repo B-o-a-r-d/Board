@@ -52,6 +52,8 @@ trait ManagesCardLabels
         $card->labels()->attach($label->id);
         $this->reset('newLabelName');
         $this->touched('label.created');
+        // New label definition → Show's filter dropdown must pick it up.
+        $this->dispatch('board-refresh');
     }
 
     public function renameLabel(int $labelId, string $name): void
@@ -60,6 +62,7 @@ trait ManagesCardLabels
 
         $this->board->labels()->findOrFail($labelId)->update(['name' => trim($name) ?: null]);
         $this->touched('label.renamed');
+        $this->labelDefinitionChanged();
     }
 
     public function recolorLabel(int $labelId, string $color): void
@@ -70,6 +73,7 @@ trait ManagesCardLabels
 
         $this->board->labels()->whereKey($labelId)->update(['color' => $color]);
         $this->touched('label.recolored');
+        $this->labelDefinitionChanged();
     }
 
     public function deleteLabel(int $labelId): void
@@ -78,5 +82,17 @@ trait ManagesCardLabels
 
         $this->board->labels()->whereKey($labelId)->delete();
         $this->touched('label.deleted');
+        $this->labelDefinitionChanged();
+    }
+
+    /**
+     * A label definition changed: its chips may sit on cards in every column,
+     * and Show's filter dropdown lists it — refresh both (touched() only
+     * covered this card's own column).
+     */
+    private function labelDefinitionChanged(): void
+    {
+        $this->dispatch('cards:refresh');
+        $this->dispatch('board-refresh');
     }
 }

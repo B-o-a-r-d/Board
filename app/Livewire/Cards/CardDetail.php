@@ -234,6 +234,9 @@ class CardDetail extends Component
         ]);
 
         $this->touched('card.moved');
+        // touched() refreshed the target column (the card's new list); the card
+        // also has to disappear from its source column.
+        $this->dispatch('cards:refresh', listId: $fromListId);
     }
 
     /**
@@ -393,7 +396,14 @@ class CardDetail extends Component
         // Defer the Reverb broadcast so the modal action returns without waiting on
         // the realtime round-trip (see InteractsWithBoardCards::broadcastActivity).
         defer(fn () => broadcast(new BoardActivity($boardId, $action, $actorId))->toOthers());
-        $this->dispatch('board-refresh');
+
+        // Refresh only the card's own column (its card-back badges) — NOT the whole
+        // Show chrome: the old board-refresh here re-rendered the entire board after
+        // every modal action, which is where the perceived latency came from.
+        if ($this->cardId !== null) {
+            $listId = $this->board->cards()->whereKey($this->cardId)->value('board_list_id');
+            $this->dispatch('cards:refresh', listId: $listId);
+        }
     }
 
     public function render(): View
