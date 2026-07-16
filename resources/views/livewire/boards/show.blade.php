@@ -594,18 +594,28 @@
             </div>
         @endforeach
 
-        {{-- Add list — sticky on the right edge so it stays reachable without
-             scrolling past every list (mobile keeps it as the last snap slide). --}}
+        {{-- Add list — a compact sticky pill so it never covers list headers;
+             clicking it expands the form and focuses the input right away. --}}
         @if ($canContribute)
-        <form wire:submit="addList" class="w-full shrink-0 snap-start sm:sticky sm:right-0 sm:z-10 sm:w-72">
-            <input
-                type="text"
-                wire:model="newListName"
-                placeholder="{{ __('+ Ajouter une liste') }}"
-                class="w-full rounded-xl border border-dashed px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none {{ $boardBg ? 'dark border-white/25 bg-neutral-900/45 text-neutral-100 placeholder-neutral-300 backdrop-blur-xl' : 'border-neutral-300 bg-white/70 placeholder-neutral-500 backdrop-blur-md dark:border-neutral-700 dark:bg-neutral-900/70 dark:placeholder-neutral-200' }}"
-            >
-            @error('newListName') <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
-        </form>
+        <div class="shrink-0 snap-start sm:sticky sm:right-0 sm:z-10" x-data="{ open: false }"
+             @keydown.escape.window="open = false">
+            <button type="button" x-show="! open" @click="open = true; $nextTick(() => $refs.newList.focus())"
+                    title="{{ __('+ Ajouter une liste') }}" aria-label="{{ __('+ Ajouter une liste') }}"
+                    class="flex h-10 w-10 items-center justify-center rounded-full border shadow-lg transition {{ $boardBg ? 'dark border-white/25 bg-neutral-900/70 text-neutral-100 backdrop-blur-xl hover:bg-neutral-900/90' : 'border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800' }}">
+                <x-phosphor-plus class="h-5 w-5"/>
+            </button>
+
+            <form x-show="open" x-cloak wire:submit="addList" @click.outside="open = false" class="w-72 max-w-[80vw]">
+                <input
+                    type="text"
+                    x-ref="newList"
+                    wire:model="newListName"
+                    placeholder="{{ __('+ Ajouter une liste') }}"
+                    class="w-full rounded-xl border border-dashed px-3 py-2 text-sm shadow-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none {{ $boardBg ? 'dark border-white/25 bg-neutral-900/85 text-neutral-100 placeholder-neutral-300 backdrop-blur-xl' : 'border-neutral-300 bg-white placeholder-neutral-500 dark:border-neutral-700 dark:bg-neutral-900 dark:placeholder-neutral-200' }}"
+                >
+                @error('newListName') <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+            </form>
+        </div>
         @endif
     </div>
 

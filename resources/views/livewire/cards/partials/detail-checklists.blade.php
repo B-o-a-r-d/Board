@@ -34,12 +34,23 @@
                                     <ul class="space-y-1">
                                         @foreach ($checklist->items as $item)
                                             @php $itemOverdue = $item->due_at && ! $item->is_completed && $item->due_at->isPast(); @endphp
-                                            <li wire:key="chk-item-{{ $item->id }}" class="group flex items-center gap-2 rounded px-1 py-0.5 text-sm hover:bg-neutral-50 dark:hover:bg-neutral-800/60">
+                                            {{-- Optimistic toggle: `done` flips instantly client-side, the server
+                                                 confirms after. Server classes are the no-FOUC truth; the completion
+                                                 state is part of wire:key so a server change re-seeds `done`. --}}
+                                            <li wire:key="chk-item-{{ $item->id }}-{{ (int) $item->is_completed }}"
+                                                x-data="{ done: {{ $item->is_completed ? 'true' : 'false' }} }"
+                                                class="group flex items-center gap-2 rounded px-1 py-0.5 text-sm hover:bg-neutral-50 dark:hover:bg-neutral-800/60">
                                                 @if ($canContribute)
-                                                <button type="button" wire:click="toggleChecklistItem({{ $item->id }})" class="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition {{ $item->is_completed ? 'border-green-500 bg-green-500 text-white' : 'border-neutral-300 hover:border-green-400 dark:border-neutral-600' }}">
-                                                    @if ($item->is_completed)<x-phosphor-check class="h-3 w-3"/>@endif
+                                                <button type="button" @click="done = ! done; $wire.toggleChecklistItem({{ $item->id }})"
+                                                        class="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition {{ $item->is_completed ? 'border-green-500 bg-green-500 text-white' : 'border-neutral-300 hover:border-green-400 dark:border-neutral-600' }}"
+                                                        :class="{
+                                                            'border-green-500 bg-green-500 text-white': done,
+                                                            'border-neutral-300 hover:border-green-400 dark:border-neutral-600': ! done,
+                                                        }">
+                                                    <x-phosphor-check class="h-3 w-3" x-show="done" @style(['display: none' => ! $item->is_completed])/>
                                                 </button>
-                                                <span class="min-w-0 flex-1 break-words {{ $item->is_completed ? 'text-neutral-400 line-through' : '' }}">{{ $item->content }}</span>
+                                                <span class="min-w-0 flex-1 break-words {{ $item->is_completed ? 'text-neutral-400 line-through' : '' }}"
+                                                      :class="{ 'text-neutral-400 line-through': done }">{{ $item->content }}</span>
                                                 <div class="ml-auto flex shrink-0 items-center gap-1.5">
                                                     @if ($item->due_at)
                                                         <span class="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs {{ $itemOverdue ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300' : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300' }}"><x-phosphor-calendar-blank class="h-3.5 w-3.5"/>{{ $item->due_at->translatedFormat('d M') }}</span>
