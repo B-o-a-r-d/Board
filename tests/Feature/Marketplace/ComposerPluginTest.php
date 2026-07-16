@@ -1,10 +1,15 @@
 <?php
 
+use App\Models\User;
+use Board\Marketplace\Livewire\Marketplace;
 use Board\Marketplace\MarketplaceClient;
 use Board\Marketplace\Models\PluginPackage;
+use Board\Marketplace\Models\PluginRepository;
 use Board\Marketplace\PluginInstaller;
 use Board\Marketplace\PluginInstallException;
 use Board\Marketplace\Support\ComposerRunner;
+use Board\Marketplace\Support\PackagistStats;
+use Board\Marketplace\Support\Settings;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 
@@ -175,4 +180,112 @@ test('checkUpdates resolves composer plugins through composer outdated', functio
 
     expect($package->available_version)->toBe('2.0.0')
         ->and($package->breaking_update)->toBeTrue();
+});
+
+// --- Phase 2 : sources custom + install depuis une source ---------------------
+
+function composerAdmin(): User
+{
+    return User::factory()->create(['is_admin' => true]);
+}
+
+test('an admin manages custom composer repositories from the source modal', function () {
+    Settings::setEnabled(true);
+
+    $component = Livewire\Livewire::actingAs(composerAdmin())
+        ->test(Marketplace::class)
+        ->call('openSource')
+        ->set('newRepoType', 'vcs')
+        ->set('newRepoUrl', 'http://insecure.test/repo.git')
+        ->call('addRepository')
+        ->assertHasErrors('newRepoUrl');
+
+    $component->set('newRepoUrl', 'https://git.example.com/acme/plugin.git')
+        ->call('addRepository')
+        ->assertHasNoErrors();
+
+    expect(PluginRepository::count())->toBe(1);
+
+    $component->call('removeRepository', PluginRepository::first()->id);
+    expect(PluginRepository::count())->toBe(0);
+});
+
+test('custom repositories are written into the plugins composer manifest on install', function () {
+    fakeComposer();
+    PluginRepository::create(['type' => 'vcs', 'url' => 'https://git.example.com/acme/plugin.git']);
+
+    app(PluginInstaller::class)->install(composerEntry());
+
+    $manifest = json_decode((string) file_get_contents(storage_path('app/plugins/composer.json')), true);
+
+    expect($manifest['repositories'])->toBe([
+        ['type' => 'vcs', 'url' => 'https://git.example.com/acme/plugin.git'],
+    ]);
+});
+
+test('installing from a raw package name derives the key and shows up off-catalog', function () {
+    Settings::setEnabled(true);
+    fakeComposer();
+    Http::fake(); // empty catalog + no Packagist calls
+
+    Livewire\Livewire::actingAs(composerAdmin())
+        ->test(Marketplace::class)
+        ->call('openSource')
+        ->set('sourcePackage', 'board/plugin-demo')
+        ->call('installFromSource')
+        ->assertSet('showSource', false)
+        ->assertSee(__('Installés hors catalogue'))
+        ->assertSee('board/plugin-demo');
+
+    $package = PluginPackage::where('key', 'board-plugin-demo')->firstOrFail();
+
+    expect($package->source)->toBe('composer')
+        ->and($package->package_name)->toBe('board/plugin-demo')
+        ->and($package->name)->toBe('Plugin Demo');
+});
+
+// --- Phase 3 : bannières / captures + stats Packagist --------------------------
+
+test('the catalog keeps https banners and screenshots and drops the rest', function () {
+    $markdown = <<<'MD'
+    ---
+    key: demo
+    name: Demo
+    repo: acme/demo
+    banner: https://cdn.example.com/banner.png
+    screenshots:
+      - https://cdn.example.com/shot1.png
+      - http://cdn.example.com/insecure.png
+      - javascript:alert(1)
+    ---
+    Body.
+    MD;
+
+    Http::fake([
+        'api.github.com/repos/B-o-a-r-d/Marketplace/contents/plugins' => Http::response([
+            ['type' => 'file', 'name' => 'demo.md', 'download_url' => 'https://raw.githubusercontent.com/B-o-a-r-d/Marketplace/main/plugins/demo.md'],
+        ]),
+        'raw.githubusercontent.com/B-o-a-r-d/Marketplace/*' => Http::response($markdown),
+    ]);
+
+    $entry = app(MarketplaceClient::class)->catalog()->first();
+
+    expect($entry['banner'])->toBe('https://cdn.example.com/banner.png')
+        ->and($entry['screenshots'])->toBe(['https://cdn.example.com/shot1.png']);
+});
+
+test('packagist download totals are fetched and failures cached as unknown', function () {
+    Http::fake([
+        'packagist.org/packages/board/plugin-demo.json' => Http::response(['package' => ['downloads' => ['total' => 1234]]]),
+        'packagist.org/packages/board/plugin-down.json' => Http::response(null, 500),
+    ]);
+
+    $stats = app(PackagistStats::class);
+
+    expect($stats->downloads('board/plugin-demo'))->toBe(1234)
+        ->and($stats->downloads('board/plugin-down'))->toBeNull();
+
+    // The failure is cached (sentinel), so a second read makes no new HTTP call.
+    $stats->downloads('board/plugin-down');
+    Http::assertSentCount(2);
 });
