@@ -289,3 +289,33 @@ test('packagist download totals are fetched and failures cached as unknown', fun
     $stats->downloads('board/plugin-down');
     Http::assertSentCount(2);
 });
+
+test('a catalog cached by an older release renders with defaults instead of crashing', function () {
+    Settings::setEnabled(true);
+
+    // Legacy entry shape (pre-v0.1.5: no package/banner/screenshots keys),
+    // planted straight into the current cache key.
+    cache()->put('marketplace:catalog:v2', [[
+        'key' => 'legacy',
+        'name' => 'Legacy',
+        'repo' => 'acme/legacy',
+        'description' => 'Cached by an old release.',
+        'author' => '',
+        'homepage' => '',
+        'icon' => 'puzzle-piece',
+        'capabilities' => [],
+        'category' => 'other',
+        'readme' => 'Body.',
+    ]], now()->addHour());
+
+    $entry = app(MarketplaceClient::class)->catalog()->firstWhere('key', 'legacy');
+
+    expect($entry['package'])->toBe('')
+        ->and($entry['banner'])->toBe('')
+        ->and($entry['screenshots'])->toBe([]);
+
+    Livewire\Livewire::actingAs(composerAdmin())
+        ->test(Marketplace::class)
+        ->assertOk()
+        ->assertSee('Legacy');
+});
