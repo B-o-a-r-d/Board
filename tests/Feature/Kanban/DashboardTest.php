@@ -1,9 +1,11 @@
 <?php
 
 use App\Enums\BoardVisibility;
+use App\Enums\Permission;
 use App\Enums\Role;
 use App\Livewire\Dashboard;
 use App\Models\Board;
+use App\Models\Card;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -223,4 +225,119 @@ test('a user cannot create a board in a workspace they do not belong to', functi
         ->toThrow(ModelNotFoundException::class);
 
     expect(Board::where('name', 'Intrus')->exists())->toBeFalse();
+});
+
+// --- Déplacement d'un board vers un autre workspace ---------------------------
+
+/**
+ * @return array{user: User, source: Workspace, target: Workspace, board: Board}
+ */
+function moveBoardContext(): array
+{
+    $user = User::factory()->create();
+
+    $source = Workspace::factory()->create(['owner_id' => $user->id]);
+    $source->members()->attach($user, ['role' => Role::Owner->value]);
+    $target = Workspace::factory()->create(['owner_id' => $user->id]);
+    $target->members()->attach($user, ['role' => Role::Owner->value]);
+
+    $board = Board::factory()->create(['workspace_id' => $source->id]);
+    $board->members()->attach($user, ['role' => Role::Owner->value]);
+
+    return compact('user', 'source', 'target', 'board');
+}
+
+test('a board admin moves a board to another of their workspaces', function () {
+    ['user' => $user, 'target' => $target, 'board' => $board] = moveBoardContext();
+    Board::factory()->create(['workspace_id' => $target->id, 'position' => 3]);
+
+    Livewire::actingAs($user)->test(Dashboard::class)
+        ->call('moveBoardToWorkspace', $board->id, $target->id)
+        ->assertHasNoErrors();
+
+    $board->refresh();
+
+    expect($board->workspace_id)->toBe($target->id)
+        ->and($board->position)->toBe(4);
+});
+
+test('a board cannot be moved to a workspace the user does not belong to', function () {
+    ['user' => $user, 'board' => $board] = moveBoardContext();
+    $foreign = Workspace::factory()->create();
+
+    expect(fn () => Livewire::actingAs($user)->test(Dashboard::class)
+        ->call('moveBoardToWorkspace', $board->id, $foreign->id))
+        ->toThrow(ModelNotFoundException::class);
+
+    expect($board->fresh()->workspace_id)->not->toBe($foreign->id);
+});
+
+test('a non-admin board member cannot move a board', function () {
+    ['user' => $user, 'source' => $source, 'target' => $target, 'board' => $board] = moveBoardContext();
+    $member = User::factory()->create();
+    $source->members()->attach($member, ['role' => Role::Member->value]);
+    $target->members()->attach($member, ['role' => Role::Member->value]);
+    $board->members()->attach($member, ['role' => Role::Member->value]);
+
+    Livewire::actingAs($member)->test(Dashboard::class)
+        ->call('moveBoardToWorkspace', $board->id, $target->id)
+        ->assertForbidden();
+
+    expect($board->fresh()->workspace_id)->toBe($source->id);
+});
+
+test('moving a board remaps role keys missing in the target workspace', function () {
+    ['user' => $user, 'source' => $source, 'target' => $target, 'board' => $board] = moveBoardContext();
+
+    $source->roles()->create([
+        'key' => 'reviewer',
+        'name' => 'Relecteur',
+        'permissions' => [Permission::BoardView->value],
+        'is_system' => false,
+        'position' => 10,
+    ]);
+    $reviewer = User::factory()->create();
+    $source->members()->attach($reviewer, ['role' => Role::Member->value]);
+    $board->members()->attach($reviewer, ['role' => 'reviewer']);
+
+    Livewire::actingAs($user)->test(Dashboard::class)
+        ->call('moveBoardToWorkspace', $board->id, $target->id);
+
+    // The custom key does not exist in the target → degraded to plain member;
+    // the owner's (system) key survives untouched.
+    expect($board->members()->whereKey($reviewer->id)->first()->pivot->role)->toBe(Role::Member->value)
+        ->and($board->members()->whereKey($user->id)->first()->pivot->role)->toBe(Role::Owner->value);
+});
+
+test('a board can be moved into a workspace created on the fly', function () {
+    ['user' => $user, 'board' => $board] = moveBoardContext();
+
+    Livewire::actingAs($user)->test(Dashboard::class)
+        ->call('moveBoardToNewWorkspace', $board->id, 'Workspace éclair');
+
+    $workspace = Workspace::where('name', 'Workspace éclair')->firstOrFail();
+
+    expect($board->fresh()->workspace_id)->toBe($workspace->id)
+        ->and($workspace->owner_id)->toBe($user->id)
+        ->and($workspace->members()->whereKey($user->id)->exists())->toBeTrue()
+        ->and($workspace->roles()->count())->toBe(4);
+});
+
+test('dashboard board cards carry live list and card counts', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['owner_id' => $user->id]);
+    $workspace->members()->attach($user, ['role' => Role::Owner->value]);
+
+    $board = Board::factory()->create(['workspace_id' => $workspace->id, 'visibility' => BoardVisibility::Workspace]);
+    $live = $board->lists()->create(['name' => 'Vivante', 'position' => 0]);
+    $board->lists()->create(['name' => 'Archivée', 'position' => 1, 'archived_at' => now()]);
+    Card::factory()->create(['board_id' => $board->id, 'board_list_id' => $live->id]);
+    Card::factory()->create(['board_id' => $board->id, 'board_list_id' => $live->id, 'archived_at' => now()]);
+
+    Livewire::actingAs($user)->test(Dashboard::class)
+        ->assertViewHas('workspaces', function ($workspaces) {
+            $card = $workspaces->first()->boards->first();
+
+            return $card->lists_count === 1 && $card->cards_count === 1;
+        });
 });

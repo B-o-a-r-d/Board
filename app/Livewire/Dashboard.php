@@ -204,6 +204,66 @@ class Dashboard extends Component
         $this->dispatch('toast', message: __('Board supprimé'), type: 'success');
     }
 
+    // --- Move a board to another workspace --------------------------------------
+
+    public function moveBoardToWorkspace(int $boardId, int $workspaceId): void
+    {
+        $board = Board::findOrFail($boardId);
+        $this->authorize('update', $board);
+
+        // The target must be one of the actor's own workspaces.
+        $workspace = Auth::user()->workspaces()->findOrFail($workspaceId);
+
+        if ($workspace->id === $board->workspace_id) {
+            return;
+        }
+
+        $this->relocateBoard($board, $workspace);
+    }
+
+    /** Move a board into a workspace created on the fly. */
+    public function moveBoardToNewWorkspace(int $boardId, string $name): void
+    {
+        $board = Board::findOrFail($boardId);
+        $this->authorize('update', $board);
+
+        $name = trim($name);
+
+        if ($name === '' || mb_strlen($name) > 255) {
+            return;
+        }
+
+        $workspace = Workspace::create([
+            'owner_id' => Auth::id(),
+            'name' => $name,
+            'slug' => Str::slug($name).'-'.Str::lower(Str::random(6)),
+        ]);
+
+        $workspace->members()->attach(Auth::id(), ['role' => Role::Owner->value]);
+
+        $this->relocateBoard($board, $workspace);
+    }
+
+    private function relocateBoard(Board $board, Workspace $workspace): void
+    {
+        // Board member role keys resolve against the workspace's roles: a custom
+        // role that does not exist in the target degrades to plain member.
+        $validKeys = $workspace->roles()->pluck('key');
+
+        foreach ($board->members as $member) {
+            if (! $validKeys->contains($member->pivot->role)) {
+                $board->members()->updateExistingPivot($member->id, ['role' => Role::Member->value]);
+            }
+        }
+
+        $board->update([
+            'workspace_id' => $workspace->id,
+            'position' => (int) $workspace->boards()->max('position') + 1,
+        ]);
+
+        $this->dispatch('toast', message: __('Board déplacé vers :workspace', ['workspace' => $workspace->name]), type: 'success');
+    }
+
     // --- Board member management (modal) --------------------------------------
 
     public ?int $managingMembersBoardId = null;
@@ -292,6 +352,10 @@ class Dashboard extends Component
                             ->orWhereHas('members', fn ($members) => $members->whereKey($user->getKey()));
                     })
                     ->with('members')
+                    ->withCount([
+                        'lists as lists_count' => fn ($lists) => $lists->whereNull('archived_at'),
+                        'cards as cards_count' => fn ($cards) => $cards->whereNull('archived_at'),
+                    ])
                     ->orderBy('position');
             }])
             ->orderBy('name')
@@ -304,6 +368,10 @@ class Dashboard extends Component
             ->notArchived()
             ->where('is_template', false)
             ->with(['members', 'workspace'])
+            ->withCount([
+                'lists as lists_count' => fn ($lists) => $lists->whereNull('archived_at'),
+                'cards as cards_count' => fn ($cards) => $cards->whereNull('archived_at'),
+            ])
             ->orderBy('boards.name')
             ->get()
             ->filter(fn (Board $board): bool => Gate::allows('view', $board))

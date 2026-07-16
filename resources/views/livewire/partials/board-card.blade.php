@@ -12,8 +12,10 @@
             <a href="{{ route('boards.show', $board) }}" wire:navigate class="absolute inset-0 rounded-xl" aria-label="{{ $board->name }}"></a>
         @endif
 
-        {{-- Top row: name + pin + options --}}
-        <div class="relative flex items-start justify-between gap-2">
+        {{-- Top row: name + options + pin. `pointer-events-none` lets clicks fall
+             through to the stretched link everywhere except the real controls,
+             so the WHOLE card navigates. --}}
+        <div class="pointer-events-none relative flex items-start justify-between gap-2">
             @if ($renamingBoardId === $board->id)
                 <input
                     type="text"
@@ -22,13 +24,26 @@
                     wire:keydown.escape="$set('renamingBoardId', null)"
                     wire:blur="renameBoard"
                     x-init="$el.focus(); $el.select()"
-                    class="relative z-10 min-w-0 flex-1 rounded-lg border border-indigo-300 bg-white px-2 py-0.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-indigo-700 dark:bg-neutral-800"
+                    class="pointer-events-auto relative z-10 min-w-0 flex-1 rounded-lg border border-indigo-300 bg-white px-2 py-0.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-indigo-700 dark:bg-neutral-800"
                 >
             @else
                 <span class="min-w-0 truncate font-medium group-hover:text-indigo-600 dark:group-hover:text-indigo-400">{{ $board->name }}</span>
             @endif
 
-            <div class="relative z-10 flex shrink-0 items-center gap-0.5">
+            {{-- Options fades in on hover, LEFT of the pin — the pin holds the
+                 rightmost spot so an idle pinned card has no trailing gap. --}}
+            <div class="pointer-events-auto relative z-10 flex shrink-0 items-center gap-0.5">
+                @can('update', $board)
+                    <button
+                        type="button"
+                        @click.prevent.stop="openAt($event.clientX, $event.clientY)"
+                        class="rounded p-1 text-neutral-400 opacity-0 transition hover:bg-neutral-200 hover:text-neutral-700 group-hover:opacity-100 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                        title="{{ __('Options du board (clic droit aussi)') }}"
+                    >
+                        <x-phosphor-dots-three-vertical class="h-4 w-4" />
+                    </button>
+                @endcan
+
                 <button
                     type="button"
                     wire:click.stop="togglePin({{ $board->id }})"
@@ -41,24 +56,21 @@
                         <x-phosphor-push-pin class="h-4 w-4" />
                     @endif
                 </button>
-
-                @can('update', $board)
-                    <button
-                        type="button"
-                        @click.prevent.stop="openAt($event.clientX, $event.clientY)"
-                        class="rounded p-1 text-neutral-400 opacity-0 transition hover:bg-neutral-200 hover:text-neutral-700 group-hover:opacity-100 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
-                        title="{{ __('Options du board (clic droit aussi)') }}"
-                    >
-                        <x-phosphor-dots-three-vertical class="h-4 w-4" />
-                    </button>
-                @endcan
             </div>
         </div>
 
-        {{-- Bottom row: visibility icon + member avatars --}}
-        <div class="relative z-10 flex items-center justify-between">
-            <span class="text-neutral-400 dark:text-neutral-500" title="{{ $board->visibility->label() }}">
-                <x-dynamic-component :component="'phosphor-'.$board->visibility->icon()" class="h-4 w-4" />
+        {{-- Bottom row: visibility + insights (lists / cards) + member avatars --}}
+        <div class="pointer-events-none relative z-10 flex items-center justify-between">
+            <span class="flex items-center gap-2 text-neutral-400 dark:text-neutral-500">
+                <span class="pointer-events-auto" title="{{ $board->visibility->label() }}">
+                    <x-dynamic-component :component="'phosphor-'.$board->visibility->icon()" class="h-4 w-4" />
+                </span>
+                <span class="pointer-events-auto inline-flex items-center gap-0.5 text-[11px] tabular-nums" title="{{ __('Listes') }}">
+                    <x-phosphor-list-dashes class="h-3.5 w-3.5" /> {{ $board->lists_count ?? 0 }}
+                </span>
+                <span class="pointer-events-auto inline-flex items-center gap-0.5 text-[11px] tabular-nums" title="{{ __('Cartes') }}">
+                    <x-phosphor-cards class="h-3.5 w-3.5" /> {{ $board->cards_count ?? 0 }}
+                </span>
             </span>
 
             @if ($board->members->isNotEmpty())
@@ -83,6 +95,30 @@
             <x-context-menu.item icon="users" wire:click="openBoardMembers({{ $board->id }})">{{ __('Membres') }}</x-context-menu.item>
         @endcan
         <x-context-menu.item icon="hash" @click="navigator.clipboard?.writeText('{{ $board->public_id }}'); window.toast('{{ __('ID copié') }}', { type: 'success' })">{{ __("Copier l'ID du board") }}</x-context-menu.item>
+        @can('update', $board)
+            <x-context-menu.separator />
+            <div class="px-2 py-1.5" @click.stop>
+                <p class="mb-1 flex items-center gap-1 text-xs text-neutral-500">
+                    <x-phosphor-arrows-left-right class="h-3.5 w-3.5" /> {{ __('Déplacer vers') }}
+                </p>
+                <div class="flex max-h-40 flex-col overflow-y-auto">
+                    @foreach ($workspaces as $targetWorkspace)
+                        @continue($targetWorkspace->id === $board->workspace_id)
+                        <button type="button"
+                                wire:click="moveBoardToWorkspace({{ $board->id }}, {{ $targetWorkspace->id }})"
+                                class="truncate rounded px-2 py-1 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800">{{ $targetWorkspace->name }}</button>
+                    @endforeach
+                </div>
+                <div class="mt-1 flex items-center gap-1" x-data="{ name: '' }">
+                    <input type="text" x-model="name"
+                           @keydown.enter.stop="name.trim() && $wire.moveBoardToNewWorkspace({{ $board->id }}, name)"
+                           placeholder="{{ __('Nouveau workspace…') }}"
+                           class="min-w-0 flex-1 rounded border border-neutral-200 bg-white px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900">
+                    <button type="button" @click="name.trim() && $wire.moveBoardToNewWorkspace({{ $board->id }}, name)"
+                            class="shrink-0 rounded border border-neutral-200 px-1.5 py-1 text-xs hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">+</button>
+                </div>
+            </div>
+        @endcan
         @can('delete', $board)
             <x-context-menu.separator />
             <x-context-menu.item icon="trash" variant="danger" @click="$store.confirm.open({ title: '{{ __('Supprimer le board') }}', message: '{{ __('Supprimer ce board et tout son contenu ? Cette action est irréversible.') }}', confirmLabel: '{{ __('Supprimer') }}', danger: true }).then(ok => ok && $wire.deleteBoard({{ $board->id }}))">{{ __('Supprimer') }}</x-context-menu.item>
