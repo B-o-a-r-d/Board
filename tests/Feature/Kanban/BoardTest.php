@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\BoardVisibility;
 use App\Enums\Role;
 use App\Livewire\Boards\Show;
 use App\Models\Board;
@@ -488,4 +489,27 @@ test('an observer cannot toggle a card complete', function () {
         ->assertForbidden();
 
     expect($card->fresh()->completed_at)->toBeNull();
+});
+
+test('the topbar switcher lists accessible workspace boards only', function () {
+    ['board' => $board, 'owner' => $owner] = makeCardContext();
+
+    // Workspace-visible board: reachable without board membership.
+    Board::factory()->create([
+        'workspace_id' => $board->workspace_id,
+        'name' => 'Tableau visible workspace',
+        'visibility' => BoardVisibility::Workspace,
+    ]);
+
+    // Private board without membership: must not leak into the switcher.
+    Board::factory()->create([
+        'workspace_id' => $board->workspace_id,
+        'name' => 'Tableau privé étranger',
+        'visibility' => BoardVisibility::Private,
+    ]);
+
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+        ->assertSee('Tableau visible workspace')
+        ->assertDontSee('Tableau privé étranger')
+        ->assertSee(__('Tous les tableaux'));
 });

@@ -75,9 +75,42 @@
                     class="w-full max-w-xs rounded-lg border border-indigo-300 bg-white px-2 py-0.5 text-base font-semibold tracking-tight focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none dark:border-indigo-700 dark:bg-neutral-800"
                 >
             @else
-                <h1 class="truncate text-base font-semibold tracking-tight sm:text-lg">{{ $board->name }}</h1>
+                {{-- Board switcher (docs/ui_elements/board_switcher_dropdown.html):
+                     board name + workspace subtitle, dropdown to jump to any
+                     accessible board of the workspace. --}}
+                <div class="relative min-w-0" x-data="{ switcherOpen: false }" @keydown.escape.window="switcherOpen = false">
+                    <button type="button" @click="switcherOpen = ! switcherOpen" :aria-expanded="switcherOpen"
+                            class="relative flex min-w-0 max-w-full items-center rounded-lg py-0.5 pl-2 pr-8 text-left transition {{ $boardBg ? 'hover:bg-white/10' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800' }}">
+                        <span class="flex min-w-0 flex-col leading-tight">
+                            <span class="truncate text-base font-semibold tracking-tight sm:text-lg">{{ $board->name }}</span>
+                            <span class="truncate text-[11px] font-medium {{ $boardBg ? 'text-neutral-300' : 'text-neutral-500 dark:text-neutral-400' }}">{{ $board->workspace->name }}</span>
+                        </span>
+                        <x-phosphor-caret-up-down class="absolute right-2 h-4 w-4 shrink-0 opacity-60"/>
+                    </button>
+
+                    <div x-show="switcherOpen" x-cloak x-transition
+                         @click.outside="switcherOpen = false"
+                         class="absolute left-0 top-full z-50 mt-1 w-64 rounded-xl border border-neutral-200 bg-white p-1 text-neutral-700 shadow-lg dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200">
+                        <p class="truncate px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-neutral-400">{{ $board->workspace->name }}</p>
+                        <div class="max-h-72 overflow-y-auto">
+                            @foreach ($switcherBoards as $switchBoard)
+                                <a href="{{ route('boards.show', $switchBoard) }}" wire:navigate @click="switcherOpen = false"
+                                   wire:key="switcher-{{ $switchBoard->id }}"
+                                   class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition hover:bg-neutral-100 dark:hover:bg-neutral-800 {{ $switchBoard->id === $board->id ? 'font-medium text-indigo-600 dark:text-indigo-400' : '' }}">
+                                    <x-phosphor-kanban class="h-4 w-4 shrink-0 opacity-60"/>
+                                    <span class="min-w-0 flex-1 truncate">{{ $switchBoard->name }}</span>
+                                    @if ($switchBoard->id === $board->id)<x-phosphor-check class="h-4 w-4 shrink-0"/>@endif
+                                </a>
+                            @endforeach
+                        </div>
+                        <div class="mx-1 my-1 h-px bg-neutral-100 dark:bg-neutral-800"></div>
+                        <a href="{{ route('dashboard') }}" wire:navigate @click="switcherOpen = false"
+                           class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition hover:bg-neutral-100 dark:hover:bg-neutral-800">
+                            <x-phosphor-squares-four class="h-4 w-4 shrink-0 opacity-60"/> {{ __('Tous les tableaux') }}
+                        </a>
+                    </div>
+                </div>
             @endif
-            <span class="hidden shrink-0 items-center rounded-full bg-neutral-200/80 px-2 py-0.5 text-[11px] font-medium text-neutral-600 sm:inline-flex dark:bg-neutral-800 dark:text-neutral-300">{{ $board->workspace->name }}</span>
             @unless ($canContribute)
                 <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-neutral-200/80 px-2 py-0.5 text-[11px] font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300" title="{{ __('Votre rôle est en lecture seule sur ce tableau.') }}">
                     <x-phosphor-eye class="h-3.5 w-3.5"/><span class="hidden sm:inline">{{ __('Lecture seule') }}</span>
