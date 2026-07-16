@@ -36,16 +36,16 @@
         <x-slot:trigger>
             @if ($card->cover_path)
                 <img src="{{ $card->coverUrl() }}" alt="" draggable="false"
-                     wire:click="$dispatch('open-card', { cardId: {{ $card->id }} })"
+                     wire:click="$dispatch('open-card', { cardId: {{ $card->id }}, title: @js($card->title) })"
                      class="h-24 w-full object-cover">
             @elseif ($card->cover_color)
                 <div class="h-9 w-full"
-                     wire:click="$dispatch('open-card', { cardId: {{ $card->id }} })"
+                     wire:click="$dispatch('open-card', { cardId: {{ $card->id }}, title: @js($card->title) })"
                      style="background-color: {{ $card->cover_color }}"></div>
             @endif
 
             {{-- Clicking anywhere on the card body opens it (drag suppresses the click). --}}
-            <div class="relative p-2.5" wire:click="$dispatch('open-card', { cardId: {{ $card->id }} })">
+            <div class="relative p-2.5" wire:click="$dispatch('open-card', { cardId: {{ $card->id }}, title: @js($card->title) })">
                 @if ($card->labels->isNotEmpty())
                     <div class="mb-1.5 flex flex-wrap gap-1">
                         @foreach ($card->labels as $label)
@@ -165,7 +165,7 @@
         </x-slot:trigger>
         <x-slot:menu>
             <x-context-menu.item icon="arrow-square-out"
-                                 wire:click="$dispatch('open-card', { cardId: {{ $card->id }} })">{{ __('Ouvrir') }}</x-context-menu.item>
+                                 wire:click="$dispatch('open-card', { cardId: {{ $card->id }}, title: @js($card->title) })">{{ __('Ouvrir') }}</x-context-menu.item>
             <x-context-menu.item icon="copy"
                                  wire:click="duplicateCard({{ $card->id }})">{{ __('Dupliquer') }}</x-context-menu.item>
             <x-context-menu.item icon="link"

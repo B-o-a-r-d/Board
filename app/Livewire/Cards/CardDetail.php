@@ -47,6 +47,10 @@ class CardDetail extends Component
     public bool $showModal = false;
 
     /** Mirror picker: the target list this card should be mirrored into. */
+    /**
+     * Mirror targets scan every workspace board (+ a policy check per board) —
+     * they are only loaded once this flag is set by the "⋯ → Miroir" menu item.
+     */
     public bool $showMirrorPicker = false;
 
     public string $mirrorListId = '';
@@ -107,7 +111,17 @@ class CardDetail extends Component
         ];
     }
 
-    public function onRemoteActivity(): void {}
+    /**
+     * A remote broadcast only matters while the modal is open (comments, labels…
+     * may have changed). Closed, re-rendering would run the whole heavy render()
+     * on every client for nothing.
+     */
+    public function onRemoteActivity(): void
+    {
+        if (! $this->showModal) {
+            $this->skipRender();
+        }
+    }
 
     #[On('open-card')]
     public function openCard(int $cardId, ?string $section = null, ?int $comment = null): void
@@ -137,7 +151,7 @@ class CardDetail extends Component
     {
         $this->showModal = false;
         $this->cardId = null;
-        $this->reset('title', 'description', 'startDate', 'startTime', 'dueDate', 'dueTime', 'newChecklistTitle', 'newChecklistItem', 'upload', 'editingCommentId', 'editingCommentBody');
+        $this->reset('title', 'description', 'startDate', 'startTime', 'dueDate', 'dueTime', 'newChecklistTitle', 'newChecklistItem', 'upload', 'editingCommentId', 'editingCommentBody', 'mirrorListId', 'showMirrorPicker');
 
         // Let the instant-open skeleton (Alpine) stand down once the modal is gone.
         $this->dispatch('card-modal-closed');
@@ -1279,13 +1293,30 @@ class CardDetail extends Component
             }
         }
 
+        $cardMirrors = $card ? $card->mirrors()->with(['list', 'board'])->get() : collect();
+
+        // Scanning the workspace for mirror targets costs a query + a policy check
+        // PER BOARD on every render — only pay for it once the picker is opened
+        // ("⋯ → Miroir"), or when mirrors already exist (their section shows the
+        // picker right away).
+        $mirrorTargets = ($card && ($this->showMirrorPicker || $cardMirrors->isNotEmpty()))
+            ? $this->board->workspace->boards()
+                ->whereNull('archived_at')
+                ->with(['lists' => fn ($q) => $q->whereNull('archived_at')->whereNull('source_plugin_id')->orderBy('position')])
+                ->orderBy('name')->get()
+                ->filter(fn ($b) => Auth::user()->can('contribute', $b))
+                ->values()
+            : collect();
+
         return view('livewire.cards.card-detail', [
             'card' => $card,
-            'boardMembers' => $this->board->members,
-            'boardLabels' => $this->board->labels,
-            'boardLists' => $this->board->lists()->whereNull('archived_at')->whereNull('source_plugin_id')->orderBy('position')->get(),
-            'boardPlugins' => $this->board->plugins()->where('is_active', true)->get(),
-            'cardButtons' => $this->board->automations()->where('trigger_type', 'manual')->where('is_active', true)->get(),
+            // The modal chrome data is only needed while a card is open — closed,
+            // this render must stay free (it runs on every open-card listener).
+            'boardMembers' => $card ? $this->board->members : collect(),
+            'boardLabels' => $card ? $this->board->labels : collect(),
+            'boardLists' => $card ? $this->board->lists()->whereNull('archived_at')->whereNull('source_plugin_id')->orderBy('position')->get() : collect(),
+            'boardPlugins' => $card ? $this->board->plugins()->where('is_active', true)->get() : collect(),
+            'cardButtons' => $card ? $this->board->automations()->where('trigger_type', 'manual')->where('is_active', true)->get() : collect(),
             'reactionEmojis' => self::REACTIONS,
             'cardLinks' => $cardLinks,
             'linkCandidates' => $linkCandidates,
@@ -1294,13 +1325,11 @@ class CardDetail extends Component
                 : collect(),
             'canContribute' => Auth::user()->can('contribute', $this->board),
             'canComment' => Auth::user()->can('comment', $this->board),
-            'mirrorTargets' => $card ? $this->board->workspace->boards()
-                ->whereNull('archived_at')
-                ->with(['lists' => fn ($q) => $q->whereNull('archived_at')->whereNull('source_plugin_id')->orderBy('position')])
-                ->orderBy('name')->get()
-                ->filter(fn ($b) => Auth::user()->can('contribute', $b))
-                ->values() : collect(),
-            'cardMirrors' => $card ? $card->mirrors()->with(['list', 'board'])->get() : collect(),
+            // Cheap gate for the "Miroir" menu item (the real targets load later).
+            'canMirror' => $card !== null && ($cardMirrors->isNotEmpty()
+                || $this->board->workspace->boards()->whereKeyNot($this->board->id)->whereNull('archived_at')->exists()),
+            'mirrorTargets' => $mirrorTargets,
+            'cardMirrors' => $cardMirrors,
             // Lazy: only fetch the activity feed once the user opens it.
             'activities' => ($card && $this->showActivity)
                 ? $card->activities()->with('user')->latest()->limit(30)->get()

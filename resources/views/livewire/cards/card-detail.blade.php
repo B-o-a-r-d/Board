@@ -1,6 +1,7 @@
 <div
     x-data="{
         opening: false,
+        openingTitle: '',
         handleCardFocus(raw) {
             const detail = raw?.params?.[0] ?? raw ?? {};
             if (detail.comment) {
@@ -21,25 +22,43 @@
     }"
     @card-focus.window="handleCardFocus($event.detail)"
     {{-- Instant open: show the skeleton the moment a card is clicked, before the
-         openCard round-trip renders the real modal (which then hides it). --}}
-    @open-card.window="opening = true"
+         openCard round-trip renders the real modal (which then hides it). It
+         carries the real card title (passed by the open-card event) and mirrors
+         the modal's layout, so the content "fills in" instead of swapping. --}}
+    @open-card.window="opening = true; openingTitle = $event.detail?.title ?? ''"
     @card-modal-closed.window="opening = false"
 >
     <div x-show="opening && ! $wire.showModal" x-cloak
          class="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto p-4 sm:p-8">
         <div class="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm"></div>
-        <div class="relative w-full max-w-6xl rounded-2xl border border-neutral-200 bg-white p-6 shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
-            <div class="flex flex-col gap-6 sm:flex-row">
-                <div class="flex-1 space-y-4">
-                    <div class="h-6 w-2/3 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700"></div>
-                    <div class="h-4 w-1/3 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800"></div>
-                    <div class="h-24 w-full animate-pulse rounded bg-neutral-100 dark:bg-neutral-800"></div>
-                    <div class="h-4 w-1/2 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800"></div>
-                    <div class="h-16 w-full animate-pulse rounded bg-neutral-100 dark:bg-neutral-800"></div>
+        <div class="relative w-full max-w-6xl overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
+            <div class="grid lg:grid-cols-12">
+                {{-- Left panel: title + toolbar + description (like the real modal) --}}
+                <div class="space-y-4 p-4 sm:p-6 lg:col-span-7">
+                    <div class="space-y-2">
+                        <h2 x-show="openingTitle" x-text="openingTitle" class="break-words pr-8 text-xl font-semibold"></h2>
+                        <div x-show="! openingTitle" class="h-6 w-2/3 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700"></div>
+                        <div class="h-3.5 w-28 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800"></div>
+                    </div>
+                    <div class="flex gap-2">
+                        @foreach (range(1, 4) as $s)
+                            <div class="h-7 w-20 animate-pulse rounded-lg bg-neutral-100 dark:bg-neutral-800"></div>
+                        @endforeach
+                    </div>
+                    <div class="h-24 w-full animate-pulse rounded-lg bg-neutral-100 dark:bg-neutral-800"></div>
+                    <div class="h-16 w-full animate-pulse rounded-lg bg-neutral-100 dark:bg-neutral-800"></div>
                 </div>
-                <div class="hidden w-56 space-y-3 sm:block">
-                    @foreach (range(1, 4) as $s)
-                        <div class="h-8 w-full animate-pulse rounded bg-neutral-100 dark:bg-neutral-800"></div>
+                {{-- Right panel: the comments column --}}
+                <div class="space-y-3 border-neutral-100 bg-neutral-50/70 p-4 sm:p-6 lg:col-span-5 lg:border-l dark:border-neutral-800 dark:bg-neutral-800/30">
+                    <div class="h-16 w-full animate-pulse rounded-lg bg-white shadow-sm dark:bg-neutral-800"></div>
+                    @foreach (range(1, 2) as $s)
+                        <div class="flex gap-3">
+                            <div class="h-8 w-8 shrink-0 animate-pulse rounded-full bg-neutral-200 dark:bg-neutral-700"></div>
+                            <div class="flex-1 space-y-2">
+                                <div class="h-3 w-1/3 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700"></div>
+                                <div class="h-10 w-full animate-pulse rounded-lg bg-white shadow-sm dark:bg-neutral-800"></div>
+                            </div>
+                        </div>
                     @endforeach
                 </div>
             </div>
@@ -168,8 +187,10 @@
                                     <button type="button" wire:click="duplicate" @click="menuOpen = false" class="{{ $menuItem }}">
                                         <x-phosphor-copy class="h-4 w-4 opacity-70"/> {{ __('Copier') }}
                                     </button>
-                                    @if ($mirrorTargets->isNotEmpty() || $cardMirrors->isNotEmpty())
-                                        <button type="button" @click="menuOpen = false; openTransient('showMirror'); flashElement('card-mirrors')" class="{{ $menuItem }}">
+                                    @if ($canMirror)
+                                        {{-- The picker's targets load on demand ($wire.showMirrorPicker):
+                                             scanning every workspace board is too costly per render. --}}
+                                        <button type="button" @click="menuOpen = false; openTransient('showMirror'); flashElement('card-mirrors'); $wire.showMirrorPicker = true" class="{{ $menuItem }}">
                                             <x-phosphor-cards class="h-4 w-4 opacity-70"/> {{ __('Miroir') }}
                                         </button>
                                     @endif
@@ -909,6 +930,9 @@
                                     @endforeach
                                 </ul>
                             @endif
+
+                            {{-- While the on-demand targets round-trip is in flight --}}
+                            <div wire:loading wire:target="showMirrorPicker" class="text-xs text-neutral-400 dark:text-neutral-500">{{ __('Chargement…') }}</div>
 
                             @if ($canContribute && $mirrorTargets->isNotEmpty())
                                 <div class="flex items-center gap-2">
