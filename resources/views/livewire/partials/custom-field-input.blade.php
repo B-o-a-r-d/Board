@@ -82,9 +82,16 @@
                 </div>
             @elseif ($field->type === CustomFieldType::Progress)
                 <div class="flex items-center gap-2">
+                    {{-- Styled range (docs/ui_elements/range_slider.html): the huge thumb
+                         shadow fills the track's left side, clipped by its overflow. --}}
                     <input type="range" min="0" max="100" step="5" value="{{ (int) $val }}"
                            wire:change="saveCustomField({{ $field->id }}, $event.target.value)"
-                           class="h-1.5 min-w-0 flex-1 cursor-pointer accent-indigo-600">
+                           class="h-5 min-w-0 flex-1 cursor-pointer appearance-none bg-transparent
+                               [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:overflow-hidden [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-neutral-200 dark:[&::-webkit-slider-runnable-track]:bg-neutral-700
+                               [&::-webkit-slider-thumb]:-mt-1 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-0 [&::-webkit-slider-thumb]:bg-indigo-600 [&::-webkit-slider-thumb]:shadow-[-999px_0px_0px_990px_#6366f1]
+                               [&::-moz-range-track]:h-1.5 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-neutral-200 dark:[&::-moz-range-track]:bg-neutral-700
+                               [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-indigo-600
+                               [&::-moz-range-progress]:h-1.5 [&::-moz-range-progress]:rounded-full [&::-moz-range-progress]:bg-indigo-500">
                     <span class="w-10 shrink-0 text-right text-xs tabular-nums text-neutral-500">{{ (int) $val }}%</span>
                 </div>
             @else

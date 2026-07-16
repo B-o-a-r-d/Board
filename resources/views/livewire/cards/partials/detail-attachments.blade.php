@@ -13,18 +13,21 @@
                                 forceOpen: @js($card->attachments->isNotEmpty()),
                                 showDrop: @js($card->attachments->isEmpty()),
                                 view: localStorage.getItem('card-attachments-view') ?? 'list',
+                                collapsed: JSON.parse(localStorage.getItem('attachments-collapsed-{{ $card->id }}') ?? 'false'),
                              }"
-                             x-init="$watch('view', v => localStorage.setItem('card-attachments-view', v))"
+                             x-init="$watch('view', v => localStorage.setItem('card-attachments-view', v)); $watch('collapsed', v => localStorage.setItem('attachments-collapsed-{{ $card->id }}', v))"
                              x-show="forceOpen"
                              x-cloak
-                             @card-open-attachments.window="forceOpen = true; showDrop = true; setTimeout(() => $el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200)"
+                             @card-open-attachments.window="forceOpen = true; showDrop = true; collapsed = false; setTimeout(() => $el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200)"
                              class="space-y-3">
                             <div class="flex items-center justify-between">
-                                <h3 class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+                                <button type="button" @click="collapsed = ! collapsed" title="{{ __('Replier / déplier') }}"
+                                        class="flex min-w-0 items-center gap-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
                                     <x-phosphor-paperclip class="h-4 w-4"/>
                                     {{ __('Pièces jointes') }}
                                     @if ($card->attachments->isNotEmpty())<span class="rounded-full bg-neutral-200 px-1.5 text-[10px] font-semibold text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300">{{ $card->attachments->count() }}</span>@endif
-                                </h3>
+                                    <x-phosphor-caret-down class="h-3.5 w-3.5 shrink-0 opacity-60 transition-transform" ::class="collapsed && '-rotate-90'"/>
+                                </button>
                                 <div class="flex items-center gap-1">
                                     <button type="button" @click="view = 'list'" title="{{ __('Liste') }}" class="rounded p-1 transition" :class="view === 'list' ? 'bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200' : 'text-neutral-400 hover:text-neutral-600'"><x-phosphor-list class="h-4 w-4" /></button>
                                     <button type="button" @click="view = 'grid'" title="{{ __('Grille') }}" class="rounded p-1 transition" :class="view === 'grid' ? 'bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200' : 'text-neutral-400 hover:text-neutral-600'"><x-phosphor-squares-four class="h-4 w-4" /></button>
@@ -35,6 +38,8 @@
                                 </div>
                             </div>
 
+                            {{-- Collapsible body (header + count stay visible) --}}
+                            <div x-show="! collapsed" x-cloak class="space-y-3">
                             @if ($card->attachments->isNotEmpty())
                                 <p class="text-xs font-medium text-neutral-500">{{ __('Fichiers') }}</p>
                                 <div class="max-h-72 overflow-y-auto pr-1">
@@ -99,4 +104,5 @@
                                 </div>
                             @endif
                             @if ($canContribute)<div x-show="showDrop" x-cloak><x-dropzone model="upload" action="saveAttachment" accept="image/*,video/*" /></div>@endif
+                            </div>
                         </div>

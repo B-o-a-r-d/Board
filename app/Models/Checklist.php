@@ -23,6 +23,9 @@ class Checklist extends Model
 
     public function items(): HasMany
     {
-        return $this->hasMany(ChecklistItem::class)->orderBy('position');
+        // The id tiebreaker keeps the order stable when positions are tied —
+        // without it, updating a row (e.g. checking an item) reshuffled the
+        // list, since Postgres gives tied rows no deterministic order.
+        return $this->hasMany(ChecklistItem::class)->orderBy('position')->orderBy('id');
     }
 }
