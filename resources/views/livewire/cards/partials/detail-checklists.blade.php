@@ -31,16 +31,23 @@
                                         </div>
                                     </div>
 
-                                    <ul class="space-y-1">
+                                    {{-- Explicit reorder by drag & drop (the handle) — checking
+                                         an item never moves it. --}}
+                                    <ul class="space-y-1" @if ($canContribute) wire:sort="moveChecklistItem" @endif>
                                         @foreach ($checklist->items as $item)
                                             @php $itemOverdue = $item->due_at && ! $item->is_completed && $item->due_at->isPast(); @endphp
                                             {{-- Optimistic toggle: `done` flips instantly client-side, the server
                                                  confirms after. Server classes are the no-FOUC truth; the completion
                                                  state is part of wire:key so a server change re-seeds `done`. --}}
                                             <li wire:key="chk-item-{{ $item->id }}-{{ (int) $item->is_completed }}"
+                                                wire:sort:item="{{ $item->id }}"
                                                 x-data="{ done: {{ $item->is_completed ? 'true' : 'false' }} }"
                                                 class="group flex items-center gap-2 rounded px-1 py-0.5 text-sm hover:bg-neutral-50 dark:hover:bg-neutral-800/60">
                                                 @if ($canContribute)
+                                                <span wire:sort:handle title="{{ __('Déplacer') }}"
+                                                      class="-ml-1 flex h-4 w-3 shrink-0 cursor-grab items-center justify-center text-neutral-300 opacity-0 transition group-hover:opacity-100 dark:text-neutral-600">
+                                                    <x-phosphor-dots-six-vertical class="h-3.5 w-3.5"/>
+                                                </span>
                                                 <button type="button" @click="done = ! done; $wire.toggleChecklistItem({{ $item->id }})"
                                                         class="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition {{ $item->is_completed ? 'border-green-500 bg-green-500 text-white' : 'border-neutral-300 hover:border-green-400 dark:border-neutral-600' }}"
                                                         :class="{
@@ -61,7 +68,11 @@
                                                     <div x-data="{ open: false }" class="relative opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
                                                         <button type="button" @click="open = ! open" class="rounded p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"><x-phosphor-dots-three class="h-4 w-4"/></button>
                                                         <div x-show="open" x-cloak @click.outside="open = false" class="absolute right-0 z-30 mt-1 w-52 rounded-lg border border-neutral-200 bg-white p-1.5 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
-                                                            <p class="px-1 pb-1 text-[10px] font-medium uppercase tracking-wide text-neutral-400">{{ __('Assigner à') }}</p>
+                                                            <button type="button" wire:click="convertChecklistItemToCard({{ $item->id }})" @click="open = false"
+                                                                    class="mb-1 flex w-full items-center gap-1.5 rounded px-1.5 py-1 text-left text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800">
+                                                                <x-phosphor-cards class="h-3.5 w-3.5 opacity-70"/> {{ __('Convertir en carte') }}
+                                                            </button>
+                                                            <p class="border-t border-neutral-100 px-1 pb-1 pt-1.5 text-[10px] font-medium uppercase tracking-wide text-neutral-400 dark:border-neutral-800">{{ __('Assigner à') }}</p>
                                                             <div class="max-h-36 overflow-y-auto">
                                                                 @foreach ($boardMembers as $checklistMember)
                                                                     <button type="button" wire:click="assignChecklistItem({{ $item->id }}, {{ $checklistMember->id }})" @click="open = false" class="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 {{ $item->assigned_to === $checklistMember->id ? 'font-semibold text-indigo-600 dark:text-indigo-400' : '' }}">
