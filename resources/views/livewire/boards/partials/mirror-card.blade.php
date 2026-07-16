@@ -13,7 +13,7 @@
         @if ($crossBoard)
             <a href="{{ route('boards.show', ['board' => $mc->board, 'card' => $mc->public_id]) }}" wire:navigate class="block cursor-pointer p-2.5 text-sm">
         @else
-            <div wire:click="$dispatch('open-card', { cardId: {{ $mc->id }} })" class="block cursor-pointer p-2.5 text-sm">
+            <div wire:click="$dispatch('open-card', { cardId: {{ $mc->id }}, title: @js($mc->title) })" class="block cursor-pointer p-2.5 text-sm">
         @endif
             @if ($mc->labels->isNotEmpty())
                 <div class="mb-1.5 flex flex-wrap gap-1">
