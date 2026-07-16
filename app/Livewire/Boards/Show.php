@@ -5,6 +5,7 @@ namespace App\Livewire\Boards;
 use App\Automations\Actions\ArchiveListCardsAction;
 use App\Automations\Actions\SortListAction;
 use App\Automations\AutomationEngine;
+use App\Enums\BoardVisibility;
 use App\Enums\CustomFieldType;
 use App\Enums\Role;
 use App\Livewire\Boards\Concerns\InteractsWithBoardCards;
@@ -1437,6 +1438,17 @@ class Show extends Component
             'archivedCards' => $this->showTrash ? $this->board->cards()->whereNotNull('archived_at')->with('list')->latest('archived_at')->get() : collect(),
             'cardTemplates' => CardTemplate::orderBy('name')->get(),
             'views' => $this->board->views()->where('user_id', Auth::id())->latest()->get(),
+            // Topbar board switcher: the workspace boards this user can open
+            // (same access rule as the dashboard listing).
+            'switcherBoards' => $this->board->workspace->boards()
+                ->notArchived()
+                ->where('is_template', false)
+                ->where(function ($scoped) {
+                    $scoped->where('visibility', BoardVisibility::Workspace)
+                        ->orWhereHas('members', fn ($members) => $members->whereKey(Auth::id()));
+                })
+                ->orderBy('position')
+                ->get(['id', 'name', 'public_id', 'workspace_id']),
             // Fields visible on cards (user fields + fields of active plugins)…
             'customFields' => $this->board->customFields()->visibleOn($this->board)->orderBy('position')->get(),
             // …and every field for the admin modal (plugin-managed ones included).
