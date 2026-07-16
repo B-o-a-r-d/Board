@@ -58,6 +58,14 @@
 
                         @include('livewire.cards.partials.detail-pickers')
 
+                        {{-- Fixed section order: description, then checklists, then
+                             attachments; custom fields and the rest come below. --}}
+                        @include('livewire.cards.partials.detail-description')
+
+                        @include('livewire.cards.partials.detail-checklists')
+
+                        @include('livewire.cards.partials.detail-attachments')
+
                         {{-- Custom fields (sidebar placement) — only when fields apply to this card --}}
                         @if ($sidebarFields->isNotEmpty())
                             <div>
@@ -70,8 +78,6 @@
                             </div>
                         @endif
 
-                        @include('livewire.cards.partials.detail-description')
-
                         {{-- Custom fields placed in the content column (user choice or plugin placement) --}}
                         @if ($contentFields->isNotEmpty())
                             <div class="rounded-lg border border-neutral-200 p-3 dark:border-neutral-700">
@@ -83,10 +89,6 @@
                                 </div>
                             </div>
                         @endif
-
-                        @include('livewire.cards.partials.detail-attachments')
-
-                        @include('livewire.cards.partials.detail-checklists')
 
                         @include('livewire.cards.partials.detail-links')
 

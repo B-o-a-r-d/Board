@@ -13,6 +13,26 @@ function makeChecklistItem(Card $card): ChecklistItem
     return $checklist->items()->create(['content' => 'Sous-tâche', 'position' => 0]);
 }
 
+test('checking an item never changes the checklist order, even with tied positions', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+    $checklist = $card->checklists()->create(['title' => 'Checklist', 'position' => 0]);
+
+    // Legacy data: every item at position 0 — order must still be stable (id tiebreaker).
+    $first = $checklist->items()->create(['content' => 'Premier', 'position' => 0]);
+    $second = $checklist->items()->create(['content' => 'Deuxième', 'position' => 0]);
+    $third = $checklist->items()->create(['content' => 'Troisième', 'position' => 0]);
+
+    $before = $checklist->items()->pluck('id')->all();
+
+    Livewire::actingAs($owner)->test(CardDetail::class, ['board' => $board])
+        ->call('openCard', $card->id)
+        ->call('toggleChecklistItem', $second->id);
+
+    expect($second->fresh()->is_completed)->toBeTrue()
+        ->and($checklist->items()->pluck('id')->all())->toBe($before)
+        ->and($before)->toBe([$first->id, $second->id, $third->id]);
+});
+
 test('a checklist item can be assigned to a board member then unassigned', function () {
     ['board' => $board, 'owner' => $owner, 'member' => $member, 'card' => $card] = makeCardContext();
     $item = makeChecklistItem($card);
