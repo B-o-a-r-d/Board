@@ -7879,16 +7879,16 @@
     "packages-dev": [
         {
             "name": "board/marketplace",
-            "version": "v0.1.4",
+            "version": "v0.1.5",
             "source": {
                 "type": "git",
                 "url": "https://github.com/B-o-a-r-d/marketplace-plugin.git",
-                "reference": "c03e442b7bbd862fe81331e3cbccdb518c12244b"
+                "reference": "9e99adb4fc8ca5dc1b2704c5a8ed74f823d45a8a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/B-o-a-r-d/marketplace-plugin/zipball/c03e442b7bbd862fe81331e3cbccdb518c12244b",
-                "reference": "c03e442b7bbd862fe81331e3cbccdb518c12244b",
+                "url": "https://api.github.com/repos/B-o-a-r-d/marketplace-plugin/zipball/9e99adb4fc8ca5dc1b2704c5a8ed74f823d45a8a",
+                "reference": "9e99adb4fc8ca5dc1b2704c5a8ed74f823d45a8a",
                 "shasum": ""
             },
             "require": {
@@ -7901,6 +7901,7 @@
                 "illuminate/support": "^11 || ^12 || ^13",
                 "livewire/livewire": "^3 || ^4",
                 "php": "^8.3",
+                "symfony/process": "^6 || ^7",
                 "symfony/yaml": "^6 || ^7"
             },
             "type": "library",
@@ -7927,10 +7928,10 @@
                 "plugins"
             ],
             "support": {
-                "source": "https://github.com/B-o-a-r-d/marketplace-plugin/tree/v0.1.4",
+                "source": "https://github.com/B-o-a-r-d/marketplace-plugin/tree/v0.1.5",
                 "issues": "https://github.com/B-o-a-r-d/marketplace-plugin/issues"
             },
-            "time": "2026-07-10T12:48:49+00:00"
+            "time": "2026-07-16T09:33:08+00:00"
         },
         {
             "name": "brianium/paratest",
