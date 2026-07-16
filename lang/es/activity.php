@@ -24,6 +24,7 @@ return [
     'checklist.item.added' => 'añadió un elemento de checklist',
     'checklist.item.toggled' => 'marcó/desmarcó un elemento',
     'checklist.item.deleted' => 'eliminó un elemento de checklist',
+    'checklist.item.converted' => 'convirtió un elemento de checklist en tarjeta',
     'attachment.added' => 'añadió un adjunto',
     'automation.run' => 'ejecutó una automatización',
     'someone' => 'un miembro',

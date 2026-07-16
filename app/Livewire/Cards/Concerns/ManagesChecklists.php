@@ -7,6 +7,7 @@ use App\Models\Card;
 use App\Models\ChecklistItem;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * Checklists and checklist items of the open card.
@@ -131,6 +132,60 @@ trait ManagesChecklists
             'due_at' => ($date !== null && $date !== '') ? Carbon::parse($date)->setTime(12, 0) : null,
         ]);
         $this->touched('checklist.item.due');
+    }
+
+    /**
+     * Reorder an item inside its checklist (wire:sort drag & drop). Checking an
+     * item never moves it — this explicit drag is the only way to reorder.
+     */
+    public function moveChecklistItem(int $id, int $position): void
+    {
+        $card = $this->guardedCard();
+        $item = $this->guardedChecklistItem($card, $id);
+
+        $ids = $item->checklist->items()
+            ->whereKeyNot($item->id)
+            ->pluck('id')
+            ->all();
+
+        $position = max(0, min($position, count($ids)));
+        array_splice($ids, $position, 0, [$item->id]);
+
+        foreach ($ids as $index => $itemId) {
+            ChecklistItem::whereKey($itemId)->update(['position' => $index]);
+        }
+
+        $this->touched('checklist.item.moved');
+    }
+
+    /**
+     * Trello-style "convert to card": the item becomes a card at the end of the
+     * current card's list — title, due date and assignee carried over — and the
+     * checklist item is removed.
+     */
+    public function convertChecklistItemToCard(int $itemId): void
+    {
+        $card = $this->guardedCard();
+        $item = $this->guardedChecklistItem($card, $itemId);
+
+        $created = $card->list->cards()->create([
+            'board_id' => $this->board->id,
+            'created_by' => Auth::id(),
+            'title' => $item->content,
+            'due_at' => $item->due_at,
+            'position' => (int) $card->list->cards()->max('position') + 1,
+        ]);
+
+        if ($item->assigned_to !== null && $this->board->members()->whereKey($item->assigned_to)->exists()) {
+            $created->members()->attach($item->assigned_to);
+        }
+
+        $item->delete();
+
+        $this->logActivity($card, 'checklist.item.converted', ['content' => $item->content, 'card_title' => $created->title]);
+        app(AutomationEngine::class)->fire('card.created', $created, ['list_id' => $created->board_list_id]);
+        $this->touched('checklist.item.converted');
+        $this->dispatch('toast', message: __('Élément converti en carte'), type: 'success');
     }
 
     private function guardedChecklistItem(Card $card, int $itemId): ChecklistItem

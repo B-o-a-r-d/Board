@@ -24,6 +24,7 @@ return [
     'checklist.item.added' => 'added a checklist item',
     'checklist.item.toggled' => 'checked/unchecked an item',
     'checklist.item.deleted' => 'deleted a checklist item',
+    'checklist.item.converted' => 'converted a checklist item to a card',
     'attachment.added' => 'added an attachment',
     'automation.run' => 'ran an automation',
     'someone' => 'a member',
