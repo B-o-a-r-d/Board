@@ -31,7 +31,9 @@
             x-ref="menu"
             x-transition.opacity.duration.100ms
             @click.outside="shown = false"
-            @click="shown = false"
+            {{-- A click on an item closes the menu, but form controls (e.g. the
+                 list WIP limit input) must keep it open so you can type. --}}
+            @click="if (! $event.target.closest('input, select, textarea, label')) shown = false"
             @keydown.escape.window="shown = false"
             :style="`top: ${y}px; left: ${x}px;`"
             class="fixed z-[60] min-w-[11rem] rounded-lg border border-neutral-200 bg-white p-1 text-sm text-neutral-800 shadow-lg dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
