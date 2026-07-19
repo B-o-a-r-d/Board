@@ -513,3 +513,11 @@ test('the topbar switcher lists accessible workspace boards only', function () {
         ->assertDontSee('Tableau privé étranger')
         ->assertSee(__('Tous les tableaux'));
 });
+
+test('a list carries its wip limit for the header counter and tint', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+    $card->list->update(['wip_limit' => 5]);
+
+    Livewire::actingAs($owner)->test(Show::class, ['board' => $board])
+        ->assertSeeHtml('data-wip-limit="5"');
+});

@@ -104,3 +104,16 @@ test('a read-only viewer cannot mutate cards in a column', function () {
 
     expect($card->fresh()->archived_at)->toBeNull();
 });
+
+test('the column exposes the real total for the header counter, not the paginated page', function () {
+    ['board' => $board, 'owner' => $owner] = makeCardContext();
+    $list = BoardList::factory()->create(['board_id' => $board->id]);
+
+    // 20 cards: only the first page (12) renders, the counter needs 20.
+    for ($i = 0; $i < 20; $i++) {
+        Card::factory()->create(['board_id' => $board->id, 'board_list_id' => $list->id, 'position' => $i]);
+    }
+
+    Livewire::actingAs($owner)->test(ListColumn::class, ['board' => $board, 'list' => $list])
+        ->assertSeeHtml('data-total="20"');
+});
