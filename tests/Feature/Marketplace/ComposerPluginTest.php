@@ -319,3 +319,18 @@ test('a catalog cached by an older release renders with defaults instead of cras
         ->assertOk()
         ->assertSee('Legacy');
 });
+
+test('checkUpdates runs no composer process while nothing is composer-installed', function () {
+    $fake = fakeComposer();
+
+    // A legacy archive package exists, but no composer-sourced one.
+    PluginPackage::create([
+        'key' => 'legacy', 'name' => 'Legacy', 'repo' => 'acme/legacy', 'version' => '1.0.0',
+        'path' => 'plugins/legacy', 'enabled' => true, 'available_version' => '1.0.0',
+    ]);
+    Http::fake(['api.github.com/repos/acme/legacy/releases/latest' => Http::response(['tag_name' => 'v1.0.0'])]);
+
+    app(PluginInstaller::class)->checkUpdates();
+
+    expect($fake->commands)->toBe([]);
+});
