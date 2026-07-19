@@ -427,19 +427,43 @@
             <div
                 wire:key="list-{{ $list->id }}"
                 wire:sort:item="{{ $list->id }}"
-                x-data="{ cardCount: {{ $list->cards_count }}, wipLimit: {{ $list->wip_limit ?? 'null' }}, collapsed: JSON.parse(localStorage.getItem('board-list-collapsed:{{ $list->public_id }}') ?? 'false') }"
+                data-wip-limit="{{ $list->wip_limit ?? '' }}"
+                x-data="{
+                    cardCount: {{ $list->cards_count }},
+                    wipLimit: {{ $list->wip_limit ?? 'null' }},
+                    collapsed: JSON.parse(localStorage.getItem('board-list-collapsed:{{ $list->public_id }}') ?? 'false'),
+                    {{-- WIP tint: normal below 50% of the limit, then a warm ramp
+                         (green → yellow → red), solid red at/over the limit. --}}
+                    wipTint() {
+                        if (! this.wipLimit || this.wipLimit < 1) return false;
+                        const ratio = this.cardCount / this.wipLimit;
+                        if (ratio < 0.5) return false;
+                        const t = Math.min((ratio - 0.5) / 0.5, 1);
+                        const hue = Math.round(120 - 120 * t);
+                        const alpha = ratio >= 1 ? 0.28 : 0.10 + 0.12 * t;
+                        return `linear-gradient(180deg, hsla(${hue}, 85%, 45%, ${alpha}), hsla(${hue}, 85%, 45%, 0.03) 80%)`;
+                    },
+                }"
                 x-init="
                     $watch('collapsed', v => localStorage.setItem('board-list-collapsed:{{ $list->public_id }}', JSON.stringify(v)));
                     $nextTick(() => {
-                        if (! $refs.cards) return;
-                        const update = () => cardCount = $refs.cards.querySelectorAll(':scope > li').length;
-                        new MutationObserver(update).observe($refs.cards, { childList: true });
-                        update();
+                        {{-- The cards <ul> lives in the nested ListColumn (own Alpine
+                             scope, so no $refs across the boundary) and only holds the
+                             paginated page: read the server-computed data-total instead,
+                             and re-read on every morph (lazy swap included). --}}
+                        const read = () => {
+                            const cards = $el.querySelector('ul[data-list-id]');
+                            if (cards && cards.dataset.total !== undefined) cardCount = Number(cards.dataset.total);
+                            wipLimit = $el.dataset.wipLimit === '' ? null : Number($el.dataset.wipLimit);
+                        };
+                        read();
+                        new MutationObserver(read).observe($el, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-total', 'data-wip-limit'] });
                     })
                 "
                 @collapse-all.window="collapsed = true"
                 @expand-all.window="collapsed = false"
                 :class="collapsed ? 'w-11 self-stretch' : 'w-full sm:w-72'"
+                :style="wipTint() ? { backgroundImage: wipTint() } : {}"
                 class="flex max-h-full shrink-0 snap-start flex-col overflow-hidden rounded-xl {{ $boardBg ? 'dark border border-white/15 bg-neutral-900/50 text-neutral-100 shadow-lg backdrop-blur-md' : 'bg-neutral-200/70 dark:bg-neutral-900' }}"
             >
                 {{-- Collapsed strip --}}

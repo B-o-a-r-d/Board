@@ -6,6 +6,7 @@
         x-ref="cards"
         @if ($canContribute) x-init="window.initCardSortable($el, $wire)" @endif
         data-list-id="{{ $list->id }}"
+        data-total="{{ $totalCards }}"
         data-has-more="{{ $hasMore ? '1' : '0' }}"
         {{-- Infinite scroll: reveal the next page when scrolled near the bottom.
              Guarded so it never appends (morphs) mid-drag. --}}

@@ -127,6 +127,9 @@ class ListColumn extends Component
 
         return view('livewire.boards.list-column', [
             'cards' => $cards,
+            // True (filtered) total — the DOM only holds the paginated page, so
+            // the list header reads this instead of counting <li> nodes.
+            'totalCards' => $total,
             'hasMore' => $total > $cards->count(),
             'remaining' => max(0, $total - $cards->count()),
             'mirrors' => $this->list->mirrors()->with([
