@@ -223,3 +223,20 @@ test('checkUpdates records the latest available version and breaking flag', func
         ->and($package->breaking_update)->toBeTrue()
         ->and($package->hasUpdate())->toBeTrue();
 });
+
+test('the loader serves the plugin manifest from cache on subsequent boots', function () {
+    fakeGithubRelease();
+    app(PluginInstaller::class)->install(demoEntry());
+
+    // First boot parses composer.json from disk and caches it (per key+version).
+    (new PluginLoader($this->app))->boot();
+    expect(cache()->has('marketplace:manifest:demo:1.0.0'))->toBeTrue();
+
+    // Next request: even with the file gone, the cached manifest carries the
+    // boot — no disk read, no load_error.
+    File::delete(storage_path('app/plugins/demo/composer.json'));
+    (new PluginLoader($this->app))->boot();
+
+    expect(PluginPackage::where('key', 'demo')->value('load_error'))->toBeNull()
+        ->and(cache()->get('marketplace:table-ready'))->toBeTrue();
+});
