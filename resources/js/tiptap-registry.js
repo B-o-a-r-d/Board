@@ -28,11 +28,15 @@ let modules = null
 
 export async function loadTiptap() {
     if (!modules) {
-        const [core, starter, md, table] = await Promise.all([
+        const [core, starter, md, table, yjs, awareness, collaboration, caret] = await Promise.all([
             import('@tiptap/core'),
             import('@tiptap/starter-kit'),
             import('tiptap-markdown'),
             import('@tiptap/extension-table'),
+            import('yjs'),
+            import('y-protocols/awareness.js'),
+            import('@tiptap/extension-collaboration'),
+            import('@tiptap/extension-collaboration-caret'),
         ])
 
         modules = {
@@ -47,6 +51,18 @@ export async function loadTiptap() {
                 TableRow: table.TableRow,
                 TableHeader: table.TableHeader,
                 TableCell: table.TableCell,
+            },
+            // Client-side CRDT collaboration. The transport is the caller's
+            // concern (Shelf syncs Yjs updates over Reverb presence whispers) —
+            // the host ships NO dedicated collaboration server on purpose.
+            collab: {
+                Y: yjs,
+                Awareness: awareness.Awareness,
+                encodeAwarenessUpdate: awareness.encodeAwarenessUpdate,
+                applyAwarenessUpdate: awareness.applyAwarenessUpdate,
+                removeAwarenessStates: awareness.removeAwarenessStates,
+                Collaboration: collaboration.Collaboration,
+                CollaborationCaret: caret.CollaborationCaret,
             },
         }
     }

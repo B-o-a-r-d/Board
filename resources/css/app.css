@@ -73,6 +73,29 @@
 .tiptap .selectedCell {
     background: rgba(99, 102, 241, 0.12);
 }
+/* Collaboration carets (named cursors of other editors). */
+.tiptap .collaboration-carets__caret {
+    border-left: 1px solid;
+    border-right: 1px solid;
+    margin-left: -1px;
+    margin-right: -1px;
+    pointer-events: none;
+    position: relative;
+    word-break: normal;
+}
+.tiptap .collaboration-carets__label {
+    border-radius: 3px 3px 3px 0;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+    left: -1px;
+    line-height: normal;
+    padding: 0.1rem 0.3rem;
+    position: absolute;
+    top: -1.3em;
+    user-select: none;
+    white-space: nowrap;
+}
 
 /* Flash highlight for an element focused from the activity slide-over. */
 @keyframes cf-flash {

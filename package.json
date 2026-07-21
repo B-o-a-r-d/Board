@@ -17,10 +17,14 @@
     },
     "dependencies": {
         "@tiptap/core": "^3.27.2",
+        "@tiptap/extension-collaboration": "^3.27.2",
+        "@tiptap/extension-collaboration-caret": "^3.27.2",
         "@tiptap/extension-mention": "^3.27.2",
         "@tiptap/extension-table": "^3.27.2",
         "@tiptap/starter-kit": "^3.27.2",
         "sortablejs": "^1.15.7",
-        "tiptap-markdown": "^0.9.0"
+        "tiptap-markdown": "^0.9.0",
+        "y-protocols": "^1.0.7",
+        "yjs": "^13.6.31"
     }
 }
