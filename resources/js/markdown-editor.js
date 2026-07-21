@@ -34,6 +34,11 @@ async function loadTiptap() {
     return tiptap
 }
 
+// Public seam for runtime plugins (Power-Ups): they render Blade inside the
+// host and cannot ship their own bundle, so this is how a plugin page (e.g.
+// Shelf notes) builds a TipTap editor while reusing the host's lazy chunk.
+window.boardTiptapLoader = loadTiptap
+
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('markdownEditor', (initial = '') => {
         let editor = null
