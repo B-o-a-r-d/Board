@@ -1,15 +1,20 @@
 @props(['board', 'pinnedIds' => [], 'keyPrefix' => 'board'])
 
-@php $isPinned = in_array($board->id, $pinnedIds, true); @endphp
+@php
+    $isPinned = in_array($board->id, $pinnedIds, true);
+    // null = kanban board; array = plugin type (loaded); false = orphaned type.
+    $cardType = $board->isKanban() ? null : (($boardTypes ?? [])[$board->type] ?? false);
+@endphp
 
 <x-context-menu
     wire:key="{{ $keyPrefix }}-{{ $board->id }}"
     class="group relative flex h-28 flex-col justify-between rounded-xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:border-indigo-400 hover:shadow dark:border-neutral-800 dark:bg-neutral-900"
 >
     <x-slot:trigger>
-        {{-- Stretched navigation link, behind the interactive controls. --}}
-        @if ($renamingBoardId !== $board->id)
-            <a href="{{ route('boards.show', $board) }}" wire:navigate class="absolute inset-0 rounded-xl" aria-label="{{ $board->name }}"></a>
+        {{-- Stretched navigation link, behind the interactive controls. A typed
+             board routes to its plugin's page; an orphaned type has no link. --}}
+        @if ($renamingBoardId !== $board->id && $cardType !== false)
+            <a href="{{ $cardType === null ? route('boards.show', $board) : route($cardType['route'], $board) }}" wire:navigate class="absolute inset-0 rounded-xl" aria-label="{{ $board->name }}"></a>
         @endif
 
         {{-- Top row: name + options + pin. `pointer-events-none` lets clicks fall
@@ -65,12 +70,23 @@
                 <span class="pointer-events-auto" title="{{ $board->visibility->label() }}">
                     <x-dynamic-component :component="'phosphor-'.$board->visibility->icon()" class="h-4 w-4" />
                 </span>
-                <span class="pointer-events-auto inline-flex items-center gap-0.5 text-[11px] tabular-nums" title="{{ __('Listes') }}">
-                    <x-phosphor-list-dashes class="h-3.5 w-3.5" /> {{ $board->lists_count ?? 0 }}
-                </span>
-                <span class="pointer-events-auto inline-flex items-center gap-0.5 text-[11px] tabular-nums" title="{{ __('Cartes') }}">
-                    <x-phosphor-cards class="h-3.5 w-3.5" /> {{ $board->cards_count ?? 0 }}
-                </span>
+                @if ($cardType === null)
+                    <span class="pointer-events-auto inline-flex items-center gap-0.5 text-[11px] tabular-nums" title="{{ __('Listes') }}">
+                        <x-phosphor-list-dashes class="h-3.5 w-3.5" /> {{ $board->lists_count ?? 0 }}
+                    </span>
+                    <span class="pointer-events-auto inline-flex items-center gap-0.5 text-[11px] tabular-nums" title="{{ __('Cartes') }}">
+                        <x-phosphor-cards class="h-3.5 w-3.5" /> {{ $board->cards_count ?? 0 }}
+                    </span>
+                @elseif ($cardType !== false)
+                    <span class="pointer-events-auto inline-flex items-center gap-1 text-[11px]">
+                        <x-dynamic-component :component="'phosphor-'.$cardType['icon']" class="h-3.5 w-3.5" /> {{ $cardType['label'] }}
+                    </span>
+                @else
+                    <span class="pointer-events-auto inline-flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400"
+                          title="{{ __('Le plugin fournissant ce type de board (:type) n\'est plus installé.', ['type' => $board->type]) }}">
+                        <x-phosphor-puzzle-piece class="h-3.5 w-3.5" /> {{ __('Power-Up requis') }}
+                    </span>
+                @endif
             </span>
 
             @if ($board->members->isNotEmpty())
@@ -103,7 +119,7 @@
                 </p>
                 <div class="flex max-h-40 flex-col overflow-y-auto">
                     @foreach ($workspaces as $targetWorkspace)
-                        @continue($targetWorkspace->id === $board->workspace_id || ! $targetWorkspace->isKanban())
+                        @continue($targetWorkspace->id === $board->workspace_id)
                         <button type="button"
                                 wire:click="moveBoardToWorkspace({{ $board->id }}, {{ $targetWorkspace->id }})"
                                 class="truncate rounded px-2 py-1 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800">{{ $targetWorkspace->name }}</button>

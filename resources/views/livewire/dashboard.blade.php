@@ -12,17 +12,6 @@
                 placeholder="{{ __('Nouveau workspace') }}"
                 class="min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none sm:flex-none dark:border-neutral-700 dark:bg-neutral-800"
             >
-            {{-- Workspace type — only shown when a plugin contributes one (e.g. Shelf) --}}
-            @if ($workspaceTypes !== [])
-                <select wire:model="newWorkspaceType"
-                        class="shrink-0 rounded-lg border border-neutral-300 bg-white px-2 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800"
-                        title="{{ __('Type de workspace') }}">
-                    <option value="kanban">{{ __('Tableaux') }}</option>
-                    @foreach ($workspaceTypes as $type)
-                        <option value="{{ $type['key'] }}">{{ $type['label'] }}</option>
-                    @endforeach
-                </select>
-            @endif
             <button type="submit" class="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:ring-2 focus:ring-indigo-500/40 focus:outline-none">
                 {{ __('Créer') }}
             </button>
@@ -93,47 +82,32 @@
                 </x-slot:menu>
             </x-context-menu>
 
-            @if ($workspace->isKanban())
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    @foreach ($workspace->boards as $board)
-                        @include('livewire.partials.board-card', ['board' => $board, 'pinnedIds' => $pinnedIds, 'keyPrefix' => 'board'])
-                    @endforeach
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                @foreach ($workspace->boards as $board)
+                    @include('livewire.partials.board-card', ['board' => $board, 'pinnedIds' => $pinnedIds, 'keyPrefix' => 'board'])
+                @endforeach
 
-                    {{-- Create board --}}
-                    <form wire:submit="createBoard({{ $workspace->id }})" class="flex h-28 items-center rounded-xl border border-dashed border-neutral-300 bg-white/40 p-4 dark:border-neutral-700 dark:bg-neutral-900/40">
-                        <input
-                            type="text"
-                            wire:model="newBoardName.{{ $workspace->id }}"
-                            placeholder="{{ __('+ Nouveau board') }}"
-                            class="w-full bg-transparent text-sm placeholder-neutral-500 focus:outline-none"
-                        >
-                    </form>
-                </div>
-            @else
-                {{-- Plugin-typed workspace (e.g. Shelf): its whole surface is a plugin page --}}
-                @php $wsType = $workspaceTypes[$workspace->type] ?? null; @endphp
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    @if ($wsType !== null)
-                        <a href="{{ route($wsType['route'], $workspace) }}" wire:navigate
-                           class="group flex h-28 flex-col justify-between rounded-xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:border-indigo-400 hover:shadow dark:border-neutral-800 dark:bg-neutral-900">
-                            <span class="flex items-center gap-2 font-medium group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
-                                <x-dynamic-component :component="'phosphor-'.$wsType['icon']" class="h-5 w-5 shrink-0 text-neutral-500"/>
-                                {{ $wsType['label'] }}
-                            </span>
-                            <span class="inline-flex items-center gap-1 text-xs text-neutral-400">
-                                <x-phosphor-arrow-right class="h-3.5 w-3.5"/> {{ __('Ouvrir') }}
-                            </span>
-                        </a>
-                    @else
-                        <div class="flex h-28 flex-col justify-between rounded-xl border border-dashed border-amber-300 bg-amber-50/60 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
-                            <span class="flex items-center gap-2 text-sm font-medium text-amber-800 dark:text-amber-300">
-                                <x-phosphor-puzzle-piece class="h-5 w-5 shrink-0"/> {{ __('Power-Up requis') }}
-                            </span>
-                            <span class="text-xs text-amber-700/80 dark:text-amber-300/70">{{ __('Le plugin fournissant ce type de workspace (:type) n\'est plus installé.', ['type' => $workspace->type]) }}</span>
-                        </div>
+                {{-- Create board — the type selector only appears when a plugin
+                     contributes a board type (e.g. Shelf) --}}
+                <form wire:submit="createBoard({{ $workspace->id }})" class="flex h-28 items-center gap-2 rounded-xl border border-dashed border-neutral-300 bg-white/40 p-4 dark:border-neutral-700 dark:bg-neutral-900/40">
+                    <input
+                        type="text"
+                        wire:model="newBoardName.{{ $workspace->id }}"
+                        placeholder="{{ __('+ Nouveau board') }}"
+                        class="w-full min-w-0 flex-1 bg-transparent text-sm placeholder-neutral-500 focus:outline-none"
+                    >
+                    @if ($boardTypes !== [])
+                        <select wire:model="newBoardType.{{ $workspace->id }}"
+                                class="shrink-0 rounded-lg border border-neutral-200 bg-white px-1.5 py-1 text-xs text-neutral-600 focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+                                title="{{ __('Type de board') }}">
+                            <option value="kanban">{{ __('Tableau') }}</option>
+                            @foreach ($boardTypes as $type)
+                                <option value="{{ $type['key'] }}">{{ $type['label'] }}</option>
+                            @endforeach
+                        </select>
                     @endif
-                </div>
-            @endif
+                </form>
+            </div>
         </section>
     @empty
         <div class="rounded-2xl border border-dashed border-neutral-300 bg-white p-12 text-center dark:border-neutral-700 dark:bg-neutral-900">
@@ -181,7 +155,6 @@
                     <label class="mb-1 block text-sm font-medium">{{ __('Workspace de destination') }}</label>
                     <select wire:model="templateWorkspaceId" class="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800">
                         @foreach ($workspaces as $workspace)
-                            @continue(! $workspace->isKanban())
                             <option value="{{ $workspace->id }}">{{ $workspace->name }}</option>
                         @endforeach
                     </select>

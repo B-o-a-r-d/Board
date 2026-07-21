@@ -18,11 +18,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-#[Fillable(['workspace_id', 'created_by', 'name', 'slug', 'description', 'background', 'background_image', 'visibility', 'is_template', 'share_token', 'ical_token', 'position', 'archived_at', 'activity_retention_days'])]
+#[Fillable(['workspace_id', 'created_by', 'name', 'slug', 'type', 'description', 'background', 'background_image', 'visibility', 'is_template', 'share_token', 'ical_token', 'position', 'archived_at', 'activity_retention_days'])]
 class Board extends Model
 {
     /** @use HasFactory<BoardFactory> */
     use HasFactory, HasPublicId;
+
+    /** The historical lists/cards board type ('type' column default). */
+    public const TYPE_KANBAN = 'kanban';
+
+    /**
+     * Whether this is a classic kanban board (lists/cards grid). Anything else
+     * is a plugin-contributed type routed to the plugin's own page.
+     */
+    public function isKanban(): bool
+    {
+        return ($this->type ?? self::TYPE_KANBAN) === self::TYPE_KANBAN;
+    }
 
     /**
      * @return array<string, string>

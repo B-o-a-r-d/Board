@@ -7,19 +7,20 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Workspace types: 'kanban' is the historical boards workspace; plugins can
-     * contribute other types (ProvidesWorkspaceType), e.g. 'shelf'.
+     * Board types: 'kanban' is the historical lists/cards board; plugins can
+     * contribute other types (ProvidesBoardType), e.g. 'shelf'. Workspaces
+     * keep grouping boards of any type.
      */
     public function up(): void
     {
-        Schema::table('workspaces', function (Blueprint $table) {
+        Schema::table('boards', function (Blueprint $table) {
             $table->string('type')->default('kanban')->after('slug');
         });
     }
 
     public function down(): void
     {
-        Schema::table('workspaces', function (Blueprint $table) {
+        Schema::table('boards', function (Blueprint $table) {
             $table->dropColumn('type');
         });
     }

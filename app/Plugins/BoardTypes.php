@@ -2,18 +2,18 @@
 
 namespace App\Plugins;
 
-use App\Models\Workspace;
-use Board\PluginSdk\Contracts\ProvidesWorkspaceType;
+use App\Models\Board;
+use Board\PluginSdk\Contracts\ProvidesBoardType;
 use Board\PluginSdk\PluginRegistry;
 use Illuminate\Support\Facades\Route;
 
 /**
- * Workspace types contributed by active plugins ({@see ProvidesWorkspaceType}).
+ * Board types contributed by active plugins ({@see ProvidesBoardType}).
  * The host's own 'kanban' type is implicit and never listed here — a type is
- * only offered while its plugin is loaded, and a workspace whose type has no
+ * only offered while its plugin is loaded, and a board whose type has no
  * loaded plugin stays visible but unopenable ("Power-Up requis").
  */
-class WorkspaceTypes
+class BoardTypes
 {
     public function __construct(private readonly PluginRegistry $registry) {}
 
@@ -25,23 +25,23 @@ class WorkspaceTypes
         $types = [];
 
         foreach ($this->registry->all() as $plugin) {
-            if (! $plugin instanceof ProvidesWorkspaceType) {
+            if (! $plugin instanceof ProvidesBoardType) {
                 continue;
             }
 
-            $key = $plugin->workspaceTypeKey();
+            $key = $plugin->boardTypeKey();
 
             // 'kanban' is reserved by the host; a route that does not exist
             // would break every dashboard render.
-            if ($key === Workspace::TYPE_KANBAN || ! Route::has($plugin->workspaceTypeRoute())) {
+            if ($key === Board::TYPE_KANBAN || ! Route::has($plugin->boardTypeRoute())) {
                 continue;
             }
 
             $types[$key] = [
                 'key' => $key,
-                'label' => $plugin->workspaceTypeLabel(),
-                'icon' => $plugin->workspaceTypeIcon(),
-                'route' => $plugin->workspaceTypeRoute(),
+                'label' => $plugin->boardTypeLabel(),
+                'icon' => $plugin->boardTypeIcon(),
+                'route' => $plugin->boardTypeRoute(),
             ];
         }
 

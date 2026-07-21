@@ -2,7 +2,7 @@
 
 namespace Tests\Fixtures\Connector;
 
-use App\Models\Workspace;
+use App\Models\Board;
 use Board\PluginSdk\Contracts\Plugin;
 use Board\PluginSdk\PluginServiceProvider;
 use Illuminate\Support\Facades\Route;
@@ -19,11 +19,11 @@ class AcmeServiceProvider extends PluginServiceProvider
     {
         parent::boot();
 
-        // The named route backing the fixture's workspace type — a real plugin
+        // The named route backing the fixture's board type — a real plugin
         // (e.g. Shelf) registers its page the same way.
         Route::middleware(['web', 'auth'])
-            ->get('/acme-space/{workspace}', fn (Workspace $workspace) => 'acme-space:'.$workspace->id)
-            ->name('acme-space.show');
+            ->get('/acme-board/{board}', fn (Board $board) => 'acme-board:'.$board->id)
+            ->name('acme-board.show');
 
         // Registered after boot (runtime plugin): the name lookup table must be
         // refreshed or Route::has() cannot see the new name.

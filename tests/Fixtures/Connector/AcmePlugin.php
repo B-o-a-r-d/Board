@@ -5,12 +5,12 @@ namespace Tests\Fixtures\Connector;
 use Board\PluginSdk\Contracts\DefinesActivities;
 use Board\PluginSdk\Contracts\Plugin;
 use Board\PluginSdk\Contracts\ProvidesAutomationActions;
+use Board\PluginSdk\Contracts\ProvidesBoardType;
 use Board\PluginSdk\Contracts\ProvidesCardFields;
 use Board\PluginSdk\Contracts\ProvidesListSource;
 use Board\PluginSdk\Contracts\ProvidesMcpTools;
 use Board\PluginSdk\Contracts\ProvidesOAuth;
 use Board\PluginSdk\Contracts\ProvidesSettings;
-use Board\PluginSdk\Contracts\ProvidesWorkspaceType;
 use Board\PluginSdk\PluginListItem;
 use Board\PluginSdk\PluginToast;
 use Illuminate\Http\Client\PendingRequest;
@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Http;
  *
  * All I/O targets the fake `acme.test` host so tests can `Http::fake()` it.
  */
-class AcmePlugin implements DefinesActivities, Plugin, ProvidesAutomationActions, ProvidesCardFields, ProvidesListSource, ProvidesMcpTools, ProvidesOAuth, ProvidesSettings, ProvidesWorkspaceType
+class AcmePlugin implements DefinesActivities, Plugin, ProvidesAutomationActions, ProvidesBoardType, ProvidesCardFields, ProvidesListSource, ProvidesMcpTools, ProvidesOAuth, ProvidesSettings
 {
     public const AUTHORIZE_URL = 'https://acme.test/oauth/authorize';
 
@@ -65,26 +65,26 @@ class AcmePlugin implements DefinesActivities, Plugin, ProvidesAutomationActions
         return 'plugs';
     }
 
-    // --- ProvidesWorkspaceType (workspace-type system tests) -------------------
+    // --- ProvidesBoardType (board-type system tests) ---------------------------
 
-    public function workspaceTypeKey(): string
+    public function boardTypeKey(): string
     {
-        return 'acmespace';
+        return 'acmeboard';
     }
 
-    public function workspaceTypeLabel(): string
+    public function boardTypeLabel(): string
     {
-        return 'Acme Space';
+        return 'Acme Board';
     }
 
-    public function workspaceTypeIcon(): string
+    public function boardTypeIcon(): string
     {
         return 'books';
     }
 
-    public function workspaceTypeRoute(): string
+    public function boardTypeRoute(): string
     {
-        return 'acme-space.show';
+        return 'acme-board.show';
     }
 
     public function requiresOAuth(): bool

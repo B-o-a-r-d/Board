@@ -445,6 +445,10 @@ class Show extends Component
     {
         $this->authorize('view', $board);
 
+        // A plugin-typed board (e.g. Shelf) owns its whole surface — the kanban
+        // UI only ever renders kanban boards.
+        abort_unless($board->isKanban(), 404);
+
         $this->board = $board;
         $this->canContribute = Auth::user()->can('contribute', $board);
 
@@ -1448,10 +1452,12 @@ class Show extends Component
             'archivedCards' => $this->showTrash ? $this->board->cards()->whereNotNull('archived_at')->with('list')->latest('archived_at')->get() : collect(),
             'cardTemplates' => CardTemplate::orderBy('name')->get(),
             'views' => $this->board->views()->where('user_id', Auth::id())->latest()->get(),
-            // Topbar board switcher: the workspace boards this user can open
-            // (same access rule as the dashboard listing).
+            // Topbar board switcher: the workspace's KANBAN boards this user can
+            // open (same access rule as the dashboard listing; typed boards are
+            // reached from the dashboard).
             'switcherBoards' => $this->board->workspace->boards()
                 ->notArchived()
+                ->where('type', Board::TYPE_KANBAN)
                 ->where('is_template', false)
                 ->where(function ($scoped) {
                     $scoped->where('visibility', BoardVisibility::Workspace)
