@@ -52,6 +52,27 @@
     color: rgba(120, 120, 120, 1);
     margin: 0.5em 0;
 }
+.markdown table {
+    border-collapse: collapse;
+    margin: 0.5em 0;
+    width: 100%;
+    font-size: 0.875em;
+}
+.markdown th,
+.markdown td {
+    border: 1px solid rgba(120, 120, 120, 0.35);
+    padding: 0.35rem 0.6rem;
+    text-align: left;
+    vertical-align: top;
+}
+.markdown th {
+    font-weight: 600;
+    background: rgba(120, 120, 120, 0.1);
+}
+/* TipTap table UX: column-resize handle + cell selection tint. */
+.tiptap .selectedCell {
+    background: rgba(99, 102, 241, 0.12);
+}
 
 /* Flash highlight for an element focused from the activity slide-over. */
 @keyframes cf-flash {

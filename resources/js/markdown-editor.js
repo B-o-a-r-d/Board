@@ -18,26 +18,9 @@
  * would fail with "Applying a mismatched transaction".
  */
 
-let tiptap = null
-
-/** Load TipTap once, on demand, as a separate chunk. */
-async function loadTiptap() {
-    if (!tiptap) {
-        const [core, starter, md] = await Promise.all([
-            import('@tiptap/core'),
-            import('@tiptap/starter-kit'),
-            import('tiptap-markdown'),
-        ])
-        tiptap = { Editor: core.Editor, StarterKit: starter.default, Markdown: md.Markdown }
-    }
-
-    return tiptap
-}
-
-// Public seam for runtime plugins (Power-Ups): they render Blade inside the
-// host and cannot ship their own bundle, so this is how a plugin page (e.g.
-// Shelf notes) builds a TipTap editor while reusing the host's lazy chunk.
-window.boardTiptapLoader = loadTiptap
+// The lazy loader (and the plugin-facing window.boardTiptap registry) live in
+// tiptap-registry.js — importing it here also installs the seam at boot.
+import { loadTiptap } from './tiptap-registry'
 
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('markdownEditor', (initial = '') => {
