@@ -144,16 +144,16 @@
         },
         {
             "name": "board/plugin-sdk",
-            "version": "v0.2.6",
+            "version": "v0.2.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/B-o-a-r-d/Board-Plugin-SDK.git",
-                "reference": "83090959fb93c49b55191f03fc82a68ba81df6c7"
+                "reference": "269267794e6c9eb34604c8655d3956f2d45e4a72"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/B-o-a-r-d/Board-Plugin-SDK/zipball/83090959fb93c49b55191f03fc82a68ba81df6c7",
-                "reference": "83090959fb93c49b55191f03fc82a68ba81df6c7",
+                "url": "https://api.github.com/repos/B-o-a-r-d/Board-Plugin-SDK/zipball/269267794e6c9eb34604c8655d3956f2d45e4a72",
+                "reference": "269267794e6c9eb34604c8655d3956f2d45e4a72",
                 "shasum": ""
             },
             "require": {
@@ -185,10 +185,10 @@
                 "sdk"
             ],
             "support": {
-                "source": "https://github.com/B-o-a-r-d/Board-Plugin-SDK/tree/v0.2.6",
+                "source": "https://github.com/B-o-a-r-d/Board-Plugin-SDK/tree/v0.2.7",
                 "issues": "https://github.com/B-o-a-r-d/Board-Plugin-SDK/issues"
             },
-            "time": "2026-07-15T13:01:19+00:00"
+            "time": "2026-07-21T14:49:53+00:00"
         },
         {
             "name": "brick/math",
@@ -7879,16 +7879,16 @@
     "packages-dev": [
         {
             "name": "board/marketplace",
-            "version": "v0.1.9",
+            "version": "v0.1.10",
             "source": {
                 "type": "git",
                 "url": "https://github.com/B-o-a-r-d/marketplace-plugin.git",
-                "reference": "4679629063e18809b4d2c7107fa2acdc7caee842"
+                "reference": "ad65777df869b004998ef943bcd9ad72a1f2e469"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/B-o-a-r-d/marketplace-plugin/zipball/4679629063e18809b4d2c7107fa2acdc7caee842",
-                "reference": "4679629063e18809b4d2c7107fa2acdc7caee842",
+                "url": "https://api.github.com/repos/B-o-a-r-d/marketplace-plugin/zipball/ad65777df869b004998ef943bcd9ad72a1f2e469",
+                "reference": "ad65777df869b004998ef943bcd9ad72a1f2e469",
                 "shasum": ""
             },
             "require": {
@@ -7928,10 +7928,10 @@
                 "plugins"
             ],
             "support": {
-                "source": "https://github.com/B-o-a-r-d/marketplace-plugin/tree/v0.1.9",
+                "source": "https://github.com/B-o-a-r-d/marketplace-plugin/tree/v0.1.10",
                 "issues": "https://github.com/B-o-a-r-d/marketplace-plugin/issues"
             },
-            "time": "2026-07-19T14:47:11+00:00"
+            "time": "2026-07-21T14:50:43+00:00"
         },
         {
             "name": "brianium/paratest",

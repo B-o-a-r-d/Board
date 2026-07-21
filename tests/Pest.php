@@ -85,7 +85,7 @@ function demoZipball(): string
 
     $zip = new ZipArchive;
     $zip->open($tmp, ZipArchive::CREATE | ZipArchive::OVERWRITE);
-    foreach (['composer.json', 'src/DemoPlugin.php', 'src/DemoServiceProvider.php'] as $rel) {
+    foreach (['composer.json', 'src/DemoPlugin.php', 'src/DemoServiceProvider.php', 'database/migrations/2026_07_21_000000_create_demo_probe_table.php'] as $rel) {
         $zip->addFile("$src/$rel", "acme-demo-abc1234/$rel");
     }
     $zip->close();

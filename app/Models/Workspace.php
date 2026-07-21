@@ -15,11 +15,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-#[Fillable(['owner_id', 'name', 'slug', 'description', 'color', 'allowed_invite_domains', 'allowed_attachment_extensions'])]
+#[Fillable(['owner_id', 'name', 'slug', 'type', 'description', 'color', 'allowed_invite_domains', 'allowed_attachment_extensions'])]
 class Workspace extends Model
 {
     /** @use HasFactory<WorkspaceFactory> */
     use HasFactory, HasPublicId;
+
+    /** The historical boards workspace type ('type' column default). */
+    public const TYPE_KANBAN = 'kanban';
+
+    /**
+     * Whether this is a classic kanban workspace (boards grid). Anything else
+     * is a plugin-contributed type routed to the plugin's own page.
+     */
+    public function isKanban(): bool
+    {
+        return ($this->type ?? self::TYPE_KANBAN) === self::TYPE_KANBAN;
+    }
 
     /**
      * @return array<string, string>

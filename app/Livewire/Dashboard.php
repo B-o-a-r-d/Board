@@ -6,6 +6,7 @@ use App\Enums\BoardVisibility;
 use App\Enums\Role;
 use App\Models\Board;
 use App\Models\Workspace;
+use App\Plugins\WorkspaceTypes;
 use App\Services\BoardTemplateService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
@@ -22,6 +23,9 @@ class Dashboard extends Component
 {
     public string $newWorkspaceName = '';
 
+    /** 'kanban' or a plugin-contributed workspace type key (e.g. 'shelf'). */
+    public string $newWorkspaceType = Workspace::TYPE_KANBAN;
+
     /** @var array<int, string> */
     public array $newBoardName = [];
 
@@ -31,15 +35,24 @@ class Dashboard extends Component
             'newWorkspaceName' => ['required', 'string', 'max:255'],
         ]);
 
+        // Only the host type or a type currently offered by a loaded plugin.
+        $type = $this->newWorkspaceType;
+
+        if ($type !== Workspace::TYPE_KANBAN && app(WorkspaceTypes::class)->find($type) === null) {
+            $type = Workspace::TYPE_KANBAN;
+        }
+
         $workspace = Workspace::create([
             'owner_id' => Auth::id(),
             'name' => $data['newWorkspaceName'],
             'slug' => Str::slug($data['newWorkspaceName']).'-'.Str::lower(Str::random(6)),
+            'type' => $type,
         ]);
 
         $workspace->members()->attach(Auth::id(), ['role' => Role::Owner->value]);
 
-        $this->newWorkspaceName = '';
+        $this->reset('newWorkspaceName');
+        $this->newWorkspaceType = Workspace::TYPE_KANBAN;
         $this->dispatch('toast', message: __('Workspace créé'), type: 'success');
     }
 
@@ -94,7 +107,9 @@ class Dashboard extends Component
 
         $this->templateToUse = $template->id;
         $this->templateBoardName = $template->name;
-        $this->templateWorkspaceId = Auth::user()->workspaces()->min('workspaces.id');
+        $this->templateWorkspaceId = Auth::user()->workspaces()
+            ->where('type', Workspace::TYPE_KANBAN)
+            ->min('workspaces.id');
     }
 
     public function createFromTemplate(): mixed
@@ -104,7 +119,9 @@ class Dashboard extends Component
         }
 
         $template = Board::templates()->findOrFail($this->templateToUse);
-        $workspace = Auth::user()->workspaces()->findOrFail($this->templateWorkspaceId);
+        $workspace = Auth::user()->workspaces()
+            ->where('type', Workspace::TYPE_KANBAN)
+            ->findOrFail($this->templateWorkspaceId);
 
         $board = app(BoardTemplateService::class)->instantiate(
             $template,
@@ -121,6 +138,12 @@ class Dashboard extends Component
     public function createBoard(int $workspaceId): mixed
     {
         $workspace = Auth::user()->workspaces()->findOrFail($workspaceId);
+
+        // Boards only live in kanban workspaces (plugin-typed workspaces own
+        // their whole surface).
+        if (! $workspace->isKanban()) {
+            return null;
+        }
 
         $name = trim($this->newBoardName[$workspaceId] ?? '');
 
@@ -211,10 +234,10 @@ class Dashboard extends Component
         $board = Board::findOrFail($boardId);
         $this->authorize('update', $board);
 
-        // The target must be one of the actor's own workspaces.
+        // The target must be one of the actor's own KANBAN workspaces.
         $workspace = Auth::user()->workspaces()->findOrFail($workspaceId);
 
-        if ($workspace->id === $board->workspace_id) {
+        if ($workspace->id === $board->workspace_id || ! $workspace->isKanban()) {
             return;
         }
 
@@ -403,6 +426,8 @@ class Dashboard extends Component
 
         return view('livewire.dashboard', [
             'workspaces' => $workspaces,
+            // Plugin-contributed workspace types (e.g. Shelf), keyed by type key.
+            'workspaceTypes' => app(WorkspaceTypes::class)->all(),
             'templates' => Board::templates()->orderBy('name')->get(),
             'pinnedBoards' => $pinnedBoards,
             'pinnedIds' => $pinnedIds,

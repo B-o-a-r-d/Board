@@ -10,6 +10,7 @@ use Board\PluginSdk\Contracts\ProvidesListSource;
 use Board\PluginSdk\Contracts\ProvidesMcpTools;
 use Board\PluginSdk\Contracts\ProvidesOAuth;
 use Board\PluginSdk\Contracts\ProvidesSettings;
+use Board\PluginSdk\Contracts\ProvidesWorkspaceType;
 use Board\PluginSdk\PluginListItem;
 use Board\PluginSdk\PluginToast;
 use Illuminate\Http\Client\PendingRequest;
@@ -24,7 +25,7 @@ use Illuminate\Support\Facades\Http;
  *
  * All I/O targets the fake `acme.test` host so tests can `Http::fake()` it.
  */
-class AcmePlugin implements DefinesActivities, Plugin, ProvidesAutomationActions, ProvidesCardFields, ProvidesListSource, ProvidesMcpTools, ProvidesOAuth, ProvidesSettings
+class AcmePlugin implements DefinesActivities, Plugin, ProvidesAutomationActions, ProvidesCardFields, ProvidesListSource, ProvidesMcpTools, ProvidesOAuth, ProvidesSettings, ProvidesWorkspaceType
 {
     public const AUTHORIZE_URL = 'https://acme.test/oauth/authorize';
 
@@ -62,6 +63,28 @@ class AcmePlugin implements DefinesActivities, Plugin, ProvidesAutomationActions
     public function icon(): string
     {
         return 'plugs';
+    }
+
+    // --- ProvidesWorkspaceType (workspace-type system tests) -------------------
+
+    public function workspaceTypeKey(): string
+    {
+        return 'acmespace';
+    }
+
+    public function workspaceTypeLabel(): string
+    {
+        return 'Acme Space';
+    }
+
+    public function workspaceTypeIcon(): string
+    {
+        return 'books';
+    }
+
+    public function workspaceTypeRoute(): string
+    {
+        return 'acme-space.show';
     }
 
     public function requiresOAuth(): bool

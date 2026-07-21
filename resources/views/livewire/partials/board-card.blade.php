@@ -103,7 +103,7 @@
                 </p>
                 <div class="flex max-h-40 flex-col overflow-y-auto">
                     @foreach ($workspaces as $targetWorkspace)
-                        @continue($targetWorkspace->id === $board->workspace_id)
+                        @continue($targetWorkspace->id === $board->workspace_id || ! $targetWorkspace->isKanban())
                         <button type="button"
                                 wire:click="moveBoardToWorkspace({{ $board->id }}, {{ $targetWorkspace->id }})"
                                 class="truncate rounded px-2 py-1 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800">{{ $targetWorkspace->name }}</button>

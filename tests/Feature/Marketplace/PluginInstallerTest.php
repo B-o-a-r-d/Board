@@ -8,6 +8,7 @@ use Board\Marketplace\PluginLoader;
 use Board\PluginSdk\PluginRegistry;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 
 afterEach(function () {
     // Only the fixtures this suite creates — never the whole plugins dir, which
@@ -239,4 +240,15 @@ test('the loader serves the plugin manifest from cache on subsequent boots', fun
 
     expect(PluginPackage::where('key', 'demo')->value('load_error'))->toBeNull()
         ->and(cache()->get('marketplace:table-ready'))->toBeTrue();
+});
+
+test('installing a plugin runs its own migrations', function () {
+    fakeGithubRelease();
+
+    expect(Schema::hasTable('demo_plugin_probe'))->toBeFalse();
+
+    app(PluginInstaller::class)->install(demoEntry());
+
+    // The fixture ships database/migrations/…create_demo_probe_table.php.
+    expect(Schema::hasTable('demo_plugin_probe'))->toBeTrue();
 });
