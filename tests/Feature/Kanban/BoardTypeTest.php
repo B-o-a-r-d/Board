@@ -94,13 +94,17 @@ test('a typed board never opens the kanban UI', function () {
         ->assertStatus(404);
 });
 
-test('the topbar switcher only lists kanban boards', function () {
+test('the topbar switcher lists typed boards routed to their plugin page', function () {
     ['user' => $user, 'workspace' => $workspace] = boardTypeContext();
     $kanban = Board::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Tableau kanban']);
     $kanban->members()->attach($user, ['role' => Role::Owner->value]);
-    Board::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Étagère typée', 'type' => 'acmeboard', 'visibility' => BoardVisibility::Workspace]);
+    $typed = Board::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Étagère typée', 'type' => 'acmeboard', 'visibility' => BoardVisibility::Workspace]);
+    Board::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Board orpheline', 'type' => 'vanished', 'visibility' => BoardVisibility::Workspace]);
 
     Livewire::actingAs($user)->test(Show::class, ['board' => $kanban])
         ->assertSee('Tableau kanban')
-        ->assertDontSee('Étagère typée');
+        ->assertSee('Étagère typée')
+        ->assertSeeHtml(route('acme-board.show', $typed))
+        // A typed board whose plugin is gone cannot open anywhere: not listed.
+        ->assertDontSee('Board orpheline');
 });

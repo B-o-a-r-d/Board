@@ -17,6 +17,7 @@ use App\Models\CardTemplate;
 use App\Models\CustomField;
 use App\Models\User;
 use App\Notifications\CardNotification;
+use App\Plugins\BoardTypes;
 use App\Plugins\PluginCardFieldSync;
 use Board\PluginSdk\Contracts\ProvidesListSource;
 use Board\PluginSdk\PluginRegistry;
@@ -1452,19 +1453,19 @@ class Show extends Component
             'archivedCards' => $this->showTrash ? $this->board->cards()->whereNotNull('archived_at')->with('list')->latest('archived_at')->get() : collect(),
             'cardTemplates' => CardTemplate::orderBy('name')->get(),
             'views' => $this->board->views()->where('user_id', Auth::id())->latest()->get(),
-            // Topbar board switcher: the workspace's KANBAN boards this user can
-            // open (same access rule as the dashboard listing; typed boards are
-            // reached from the dashboard).
+            // Topbar board switcher: every board of the workspace this user can
+            // open — kanban ones and plugin-typed ones alike (the blade routes
+            // each to its surface; orphan types without a plugin are skipped).
             'switcherBoards' => $this->board->workspace->boards()
                 ->notArchived()
-                ->where('type', Board::TYPE_KANBAN)
                 ->where('is_template', false)
                 ->where(function ($scoped) {
                     $scoped->where('visibility', BoardVisibility::Workspace)
                         ->orWhereHas('members', fn ($members) => $members->whereKey(Auth::id()));
                 })
                 ->orderBy('position')
-                ->get(['id', 'name', 'public_id', 'workspace_id']),
+                ->get(['id', 'name', 'public_id', 'workspace_id', 'type']),
+            'switcherTypes' => app(BoardTypes::class)->all(),
             // Fields visible on cards (user fields + fields of active plugins)…
             'customFields' => $this->board->customFields()->visibleOn($this->board)->orderBy('position')->get(),
             // …and every field for the admin modal (plugin-managed ones included).

@@ -94,10 +94,20 @@
                         <p class="truncate px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-neutral-400">{{ $board->workspace->name }}</p>
                         <div class="max-h-72 overflow-y-auto">
                             @foreach ($switcherBoards as $switchBoard)
-                                <a href="{{ route('boards.show', $switchBoard) }}" wire:navigate @click="switcherOpen = false"
+                                @php
+                                    // Kanban boards open here; typed boards open on their
+                                    // plugin's page. An orphan type (plugin gone) is unopenable.
+                                    $switchType = $switchBoard->isKanban() ? null : (($switcherTypes ?? [])[$switchBoard->type] ?? false);
+                                @endphp
+                                @continue($switchType === false)
+                                <a href="{{ $switchType === null ? route('boards.show', $switchBoard) : route($switchType['route'], $switchBoard) }}" wire:navigate @click="switcherOpen = false"
                                    wire:key="switcher-{{ $switchBoard->id }}"
                                    class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition hover:bg-neutral-100 dark:hover:bg-neutral-800 {{ $switchBoard->id === $board->id ? 'font-medium text-indigo-600 dark:text-indigo-400' : '' }}">
-                                    <x-phosphor-kanban class="h-4 w-4 shrink-0 opacity-60"/>
+                                    @if ($switchType === null)
+                                        <x-phosphor-kanban class="h-4 w-4 shrink-0 opacity-60"/>
+                                    @else
+                                        <x-dynamic-component :component="'phosphor-'.$switchType['icon']" class="h-4 w-4 shrink-0 opacity-60"/>
+                                    @endif
                                     <span class="min-w-0 flex-1 truncate">{{ $switchBoard->name }}</span>
                                     @if ($switchBoard->id === $board->id)<x-phosphor-check class="h-4 w-4 shrink-0"/>@endif
                                 </a>
