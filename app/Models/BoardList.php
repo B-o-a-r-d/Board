@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['board_id', 'name', 'cover_color', 'cover_path', 'wip_limit', 'position', 'archived_at', 'source_plugin_id', 'source_mode', 'source_config'])]
+#[Fillable(['board_id', 'name', 'cover_color', 'cover_path', 'wip_limit', 'last_sorted_by', 'last_sorted_dir', 'position', 'archived_at', 'source_plugin_id', 'source_mode', 'source_config'])]
 class BoardList extends Model
 {
     /** @use HasFactory<BoardListFactory> */

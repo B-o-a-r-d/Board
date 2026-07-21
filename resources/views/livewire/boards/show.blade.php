@@ -537,8 +537,20 @@
                             <p class="mb-1 text-xs text-neutral-500">{{ __('Trier les cartes par') }}</p>
                             <div class="flex flex-wrap gap-1">
                                 @foreach (['due' => __('Échéance'), 'title' => __('Titre'), 'created' => __('Création')] as $by => $byLabel)
+                                    @php $activeSort = $list->last_sorted_by === $by; @endphp
+                                    {{-- Re-clicking the active ascending criterion inverts the direction. --}}
                                     <button type="button" wire:click="sortListNow({{ $list->id }}, '{{ $by }}')" @click="shown = false"
-                                            class="rounded border border-neutral-200 px-2 py-0.5 text-xs text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800">{{ $byLabel }}</button>
+                                            title="{{ $activeSort && $list->last_sorted_dir === 'asc' ? __('Trié en croissant — cliquer pour inverser') : ($activeSort ? __('Trié en décroissant — cliquer pour inverser') : __('Trier en croissant')) }}"
+                                            class="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs {{ $activeSort ? 'border-indigo-300 bg-indigo-50 text-indigo-600 dark:border-indigo-500/50 dark:bg-indigo-500/10 dark:text-indigo-300' : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800' }}">
+                                        {{ $byLabel }}
+                                        @if ($activeSort)
+                                            @if ($list->last_sorted_dir === 'desc')
+                                                <x-phosphor-sort-descending class="h-3 w-3"/>
+                                            @else
+                                                <x-phosphor-sort-ascending class="h-3 w-3"/>
+                                            @endif
+                                        @endif
+                                    </button>
                                 @endforeach
                             </div>
                         </div>

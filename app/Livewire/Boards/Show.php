@@ -1159,7 +1159,8 @@ class Show extends Component
     /**
      * Immediate list action (context menu): sort the list's live cards by due
      * date, title or creation date. Reuses the automation action so the manual
-     * and automated paths stay identical.
+     * and automated paths stay identical. Re-sorting on the criterion the list
+     * was last sorted by (ascending) inverts the direction.
      */
     public function sortListNow(int $listId, string $by): void
     {
@@ -1169,8 +1170,14 @@ class Show extends Component
             return;
         }
 
-        app(SortListAction::class)->run($this->phantomListCard($listId), ['list_id' => $listId, 'by' => $by]);
-        $this->broadcastActivity('list.sorted');
+        $list = $this->listForBoard($listId);
+        $dir = ($list->last_sorted_by === $by && $list->last_sorted_dir === 'asc') ? 'desc' : 'asc';
+
+        app(SortListAction::class)->run($this->phantomListCard($listId), ['list_id' => $listId, 'by' => $by, 'dir' => $dir]);
+        $this->broadcastActivity('list.sorted', [$listId]);
+        // The cards live in the ListColumn — without this the actor's own column
+        // kept its old order.
+        $this->dispatch('cards:refresh', listId: $listId);
     }
 
     /**
@@ -1181,7 +1188,8 @@ class Show extends Component
         $this->authorizeContribution();
 
         app(ArchiveListCardsAction::class)->run($this->phantomListCard($listId), ['list_id' => $listId]);
-        $this->broadcastActivity('card.archived');
+        $this->broadcastActivity('card.archived', [$listId]);
+        $this->dispatch('cards:refresh', listId: $listId);
     }
 
     /**
@@ -1211,7 +1219,9 @@ class Show extends Component
 
         if ($cards->isNotEmpty()) {
             $this->resequence($source->id);
-            $this->broadcastActivity('card.moved');
+            $this->broadcastActivity('card.moved', [$source->id, $target->id]);
+            $this->dispatch('cards:refresh', listId: $source->id);
+            $this->dispatch('cards:refresh', listId: $target->id);
         }
     }
 
