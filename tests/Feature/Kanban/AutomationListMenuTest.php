@@ -71,3 +71,44 @@ test('a list menu shortcut prefills the builder wizard', function () {
         ->assertSet('triggerType', 'scheduled')
         ->assertSet('actions.0.type', 'sort_list');
 });
+
+test('re-sorting on the same criterion inverts the direction and shows it on the list', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+    $card->update(['title' => 'Alpha', 'position' => 0]);
+    $zeta = Card::factory()->create(['board_list_id' => $card->board_list_id, 'board_id' => $board->id, 'title' => 'Zeta', 'position' => 1]);
+
+    $component = Livewire::actingAs($owner)->test(Show::class, ['board' => $board]);
+
+    // First click: ascending (Alpha before Zeta), refreshes the actor's column.
+    $component->call('sortListNow', $card->board_list_id, 'title')
+        ->assertDispatched('cards:refresh', listId: $card->board_list_id);
+    $list = BoardList::findOrFail($card->board_list_id);
+    expect($card->fresh()->position)->toBe(0)
+        ->and($list->last_sorted_by)->toBe('title')
+        ->and($list->last_sorted_dir)->toBe('asc');
+
+    // Second click on the same criterion: inverted (Zeta first).
+    $component->call('sortListNow', $card->board_list_id, 'title');
+    expect($zeta->fresh()->position)->toBe(0)
+        ->and($list->fresh()->last_sorted_dir)->toBe('desc');
+
+    // Third click: back to ascending.
+    $component->call('sortListNow', $card->board_list_id, 'title');
+    expect($card->fresh()->position)->toBe(0)
+        ->and($list->fresh()->last_sorted_dir)->toBe('asc');
+});
+
+test('sorting by due date descending still sinks undated cards to the bottom', function () {
+    ['board' => $board, 'owner' => $owner, 'card' => $card] = makeCardContext();
+    $card->update(['due_at' => now()->addDay(), 'position' => 0]);
+    $late = Card::factory()->create(['board_list_id' => $card->board_list_id, 'board_id' => $board->id, 'due_at' => now()->addDays(9), 'position' => 1]);
+    $undated = Card::factory()->create(['board_list_id' => $card->board_list_id, 'board_id' => $board->id, 'due_at' => null, 'position' => 2]);
+
+    $component = Livewire::actingAs($owner)->test(Show::class, ['board' => $board]);
+    $component->call('sortListNow', $card->board_list_id, 'due');   // asc
+    $component->call('sortListNow', $card->board_list_id, 'due');   // desc
+
+    expect($late->fresh()->position)->toBe(0)
+        ->and($card->fresh()->position)->toBe(1)
+        ->and($undated->fresh()->position)->toBe(2);
+});

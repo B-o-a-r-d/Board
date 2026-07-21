@@ -22,6 +22,7 @@ class SortListAction implements AutomationAction
         return [
             ['key' => 'list_id', 'label' => 'Liste (optionnel — vide = liste de la carte)', 'type' => 'list'],
             ['key' => 'by', 'label' => 'Critère (due | title | created)', 'type' => 'text'],
+            ['key' => 'dir', 'label' => 'Sens (asc | desc — asc par défaut)', 'type' => 'text'],
         ];
     }
 
@@ -33,20 +34,38 @@ class SortListAction implements AutomationAction
             return;
         }
 
-        $ordered = Card::query()
+        $by = in_array($config['by'] ?? 'due', ['due', 'title', 'created'], true) ? ($config['by'] ?? 'due') : 'due';
+        $dir = ($config['dir'] ?? 'asc') === 'desc' ? 'desc' : 'asc';
+
+        $key = fn (Card $c): mixed => match ($by) {
+            'title' => mb_strtolower($c->title),
+            'created' => $c->created_at?->getTimestamp() ?? 0,
+            default => $c->due_at?->getTimestamp() ?? 0,
+        };
+
+        $cards = Card::query()
             ->where('board_list_id', $listId)
             ->whereNull('archived_at')
-            ->get()
-            ->sortBy(fn (Card $c) => match ($config['by'] ?? 'due') {
-                'title' => mb_strtolower($c->title),
-                'created' => $c->created_at?->getTimestamp() ?? 0,
-                // Undated cards sink to the bottom.
-                default => $c->due_at?->getTimestamp() ?? PHP_INT_MAX,
-            })
+            ->get();
+
+        // Undated cards sink to the bottom in BOTH directions.
+        [$dated, $undated] = $by === 'due'
+            ? $cards->partition(fn (Card $c): bool => $c->due_at !== null)
+            : [$cards, collect()];
+
+        $ordered = ($dir === 'desc' ? $dated->sortByDesc($key) : $dated->sortBy($key))
+            ->concat($undated)
             ->values();
 
         foreach ($ordered as $index => $sorted) {
             $sorted->update(['position' => $index]);
         }
+
+        // Remembered so the list menu shows the direction arrow and a second
+        // click on the same criterion inverts it.
+        $card->board->lists()->whereKey($listId)->update([
+            'last_sorted_by' => $by,
+            'last_sorted_dir' => $dir,
+        ]);
     }
 }
