@@ -1,3 +1,11 @@
+/* Reserve a low-priority `plugins` cascade layer (before `utilities`) for the
+   pre-built utility CSS that runtime Power-Ups ship (see ProvidesAssets). A
+   plugin re-emits base utilities the host already has; landing them in a layer
+   BELOW the host's `utilities` keeps the host's own utilities (and responsive
+   variants) winning on shared chrome, while a class the host purged — present
+   only in the plugin's file — still applies (nothing competes). */
+@layer theme, base, components, plugins, utilities;
+
 @import 'tailwindcss';
 
 /* Class-based dark mode: `dark:` variants respond to a `.dark` class on <html>. */
