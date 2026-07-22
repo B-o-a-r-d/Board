@@ -20,14 +20,13 @@ class AcmeServiceProvider extends PluginServiceProvider
         parent::boot();
 
         // The named route backing the fixture's board type — a real plugin
-        // (e.g. Shelf) registers its page the same way.
+        // (e.g. Shelf) registers its page the same way. The name MUST go
+        // through the fluent registrar (before get): on a host with cached
+        // routes the compiled collection never indexes a late ->name() and
+        // refreshNameLookups() is a no-op there.
         Route::middleware(['web', 'auth'])
-            ->get('/acme-board/{board}', fn (Board $board) => 'acme-board:'.$board->id)
-            ->name('acme-board.show');
-
-        // Registered after boot (runtime plugin): the name lookup table must be
-        // refreshed or Route::has() cannot see the new name.
-        $this->app['router']->getRoutes()->refreshNameLookups();
+            ->name('acme-board.show')
+            ->get('/acme-board/{board}', fn (Board $board) => 'acme-board:'.$board->id);
     }
 
     protected function plugin(): Plugin
