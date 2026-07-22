@@ -40,14 +40,13 @@ test('the asset route requires authentication', function () {
     $this->get(route('plugins.asset', ['plugin' => 'acme', 'file' => 'acme.css']))->assertRedirect(route('login'));
 });
 
-test('the plugin asset tags carry the hashed css and js urls', function () {
-    $bundle = app(PluginAssets::class)->for('acme');
-    $html = view('partials.plugin-asset-tags', ['plugin' => 'acme', 'bundle' => $bundle])->render();
+test('x-plugin-assets emits the plugin link and script directly with hashed, navigate-tracked urls', function () {
+    $html = view('components.plugin-assets', ['plugin' => 'acme'])->render();
 
     expect($html)->toContain('/plugins/acme/assets/acme.css?v=')
         ->and($html)->toContain('/plugins/acme/assets/acme.js?v=')
-        ->and($html)->toContain('<link rel="stylesheet"')
-        ->and($html)->toContain('<script src=');
+        ->and($html)->toContain('<link rel="stylesheet" data-navigate-track="reload"')
+        ->and($html)->toContain('<script data-navigate-track="reload"');
 });
 
 test('x-plugin-assets is a no-op for a plugin without assets', function () {
