@@ -8,7 +8,9 @@ use App\Automations\Conditions;
 use App\Automations\PluginAutomationAction;
 use App\Automations\Triggers;
 use App\Models\User;
+use App\Plugins\PluginAssets;
 use App\Plugins\PluginContext;
+use Board\PluginSdk\Contracts\AssetRegistrar;
 use Board\PluginSdk\Contracts\PluginContext as PluginContextContract;
 use Board\PluginSdk\Contracts\ProvidesAutomationActions;
 use Board\PluginSdk\PluginRegistry;
@@ -143,6 +145,13 @@ class AppServiceProvider extends ServiceProvider
         // own package service providers (Laravel auto-discovery), so installing
         // a plugin is just `composer require`.
         $this->app->singleton(PluginRegistry::class, fn (): PluginRegistry => new PluginRegistry);
+
+        // Sink for plugin front-end assets (ProvidesAssets): plugin providers
+        // feed it at boot; the asset route + <x-plugin-assets> component read it.
+        // One shared instance under both names — the SDK writes through the
+        // AssetRegistrar contract, the host reads through PluginAssets.
+        $this->app->singleton(PluginAssets::class);
+        $this->app->alias(PluginAssets::class, AssetRegistrar::class);
 
         // Bridge decoupled plugin code (MCP tools) back to host state.
         $this->app->singleton(PluginContextContract::class, PluginContext::class);

@@ -3,6 +3,7 @@
 use App\Http\Controllers\BoardExportController;
 use App\Http\Controllers\BoardIcalController;
 use App\Http\Controllers\MediaController;
+use App\Http\Controllers\PluginAssetController;
 use App\Http\Controllers\PluginOAuthController;
 use App\Http\Controllers\PublicBoardPresenceController;
 use App\Http\Controllers\UserIcalController;
@@ -62,4 +63,9 @@ Route::middleware('auth')->group(function () {
         ->name('plugins.oauth.redirect');
     Route::get('/plugins/oauth/callback', [PluginOAuthController::class, 'callback'])
         ->name('plugins.oauth.callback');
+
+    // Pre-built front-end assets a plugin ships (ProvidesAssets), served from
+    // the install volume with an immutable hash-versioned cache.
+    Route::get('/plugins/{plugin}/assets/{file}', PluginAssetController::class)
+        ->name('plugins.asset');
 });

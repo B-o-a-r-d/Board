@@ -4,6 +4,7 @@ namespace Tests\Fixtures\Connector;
 
 use Board\PluginSdk\Contracts\DefinesActivities;
 use Board\PluginSdk\Contracts\Plugin;
+use Board\PluginSdk\Contracts\ProvidesAssets;
 use Board\PluginSdk\Contracts\ProvidesAutomationActions;
 use Board\PluginSdk\Contracts\ProvidesBoardType;
 use Board\PluginSdk\Contracts\ProvidesCardFields;
@@ -25,7 +26,7 @@ use Illuminate\Support\Facades\Http;
  *
  * All I/O targets the fake `acme.test` host so tests can `Http::fake()` it.
  */
-class AcmePlugin implements DefinesActivities, Plugin, ProvidesAutomationActions, ProvidesBoardType, ProvidesCardFields, ProvidesListSource, ProvidesMcpTools, ProvidesOAuth, ProvidesSettings
+class AcmePlugin implements DefinesActivities, Plugin, ProvidesAssets, ProvidesAutomationActions, ProvidesBoardType, ProvidesCardFields, ProvidesListSource, ProvidesMcpTools, ProvidesOAuth, ProvidesSettings
 {
     public const AUTHORIZE_URL = 'https://acme.test/oauth/authorize';
 
@@ -63,6 +64,24 @@ class AcmePlugin implements DefinesActivities, Plugin, ProvidesAutomationActions
     public function icon(): string
     {
         return 'plugs';
+    }
+
+    // --- ProvidesAssets (plugin front-end assets tests) ------------------------
+
+    /**
+     * @return array<int, string>
+     */
+    public function assetStyles(): array
+    {
+        return ['acme.css'];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function assetScripts(): array
+    {
+        return ['acme.js'];
     }
 
     // --- ProvidesBoardType (board-type system tests) ---------------------------
