@@ -169,6 +169,59 @@ test('uninstalling a composer plugin removes it from the plugins project', funct
         ->and(is_dir(storage_path('app/plugins/vendor/board/plugin-demo')))->toBeFalse();
 });
 
+test('uninstalling a composer plugin never crashes when the plugins manifest is missing', function () {
+    // A dev-symlinked (or archive-only) plugins project has no composer.json;
+    // `composer remove` there would die with "./composer.json is not readable"
+    // and block the uninstall. The record must still go, no composer call made.
+    $fake = fakeComposer();
+
+    PluginPackage::create([
+        'key' => 'demo',
+        'name' => 'Demo',
+        'repo' => 'board/demo-plugin',
+        'package_name' => 'board/plugin-demo',
+        'source' => 'composer',
+        'version' => '1.2.3',
+        'contract_version' => 1,
+        'path' => 'plugins/vendor/board/plugin-demo',
+        'enabled' => true,
+    ]);
+    File::delete(storage_path('app/plugins/composer.json'));
+
+    app(PluginInstaller::class)->uninstall('demo');
+
+    expect(PluginPackage::where('key', 'demo')->exists())->toBeFalse()
+        ->and(collect($fake->commands)->pluck(0)->all())->not->toContain('remove');
+});
+
+test('uninstalling a dev-symlinked plugin unlinks it without wiping the real source', function () {
+    fakeComposer();
+
+    $source = storage_path('app/plugins/.dev-source-demo');
+    File::ensureDirectoryExists($source);
+    File::put($source.'/keepme.txt', 'source');
+    symlink($source, storage_path('app/plugins/demo'));
+
+    PluginPackage::create([
+        'key' => 'demo',
+        'name' => 'Demo',
+        'repo' => 'board/demo-plugin',
+        'source' => 'local',
+        'version' => '0.0.0-dev',
+        'contract_version' => 1,
+        'path' => 'plugins/demo',
+        'enabled' => true,
+    ]);
+
+    app(PluginInstaller::class)->uninstall('demo');
+
+    expect(PluginPackage::where('key', 'demo')->exists())->toBeFalse()
+        ->and(is_link(storage_path('app/plugins/demo')))->toBeFalse()
+        ->and(File::exists($source.'/keepme.txt'))->toBeTrue();
+
+    File::deleteDirectory($source);
+});
+
 test('checkUpdates resolves composer plugins through composer outdated', function () {
     $fake = fakeComposer();
     app(PluginInstaller::class)->install(composerEntry());
