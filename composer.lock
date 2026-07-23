@@ -7880,16 +7880,16 @@
     "packages-dev": [
         {
             "name": "board/marketplace",
-            "version": "v0.1.14",
+            "version": "v0.1.15",
             "source": {
                 "type": "git",
                 "url": "https://github.com/B-o-a-r-d/marketplace-plugin.git",
-                "reference": "77af2d786fc9bb8c13809145f5d2dbb75550222d"
+                "reference": "02489968ba7b08ba2775ad2800839abc2cb99f51"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/B-o-a-r-d/marketplace-plugin/zipball/77af2d786fc9bb8c13809145f5d2dbb75550222d",
-                "reference": "77af2d786fc9bb8c13809145f5d2dbb75550222d",
+                "url": "https://api.github.com/repos/B-o-a-r-d/marketplace-plugin/zipball/02489968ba7b08ba2775ad2800839abc2cb99f51",
+                "reference": "02489968ba7b08ba2775ad2800839abc2cb99f51",
                 "shasum": ""
             },
             "require": {
@@ -7929,10 +7929,10 @@
                 "plugins"
             ],
             "support": {
-                "source": "https://github.com/B-o-a-r-d/marketplace-plugin/tree/v0.1.14",
+                "source": "https://github.com/B-o-a-r-d/marketplace-plugin/tree/v0.1.15",
                 "issues": "https://github.com/B-o-a-r-d/marketplace-plugin/issues"
             },
-            "time": "2026-07-23T08:40:19+00:00"
+            "time": "2026-07-23T13:25:23+00:00"
         },
         {
             "name": "brianium/paratest",
