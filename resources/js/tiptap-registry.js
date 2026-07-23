@@ -28,12 +28,14 @@ let modules = null
 
 export async function loadTiptap() {
     if (!modules) {
-        const [core, starter, md, table, image, yjs, awareness, collaboration, caret] = await Promise.all([
+        const [core, starter, md, table, image, pmState, pmView, yjs, awareness, collaboration, caret] = await Promise.all([
             import('@tiptap/core'),
             import('@tiptap/starter-kit'),
             import('tiptap-markdown'),
             import('@tiptap/extension-table'),
             import('@tiptap/extension-image'),
+            import('@tiptap/pm/state'),
+            import('@tiptap/pm/view'),
             import('yjs'),
             import('y-protocols/awareness.js'),
             import('@tiptap/extension-collaboration'),
@@ -56,6 +58,15 @@ export async function loadTiptap() {
             // Inline images (Shelf embeds uploaded images as markdown ![](url)).
             image: {
                 Image: image.Image ?? image.default,
+            },
+            // ProseMirror primitives for view-only overlays (Shelf highlights
+            // commented text ranges with decorations — never stored marks, so
+            // the markdown/CRDT stay untouched).
+            pm: {
+                Plugin: pmState.Plugin,
+                PluginKey: pmState.PluginKey,
+                Decoration: pmView.Decoration,
+                DecorationSet: pmView.DecorationSet,
             },
             // Client-side CRDT collaboration. The transport is the caller's
             // concern (Shelf syncs Yjs updates over Reverb presence whispers) —
