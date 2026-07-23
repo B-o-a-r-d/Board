@@ -6,6 +6,7 @@ use Board\Marketplace\PluginInstaller;
 use Board\Marketplace\PluginInstallException;
 use Board\Marketplace\PluginLoader;
 use Board\PluginSdk\PluginRegistry;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
@@ -170,6 +171,34 @@ test('uninstall removes the files and the row', function () {
 
     expect(PluginPackage::count())->toBe(0)
         ->and(is_dir(storage_path('app/plugins/demo')))->toBeFalse();
+});
+
+test('uninstall keeps the plugin tables by default (no data loss)', function () {
+    fakeGithubRelease();
+    app(PluginInstaller::class)->install(demoEntry());
+    expect(Schema::hasTable('demo_plugin_probe'))->toBeTrue();
+
+    app(PluginInstaller::class)->uninstall('demo');
+
+    // The row + files are gone, but the plugin's own table survives — a reinstall
+    // keeps its data.
+    expect(PluginPackage::count())->toBe(0)
+        ->and(Schema::hasTable('demo_plugin_probe'))->toBeTrue();
+})->afterEach(fn () => Schema::dropIfExists('demo_plugin_probe'));
+
+test('a clean uninstall rolls back the plugin migrations and drops its tables', function () {
+    fakeGithubRelease();
+    app(PluginInstaller::class)->install(demoEntry());
+    expect(Schema::hasTable('demo_plugin_probe'))->toBeTrue();
+
+    app(PluginInstaller::class)->uninstall('demo', purgeData: true);
+
+    // migrate:reset ran the down() first: the table is gone and so is its row in
+    // the migrations ledger — no obsolete artifacts remain.
+    expect(PluginPackage::count())->toBe(0)
+        ->and(is_dir(storage_path('app/plugins/demo')))->toBeFalse()
+        ->and(Schema::hasTable('demo_plugin_probe'))->toBeFalse()
+        ->and(DB::table('migrations')->where('migration', 'like', '%create_demo_probe_table')->exists())->toBeFalse();
 });
 
 test('a breaking (major) update is blocked without confirmation, allowed with it', function () {

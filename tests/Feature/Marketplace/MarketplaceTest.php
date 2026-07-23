@@ -4,11 +4,13 @@ use App\Models\User;
 use Board\Marketplace\Livewire\Marketplace;
 use Board\Marketplace\MarketplaceClient;
 use Board\Marketplace\Models\PluginPackage;
+use Board\Marketplace\PluginInstaller;
 use Board\Marketplace\Support\Settings;
 use Board\PluginSdk\Support\PluginSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 
 /**
@@ -212,4 +214,51 @@ test('an admin installs a plugin from the catalog when the switch is on', functi
     expect($package->version)->toBe('1.0.0')
         ->and($package->repo)->toBe('acme/demo')
         ->and(is_file(storage_path('app/plugins/demo/composer.json')))->toBeTrue();
+});
+
+test('the uninstall modal exposes whether the plugin has data to purge', function () {
+    Settings::setEnabled(true);
+    fakeMarketplace(withRelease: true);
+    app(PluginInstaller::class)->install(['key' => 'demo', 'name' => 'Demo', 'repo' => 'acme/demo']);
+
+    Livewire::actingAs(admin())->test(Marketplace::class)
+        ->call('startUninstall', 'demo')
+        ->assertSet('uninstallingKey', 'demo')
+        ->assertSet('purgeData', false)
+        ->assertViewHas('uninstallHasData', true) // the demo fixture ships a migration
+        ->call('cancelUninstall')
+        ->assertSet('uninstallingKey', null);
+})->afterEach(fn () => Schema::dropIfExists('demo_plugin_probe'));
+
+test('a plain uninstall from the modal keeps the plugin data', function () {
+    Settings::setEnabled(true);
+    fakeMarketplace(withRelease: true);
+    app(PluginInstaller::class)->install(['key' => 'demo', 'name' => 'Demo', 'repo' => 'acme/demo']);
+    expect(Schema::hasTable('demo_plugin_probe'))->toBeTrue();
+
+    Livewire::actingAs(admin())->test(Marketplace::class)
+        ->call('startUninstall', 'demo')
+        ->call('confirmUninstall')
+        ->assertSet('uninstallingKey', null)
+        ->assertDispatched('toast');
+
+    expect(PluginPackage::where('key', 'demo')->exists())->toBeFalse()
+        ->and(Schema::hasTable('demo_plugin_probe'))->toBeTrue();
+})->afterEach(fn () => Schema::dropIfExists('demo_plugin_probe'));
+
+test('a purge uninstall from the modal drops the plugin tables', function () {
+    Settings::setEnabled(true);
+    fakeMarketplace(withRelease: true);
+    app(PluginInstaller::class)->install(['key' => 'demo', 'name' => 'Demo', 'repo' => 'acme/demo']);
+    expect(Schema::hasTable('demo_plugin_probe'))->toBeTrue();
+
+    Livewire::actingAs(admin())->test(Marketplace::class)
+        ->call('startUninstall', 'demo')
+        ->set('purgeData', true)
+        ->call('confirmUninstall')
+        ->assertSet('uninstallingKey', null)
+        ->assertDispatched('toast');
+
+    expect(PluginPackage::where('key', 'demo')->exists())->toBeFalse()
+        ->and(Schema::hasTable('demo_plugin_probe'))->toBeFalse();
 });
