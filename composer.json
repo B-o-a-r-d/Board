@@ -100,10 +100,6 @@
     "repositories": [
         {
             "type": "vcs",
-            "url": "https://github.com/B-o-a-r-d/Board-Plugin-SDK.git"
-        },
-        {
-            "type": "vcs",
             "url": "https://github.com/B-o-a-r-d/marketplace-plugin.git"
         }
     ],
